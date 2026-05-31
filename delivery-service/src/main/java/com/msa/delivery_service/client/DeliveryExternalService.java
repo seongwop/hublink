@@ -9,6 +9,7 @@ import com.msa.delivery_service.client.user.dto.DeliveryManagerResponse;
 import com.msa.delivery_service.client.user.dto.HubManagerResponse;
 import com.msa.delivery_service.dto.DeliveryRequest;
 import com.msa.delivery_service.enums.DeliveryErrorCode;
+import feign.FeignException;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -46,19 +47,27 @@ public class DeliveryExternalService {
         return userClient.getDeliveryManagers(hubIds);
     }
 
-    private HubResponse getHubFallback(UUID hubId) {
-        throw new CustomException(DeliveryErrorCode.HUB_SERVICE_UNAVAILABLE);
+    private HubResponse getHubFallback(UUID hubId, Throwable e) {
+        throw new CustomException(e instanceof FeignException.NotFound
+                ? DeliveryErrorCode.HUB_NOT_FOUND
+                : DeliveryErrorCode.HUB_SERVICE_UNAVAILABLE);
     }
 
-    private List<HubRouteResponse> getHubRoutesFallback(DeliveryRequest request) {
-        throw new CustomException(DeliveryErrorCode.HUB_SERVICE_UNAVAILABLE);
+    private List<HubRouteResponse> getHubRoutesFallback(DeliveryRequest request, Throwable e) {
+        throw new CustomException(e instanceof FeignException.NotFound
+                ? DeliveryErrorCode.NO_HUB_ROUTE
+                : DeliveryErrorCode.HUB_SERVICE_UNAVAILABLE);
     }
 
-    private HubManagerResponse getHubManagerFallback(UUID departureHubId) {
-        throw new CustomException(DeliveryErrorCode.USER_SERVICE_UNAVAILABLE);
+    private HubManagerResponse getHubManagerFallback(UUID departureHubId, Throwable e) {
+        throw new CustomException(e instanceof FeignException.NotFound
+                ? DeliveryErrorCode.NO_HUB_MANAGER
+                : DeliveryErrorCode.USER_SERVICE_UNAVAILABLE);
     }
 
-    private List<DeliveryManagerResponse> getDeliveryManagersFallback(List<UUID> hubIds) {
-        throw new CustomException(DeliveryErrorCode.USER_SERVICE_UNAVAILABLE);
+    private List<DeliveryManagerResponse> getDeliveryManagersFallback(List<UUID> hubIds, Throwable e) {
+        throw new CustomException(e instanceof FeignException.NotFound
+                ? DeliveryErrorCode.NO_DELIVERY_MANAGER
+                : DeliveryErrorCode.USER_SERVICE_UNAVAILABLE);
     }
 }
