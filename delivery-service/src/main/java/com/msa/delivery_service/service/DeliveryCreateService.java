@@ -33,6 +33,7 @@ public class DeliveryCreateService {
             "uk_p_deliveries_active_company_delivery_manager";
     private static final String UK_ACTIVE_HUB_DELIVERY_MANAGER =
             "uk_p_delivery_route_histories_active_delivery_manager";
+    private static final String CREATE_SUCCEED_TOPIC = "delivery.create.succeed";
 
     /*
         외부 서비스 호출과 DB 커넥션을 분리하기 위해 트랜잭션을 외부로 분리
@@ -41,6 +42,7 @@ public class DeliveryCreateService {
     private final DeliveryRepository deliveryRepository;
     private final DeliveryRouteHistoryRepository deliveryRouteHistoryRepository;
     private final RedisStreamEventPublisher redisStreamEventPublisher;
+    private final DeliveryOutboxService deliveryOutboxService;
 
     @Transactional
     public DeliveryResponse createDelivery(
@@ -92,7 +94,9 @@ public class DeliveryCreateService {
                     )
             );
 
-            return DeliveryResponse.from(savedDelivery);
+            DeliveryResponse response = DeliveryResponse.from(savedDelivery);
+            deliveryOutboxService.enqueue(CREATE_SUCCEED_TOPIC, request.getOrderId().toString(), response);
+            return response;
         } catch (DataIntegrityViolationException e) {
             throw new CustomException(translateIntegrityException(e));
         }

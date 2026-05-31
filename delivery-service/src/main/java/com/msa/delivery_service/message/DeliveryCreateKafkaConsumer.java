@@ -58,10 +58,14 @@ public class DeliveryCreateKafkaConsumer {
             DeliveryRequest deliveryRequest = request;
 
             // 멱등성 보장을 위해 이미 존재하면 기존 결과 반환
-            DeliveryResponse response = deliveryService.findDeliveryByOrderId(deliveryRequest.getOrderId())
-                    .orElseGet(() -> deliveryService.createDelivery(deliveryRequest));
-
-            publishSuccess(messageKey, response);
+            var existingDelivery = deliveryService.findDeliveryByOrderId(deliveryRequest.getOrderId());
+            DeliveryResponse response;
+            if (existingDelivery.isPresent()) {
+                response = existingDelivery.get();
+                publishSuccess(messageKey, response);
+            } else {
+                response = deliveryService.createDelivery(deliveryRequest);
+            }
 
             log.info("배송 생성 이벤트를 정상 처리했습니다. orderId={}, deliveryId={}",
                     request.getOrderId(),

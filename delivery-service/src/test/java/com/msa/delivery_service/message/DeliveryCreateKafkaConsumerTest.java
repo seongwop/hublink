@@ -78,8 +78,8 @@ class DeliveryCreateKafkaConsumerTest {
         consumer.consume(record);
 
         // then
-        // 성공 topic으로 나갈 payload가 outbox에 적재되는지 검증
-        verify(outboxService).enqueue(CREATE_SUCCEED_TOPIC, orderId.toString(), response);
+        verify(deliveryService).createDelivery(any(DeliveryRequest.class));
+        verify(outboxService, never()).enqueue(eq(CREATE_SUCCEED_TOPIC), any(), any());
     }
 
     @Test

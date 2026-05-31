@@ -62,6 +62,9 @@ class DeliveryServiceTest {
     @Mock
     private RedisStreamEventPublisher redisStreamEventPublisher;
 
+    @Mock
+    private DeliveryOutboxService deliveryOutboxService;
+
     private DeliveryService deliveryService;
 
     @BeforeEach
@@ -69,7 +72,8 @@ class DeliveryServiceTest {
         DeliveryCreateService deliveryCreateService = new DeliveryCreateService(
                 deliveryRepository,
                 deliveryRouteHistoryRepository,
-                redisStreamEventPublisher
+                redisStreamEventPublisher,
+                deliveryOutboxService
         );
         DeliveryExternalService deliveryExternalService = new DeliveryExternalService(hubClient, userClient);
         deliveryService = new DeliveryService(
