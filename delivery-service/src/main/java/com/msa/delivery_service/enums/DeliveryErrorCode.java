@@ -22,6 +22,7 @@ public enum DeliveryErrorCode implements ErrorCode {
     DELIVERY_NOT_FOUND("DELIVERY_006", "배송을 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
     DELIVERY_ROUTE_HISTORY_NOT_FOUND("DELIVERY_007", "배송 경로 이력을 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
     NO_HUB_MANAGER("DELIVERY_010", "허브 관리자를 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
+    HUB_NOT_FOUND("DELIVERY_016", "허브를 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
 
     // 409
     DUPLICATE_ORDER_DELIVERY("DELIVERY_008", "이미 배송이 생성된 주문입니다.", HttpStatus.CONFLICT),

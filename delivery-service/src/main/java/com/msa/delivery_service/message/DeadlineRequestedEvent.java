@@ -1,8 +1,8 @@
 package com.msa.delivery_service.message;
 
 import com.msa.delivery_service.entity.Delivery;
-import com.msa.delivery_service.dto.DeliveryManagerResponse;
-import com.msa.delivery_service.dto.HubManagerResponse;
+import com.msa.delivery_service.client.user.dto.DeliveryManagerResponse;
+import com.msa.delivery_service.client.user.dto.HubManagerResponse;
 import com.msa.delivery_service.dto.DeliveryRequest;
 import lombok.Builder;
 import lombok.Getter;

@@ -17,6 +17,16 @@ spring:
       host: ${REDIS_HOST}
       port: ${REDIS_PORT}
       password: ${REDIS_PASSWORD:}
+  cloud:
+    openfeign:
+      client:
+        config:
+          hub-service:
+            connectTimeout: 1000
+            readTimeout: 2000
+          user-service:
+            connectTimeout: 1000
+            readTimeout: 2000
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     consumer:
@@ -29,16 +39,16 @@ spring:
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     properties:
       hibernate:
         default_schema: delivery_service
-        format_sql: true
-    show-sql: true
+        format_sql: false
+    show-sql: false
 
 logging:
   level:
-    root: ${LOG_LEVEL_ROOT:ERROR}
+    root: ${LOG_LEVEL_ROOT:WARN}
 
 eureka:
   client:
@@ -60,6 +70,11 @@ resilience4j:
         failureRateThreshold: 50
         permittedNumberOfCallsInHalfOpenState: 3
         waitDurationInOpenState: 20s
+    instances:
+      hub-service:
+        baseConfig: default
+      user-service:
+        baseConfig: default
 
 management:
   endpoints:

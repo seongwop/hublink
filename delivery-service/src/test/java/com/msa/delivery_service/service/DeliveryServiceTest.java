@@ -1,5 +1,6 @@
 package com.msa.delivery_service.service;
 
+import com.msa.delivery_service.client.DeliveryExternalService;
 import com.msa.delivery_service.client.hub.HubClient;
 import com.msa.delivery_service.client.hub.dto.HubRouteResponse;
 import com.msa.delivery_service.client.user.UserClient;
@@ -7,11 +8,11 @@ import com.msa.delivery_service.enums.DeliveryLocationType;
 import com.msa.delivery_service.enums.DeliveryRouteStatus;
 import com.msa.delivery_service.enums.DeliveryRouteType;
 import com.msa.delivery_service.enums.DeliveryStatus;
-import com.msa.delivery_service.dto.DeliveryManagerResponse;
+import com.msa.delivery_service.client.user.dto.DeliveryManagerResponse;
 import com.msa.delivery_service.dto.DeliveryRequest;
 import com.msa.delivery_service.dto.DeliveryResponse;
 import com.msa.delivery_service.dto.DeliveryStatusUpdateRequest;
-import com.msa.delivery_service.dto.HubManagerResponse;
+import com.msa.delivery_service.client.user.dto.HubManagerResponse;
 import com.msa.delivery_service.entity.Delivery;
 import com.msa.delivery_service.entity.DeliveryRouteHistory;
 import com.msa.delivery_service.message.RedisStreamEventPublisher;
@@ -61,6 +62,9 @@ class DeliveryServiceTest {
     @Mock
     private RedisStreamEventPublisher redisStreamEventPublisher;
 
+    @Mock
+    private DeliveryOutboxService deliveryOutboxService;
+
     private DeliveryService deliveryService;
 
     @BeforeEach
@@ -68,13 +72,14 @@ class DeliveryServiceTest {
         DeliveryCreateService deliveryCreateService = new DeliveryCreateService(
                 deliveryRepository,
                 deliveryRouteHistoryRepository,
-                redisStreamEventPublisher
+                redisStreamEventPublisher,
+                deliveryOutboxService
         );
+        DeliveryExternalService deliveryExternalService = new DeliveryExternalService(hubClient, userClient);
         deliveryService = new DeliveryService(
                 deliveryRepository,
                 deliveryRouteHistoryRepository,
-                hubClient,
-                userClient,
+                deliveryExternalService,
                 deliveryCreateService,
                 deliveryAssignmentLockService
         );

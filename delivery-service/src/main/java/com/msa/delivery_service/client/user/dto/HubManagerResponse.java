@@ -1,4 +1,4 @@
-package com.msa.delivery_service.dto;
+package com.msa.delivery_service.client.user.dto;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;

@@ -1,7 +1,7 @@
 package com.msa.delivery_service.client.user;
 
-import com.msa.delivery_service.dto.DeliveryManagerResponse;
-import com.msa.delivery_service.dto.HubManagerResponse;
+import com.msa.delivery_service.client.user.dto.DeliveryManagerResponse;
+import com.msa.delivery_service.client.user.dto.HubManagerResponse;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
