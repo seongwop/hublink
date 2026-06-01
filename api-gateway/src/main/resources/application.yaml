@@ -5,8 +5,3 @@ spring:
     web-application-type: reactive
   config:
     import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:19092}
-
-eureka:
-  client:
-    service-url:
-      defaultZone: ${EUREKA_URL:http://localhost:19090/eureka/}

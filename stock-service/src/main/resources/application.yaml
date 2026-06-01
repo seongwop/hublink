@@ -3,27 +3,3 @@ spring:
     name: stock-service
   config:
     import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:19092}
-eureka:
-  client:
-    service-url:
-      defaultZone: ${EUREKA_URL:http://localhost:19090/eureka/}
-    register-with-eureka: true
-    fetch-registry: true
-
-management:
-  tracing:
-    sampling:
-      probability: 1.0
-
-  zipkin:
-    tracing:
-      endpoint: ${ZIPKIN_URL:http://localhost:9411/api/v2/spans}
-
-  endpoints:
-    web:
-      exposure:
-        include: health,info,prometheus
-
-  endpoint:
-    health:
-      show-details: always

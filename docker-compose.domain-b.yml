@@ -1,0 +1,65 @@
+services:
+  order-service:
+    image: ${IMAGE_REGISTRY}/hublink-order-service:${IMAGE_TAG:-latest}
+    container_name: hublink-order-service
+    env_file:
+      - ${HUBLINK_ENV_FILE:-.env.gcp}
+    environment:
+      EUREKA_INSTANCE_HOSTNAME: ${DOMAIN_B_VM_IP}
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
+      EUREKA_INSTANCE_IP_ADDRESS: ${DOMAIN_B_VM_IP}
+      EUREKA_INSTANCE_NON_SECURE_PORT: "19094"
+    ports:
+      - "19094:19094"
+
+  stock-service:
+    image: ${IMAGE_REGISTRY}/hublink-stock-service:${IMAGE_TAG:-latest}
+    container_name: hublink-stock-service
+    env_file:
+      - ${HUBLINK_ENV_FILE:-.env.gcp}
+    environment:
+      EUREKA_INSTANCE_HOSTNAME: ${DOMAIN_B_VM_IP}
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
+      EUREKA_INSTANCE_IP_ADDRESS: ${DOMAIN_B_VM_IP}
+      EUREKA_INSTANCE_NON_SECURE_PORT: "19098"
+    ports:
+      - "19098:19098"
+
+  delivery-service:
+    image: ${IMAGE_REGISTRY}/hublink-delivery-service:${IMAGE_TAG:-latest}
+    container_name: hublink-delivery-service
+    env_file:
+      - ${HUBLINK_ENV_FILE:-.env.gcp}
+    environment:
+      EUREKA_INSTANCE_HOSTNAME: ${DOMAIN_B_VM_IP}
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
+      EUREKA_INSTANCE_IP_ADDRESS: ${DOMAIN_B_VM_IP}
+      EUREKA_INSTANCE_NON_SECURE_PORT: "19099"
+    ports:
+      - "19099:19099"
+
+  slack-service:
+    image: ${IMAGE_REGISTRY}/hublink-slack-service:${IMAGE_TAG:-latest}
+    container_name: hublink-slack-service
+    env_file:
+      - ${HUBLINK_ENV_FILE:-.env.gcp}
+    environment:
+      EUREKA_INSTANCE_HOSTNAME: ${DOMAIN_B_VM_IP}
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
+      EUREKA_INSTANCE_IP_ADDRESS: ${DOMAIN_B_VM_IP}
+      EUREKA_INSTANCE_NON_SECURE_PORT: "19100"
+    ports:
+      - "19100:19100"
+
+  ai-service:
+    image: ${IMAGE_REGISTRY}/hublink-ai-service:${IMAGE_TAG:-latest}
+    container_name: hublink-ai-service
+    env_file:
+      - ${HUBLINK_ENV_FILE:-.env.gcp}
+    environment:
+      EUREKA_INSTANCE_HOSTNAME: ${DOMAIN_B_VM_IP}
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
+      EUREKA_INSTANCE_IP_ADDRESS: ${DOMAIN_B_VM_IP}
+      EUREKA_INSTANCE_NON_SECURE_PORT: "19101"
+    ports:
+      - "19101:19101"

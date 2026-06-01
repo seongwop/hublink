@@ -1,11 +1,5 @@
-server:
-  port: 19099
-
 spring:
   application:
     name: delivery-service
   config:
-    import:
-      - "optional:file:.env[.properties]"
-      - "optional:file:../.env[.properties]"
-      - "optional:configserver:${CONFIG_SERVER_URL:http://localhost:19092}"
+    import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:19092}

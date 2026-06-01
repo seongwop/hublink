@@ -4,10 +4,55 @@ server:
 spring:
   application:
     name: order-service
+  cloud:
+    circuitbreaker:
+      resilience4j:
+        enabled: true
   datasource:
+    url: ${DB_URL}?currentSchema=order_service
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 2
       minimum-idle: 1
+  jpa:
+    database: postgresql
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    generate-ddl: true
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    open-in-view: false
+    properties:
+      hibernate:
+        default_schema: order_service
+        format_sql: false
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      retries: 3
+      properties:
+        ack: all
+        enable.idempotence: true
+        max.in.flight.requests.per.connection: 5
+        batch.size: 16384
+        linger.ms: 10
+        compression.type: lz4
+    consumer:
+      group-id: order-group
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      enable-auto-commit: false
+      auto-offset-reset: earliest
+      max-poll-records: 100
 
 eureka:
   client:
@@ -15,12 +60,44 @@ eureka:
       defaultZone: ${EUREKA_URL:http://localhost:19090/eureka/}
     register-with-eureka: true
     fetch-registry: true
+  instance:
+    prefer-ip-address: true
+    lease-renewal-interval-in-seconds: 30
+    lease-expiration-duration-in-seconds: 90
+
+feign:
+  circuitbreaker:
+    enabled: true
+
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        registerHealthIndicator: true
+        slidingWindowType: COUNT_BASED
+        slidingWindowSize: 5
+        minimumNumberOfCalls: 5
+        slowCallRateThreshold: 100
+        slowCallDurationThreshold: 60000
+        failureRateThreshold: 50
+        permittedNumberOfCallsInHalfOpenState: 3
+        waitDurationInOpenState: 20s
 
 management:
+  tracing:
+    sampling:
+      probability: 1.0
+  zipkin:
+    tracing:
+      endpoint: ${ZIPKIN_URL:http://localhost:9411/api/v2/spans}
   endpoints:
     web:
       exposure:
-        include: health,info,prometheus
+        include: "*"
   endpoint:
     health:
       show-details: always
+  prometheus:
+    metrics:
+      export:
+        enabled: true

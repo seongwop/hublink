@@ -4,7 +4,7 @@ server:
 spring:
   #카프카 관련 설정
   kafka:
-    bootstrap-servers: localhost:9092
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
@@ -29,8 +29,16 @@ eureka:
       defaultZone: ${EUREKA_URL:http://localhost:19090/eureka/}
     register-with-eureka: true
     fetch-registry: true
+  instance:
+    prefer-ip-address: true
 
 management:
+  tracing:
+    sampling:
+      probability: 1.0
+  zipkin:
+    tracing:
+      endpoint: ${ZIPKIN_URL:http://localhost:9411/api/v2/spans}
   endpoints:
     web:
       exposure:
@@ -38,3 +46,7 @@ management:
   endpoint:
     health:
       show-details: always
+  prometheus:
+    metrics:
+      export:
+        enabled: true

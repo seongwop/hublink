@@ -17,7 +17,8 @@ spring:
   data:
     redis:
       host: ${REDIS_HOST}
-      port: ${REDIS_PORT}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
 
   jpa:
     hibernate:
@@ -25,8 +26,8 @@ spring:
     properties:
       hibernate:
         default_schema: slack_service
-        format_sql: true
-    show-sql: true
+        format_sql: false
+    show-sql: false
 
   task:
     scheduling:
@@ -39,6 +40,8 @@ eureka:
       defaultZone: ${EUREKA_URL:http://localhost:19090/eureka/}
     register-with-eureka: true
     fetch-registry: true
+  instance:
+    prefer-ip-address: true
 
 management:
   tracing:

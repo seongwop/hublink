@@ -1,22 +1,5 @@
 spring:
-  profiles:
-    active: prod
-
-  data:
-    redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
-
-eureka:
-  client:
-    service-url:
-      defaultZone: ${EUREKA_URL:http://localhost:19090/eureka/}
-
-kakao:
-  rest-api-key: ${KAKAO_REST_API_KEY:dummy-kakao-key-for-test}
-  base-url: "https://dapi.kakao.com"
-
-springdoc:
-  servers:
-    - url: ${SWAGGER_GATEWAY_URL:http://localhost:8080}
-      description: API Gateway URL
+  application:
+    name: hub-service
+  config:
+    import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:19092}

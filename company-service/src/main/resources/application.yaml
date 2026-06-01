@@ -1,18 +1,5 @@
 spring:
-  profiles:
-    active: prod
-
-  data:
-    redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
-
-eureka:
-  client:
-    service-url:
-      defaultZone: ${EUREKA_URL:http://localhost:19090/eureka/}
-
-springdoc:
-  servers:
-    - url: ${SWAGGER_GATEWAY_URL:http://localhost:8080}
-      description: API Gateway URL
+  application:
+    name: company-service
+  config:
+    import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:19092}

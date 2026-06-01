@@ -20,8 +20,8 @@ spring:
     properties:
       hibernate:
         default_schema: ai_service
-        format_sql: true
-    show-sql: true
+        format_sql: false
+    show-sql: false
 
   data:
     redis:
@@ -40,6 +40,8 @@ eureka:
       defaultZone: ${EUREKA_URL:http://localhost:19090/eureka/}
     register-with-eureka: true
     fetch-registry: true
+  instance:
+    prefer-ip-address: true
 
 management:
   tracing:
