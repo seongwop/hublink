@@ -1,0 +1,61 @@
+services:
+  eureka-server:
+    image: ${IMAGE_REGISTRY}/hublink-eureka-server:${IMAGE_TAG:-latest}
+    container_name: hublink-eureka-server
+    env_file:
+      - ${HUBLINK_ENV_FILE:-.env.gcp}
+    environment:
+      EUREKA_INSTANCE_HOSTNAME: ${PLATFORM_VM_IP}
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
+      EUREKA_INSTANCE_IP_ADDRESS: ${PLATFORM_VM_IP}
+    ports:
+      - "19090:19090"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:19090/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  config-server:
+    image: ${IMAGE_REGISTRY}/hublink-config-server:${IMAGE_TAG:-latest}
+    container_name: hublink-config-server
+    env_file:
+      - ${HUBLINK_ENV_FILE:-.env.gcp}
+    environment:
+      CONFIG_REPO_PATH: file:/config-repo/
+      EUREKA_INSTANCE_HOSTNAME: ${PLATFORM_VM_IP}
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
+      EUREKA_INSTANCE_IP_ADDRESS: ${PLATFORM_VM_IP}
+      EUREKA_INSTANCE_NON_SECURE_PORT: "19092"
+    ports:
+      - "19092:19092"
+    volumes:
+      - ./config-repo:/config-repo:ro
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:19092/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  api-gateway:
+    image: ${IMAGE_REGISTRY}/hublink-api-gateway:${IMAGE_TAG:-latest}
+    container_name: hublink-api-gateway
+    env_file:
+      - ${HUBLINK_ENV_FILE:-.env.gcp}
+    environment:
+      EUREKA_INSTANCE_HOSTNAME: ${PLATFORM_VM_IP}
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
+      EUREKA_INSTANCE_IP_ADDRESS: ${PLATFORM_VM_IP}
+      EUREKA_INSTANCE_NON_SECURE_PORT: "19091"
+    ports:
+      - "19091:19091"
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy

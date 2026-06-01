@@ -1,0 +1,52 @@
+services:
+  user-service:
+    image: ${IMAGE_REGISTRY}/hublink-user-service:${IMAGE_TAG:-latest}
+    container_name: hublink-user-service
+    env_file:
+      - ${HUBLINK_ENV_FILE:-.env.gcp}
+    environment:
+      EUREKA_INSTANCE_HOSTNAME: ${DOMAIN_A_VM_IP}
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
+      EUREKA_INSTANCE_IP_ADDRESS: ${DOMAIN_A_VM_IP}
+      EUREKA_INSTANCE_NON_SECURE_PORT: "19093"
+    ports:
+      - "19093:19093"
+
+  company-service:
+    image: ${IMAGE_REGISTRY}/hublink-company-service:${IMAGE_TAG:-latest}
+    container_name: hublink-company-service
+    env_file:
+      - ${HUBLINK_ENV_FILE:-.env.gcp}
+    environment:
+      EUREKA_INSTANCE_HOSTNAME: ${DOMAIN_A_VM_IP}
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
+      EUREKA_INSTANCE_IP_ADDRESS: ${DOMAIN_A_VM_IP}
+      EUREKA_INSTANCE_NON_SECURE_PORT: "19096"
+    ports:
+      - "19096:19096"
+
+  hub-service:
+    image: ${IMAGE_REGISTRY}/hublink-hub-service:${IMAGE_TAG:-latest}
+    container_name: hublink-hub-service
+    env_file:
+      - ${HUBLINK_ENV_FILE:-.env.gcp}
+    environment:
+      EUREKA_INSTANCE_HOSTNAME: ${DOMAIN_A_VM_IP}
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
+      EUREKA_INSTANCE_IP_ADDRESS: ${DOMAIN_A_VM_IP}
+      EUREKA_INSTANCE_NON_SECURE_PORT: "19095"
+    ports:
+      - "19095:19095"
+
+  product-service:
+    image: ${IMAGE_REGISTRY}/hublink-product-service:${IMAGE_TAG:-latest}
+    container_name: hublink-product-service
+    env_file:
+      - ${HUBLINK_ENV_FILE:-.env.gcp}
+    environment:
+      EUREKA_INSTANCE_HOSTNAME: ${DOMAIN_A_VM_IP}
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
+      EUREKA_INSTANCE_IP_ADDRESS: ${DOMAIN_A_VM_IP}
+      EUREKA_INSTANCE_NON_SECURE_PORT: "19097"
+    ports:
+      - "19097:19097"

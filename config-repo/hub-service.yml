@@ -5,13 +5,40 @@ spring:
   application:
     name: hub-service
   datasource:
+    url: ${DB_URL}?currentSchema=hub_service
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 2
       minimum-idle: 1
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+  jpa:
+    show-sql: false
+    defer-datasource-initialization: false
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        default_schema: hub_service
+        format_sql: false
   cloud:
     openfeign:
       circuitbreaker:
         enabled: true
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URL:http://localhost:19090/eureka/}
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    prefer-ip-address: true
 
 management:
   tracing:
@@ -31,6 +58,15 @@ management:
     metrics:
       export:
         enabled: true
+
+kakao:
+  rest-api-key: ${KAKAO_REST_API_KEY:dummy-kakao-key-for-test}
+  base-url: "https://dapi.kakao.com"
+
+springdoc:
+  servers:
+    - url: ${SWAGGER_GATEWAY_URL:http://localhost:19091}
+      description: API Gateway URL
 
 resilience4j:
   ratelimiter:

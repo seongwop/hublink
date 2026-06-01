@@ -1,0 +1,30 @@
+global:
+  scrape_interval: 30s
+  evaluation_interval: 30s
+
+scrape_configs:
+  - job_name: 'hublink-platform'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets:
+          - '10.10.0.10:19091'
+          - '10.10.0.10:19092'
+
+  - job_name: 'hublink-domain-a'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets:
+          - '10.10.0.20:19093'
+          - '10.10.0.20:19095'
+          - '10.10.0.20:19096'
+          - '10.10.0.20:19097'
+
+  - job_name: 'hublink-domain-b'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets:
+          - '10.10.0.30:19094'
+          - '10.10.0.30:19098'
+          - '10.10.0.30:19099'
+          - '10.10.0.30:19100'
+          - '10.10.0.30:19101'

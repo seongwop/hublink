@@ -285,6 +285,15 @@ springdoc:
 jwt:
   secret: ${JWT_SECRET}
 
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URL:http://localhost:19090/eureka/}
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    prefer-ip-address: true
+
 management:
   endpoints:
     web:
