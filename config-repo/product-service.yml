@@ -41,6 +41,9 @@ management:
       export:
         enabled: true
 
+swagger:
+  gateway-url: ${SWAGGER_GATEWAY_URL:http://localhost:19091}
+
 logging:
   level:
     root: ${LOG_LEVEL_ROOT:WARN}

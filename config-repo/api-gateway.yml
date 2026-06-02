@@ -282,6 +282,9 @@ springdoc:
       - name: slack-service
         url: /slack-service/v3/api-docs
 
+swagger:
+  gateway-url: ${SWAGGER_GATEWAY_URL:http://localhost:19091}
+
 jwt:
   secret: ${JWT_SECRET}
 

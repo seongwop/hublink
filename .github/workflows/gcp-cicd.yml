@@ -144,6 +144,7 @@ jobs:
       AI_API_KEY: ${{ secrets.AI_API_KEY }}
       KAKAO_REST_API_KEY: ${{ secrets.KAKAO_REST_API_KEY }}
       CORS_ALLOWED_ORIGIN: ${{ secrets.CORS_ALLOWED_ORIGIN }}
+      SWAGGER_GATEWAY_URL: ${{ secrets.SWAGGER_GATEWAY_URL }}
       SLACK_ENABLED: ${{ vars.SLACK_ENABLED }}
       AI_ENABLED: ${{ vars.AI_ENABLED }}
       KAKAO_ENABLED: ${{ vars.KAKAO_ENABLED }}
@@ -181,6 +182,7 @@ jobs:
           AI_ENABLED="${AI_ENABLED:-false}"
           KAKAO_ENABLED="${KAKAO_ENABLED:-false}"
           CORS_ALLOWED_ORIGIN="${CORS_ALLOWED_ORIGIN:-http://localhost:3000}"
+          SWAGGER_GATEWAY_URL="${SWAGGER_GATEWAY_URL:-http://${PLATFORM_VM_IP}:19091}"
           LOG_LEVEL_ROOT="${LOG_LEVEL_ROOT:-WARN}"
 
           cat > .env.gcp <<EOF
@@ -206,7 +208,7 @@ jobs:
           EUREKA_URL=http://${PLATFORM_VM_IP}:19090/eureka/
           CONFIG_SERVER_URL=http://${PLATFORM_VM_IP}:19092
 
-          SWAGGER_GATEWAY_URL=http://${PLATFORM_VM_IP}:19091
+          SWAGGER_GATEWAY_URL=${SWAGGER_GATEWAY_URL}
           ZIPKIN_URL=http://${DATA_VM_IP}:9411/api/v2/spans
 
           SLACK_ENABLED=${SLACK_ENABLED}

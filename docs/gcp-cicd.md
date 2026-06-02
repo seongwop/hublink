@@ -52,6 +52,7 @@ GitHub 저장소에서 `Settings` → `Secrets and variables` → `Actions` → 
 | `AI_API_KEY` | AI API 사용 시 키. 사용하지 않으면 비워둘 수 있음 |
 | `KAKAO_REST_API_KEY` | Kakao API 사용 시 키. 사용하지 않으면 비워둘 수 있음 |
 | `CORS_ALLOWED_ORIGIN` | 허용할 프론트엔드 origin. 없으면 `http://localhost:3000` |
+| `SWAGGER_GATEWAY_URL` | Swagger 요청 서버 URL. 예: `http://34.22.78.126:19091` |
 
 ## 선택 GitHub Variables
 
