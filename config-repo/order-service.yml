@@ -101,3 +101,7 @@ management:
     metrics:
       export:
         enabled: true
+
+logging:
+  level:
+    root: ${LOG_LEVEL_ROOT:WARN}

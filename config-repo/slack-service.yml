@@ -59,7 +59,12 @@ management:
       show-details: always
 
 slack:
-  bot-token: ${SLACK_BOT_TOKEN}
+  enabled: ${SLACK_ENABLED:false}
+  bot-token: ${SLACK_BOT_TOKEN:}
 
 swagger:
   gateway-url: ${SWAGGER_GATEWAY_URL}
+
+logging:
+  level:
+    root: ${LOG_LEVEL_ROOT:WARN}

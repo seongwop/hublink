@@ -299,3 +299,7 @@ management:
     web:
       exposure:
         include: health,refresh,prometheus
+
+logging:
+  level:
+    root: ${LOG_LEVEL_ROOT:WARN}

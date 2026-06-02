@@ -80,3 +80,7 @@ resilience4j:
     instances:
       hub-service:
         baseConfig: default
+
+logging:
+  level:
+    root: ${LOG_LEVEL_ROOT:WARN}

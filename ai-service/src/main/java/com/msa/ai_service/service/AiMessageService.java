@@ -60,6 +60,16 @@ public class AiMessageService {
         aiMessage.markFailed(reason);
     }
 
+    @Transactional
+    public void markSkipped(
+            UUID aiMessageId,
+            LocalDateTime finalDepartureDeadline,
+            String responseContent
+    ) {
+        AiMessage aiMessage = getAiMessageEntity(aiMessageId);
+        aiMessage.markSkipped(finalDepartureDeadline, responseContent);
+    }
+
     // 요청 목록 조회
     public PageRes<AiMessageResponse> getAiMessages(
             String role,

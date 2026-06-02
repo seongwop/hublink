@@ -58,6 +58,14 @@ public class SlackMessageService {
         slackMessage.markFailed(reason);
     }
 
+    @Transactional
+    public void markSkipped(UUID slackMessageId, String reason) {
+        SlackMessage slackMessage = slackMessageRepository.findById(slackMessageId)
+                .orElseThrow(() -> new CustomException(SlackErrorCode.SLACK_MESSAGE_NOT_FOUND));
+
+        slackMessage.markSkipped(reason);
+    }
+
     // 목록 조회
     public PageRes<SlackMessageResponse> getSlackMessages(
             String role,

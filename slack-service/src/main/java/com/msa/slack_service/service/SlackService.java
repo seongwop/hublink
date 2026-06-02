@@ -7,6 +7,7 @@ import com.msa.slack_service.entity.SlackMessageStatus;
 import com.msa.slack_service.exception.SlackErrorCode;
 import com.msa.slack_service.stream.event.DeadlineGeneratedEvent;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import com.msa.core_common.error.exception.CustomException;
 
@@ -17,6 +18,9 @@ import java.util.UUID;
 public class SlackService {
     private final SlackMessageService slackMessageService;
     private final SlackClient slackClient;
+
+    @Value("${slack.enabled:false}")
+    private boolean slackEnabled;
 
     // 발송 시한 전송
     public void processDeadlineGenerated(DeadlineGeneratedEvent event) {
@@ -35,6 +39,15 @@ public class SlackService {
 
     // 메세지 전송
     private void sendAndUpdateStatus(SlackMessage slackMessage) {
+        // Slack enabled 설정이 false일 때 진행되는 로직
+        if (!slackEnabled) {
+            slackMessageService.markSkipped(
+                    slackMessage.getSlackMessageId(),
+                    "Slack 비활성화로 외부 API 호출 생략"
+            );
+            return;
+        }
+
         try {
             slackClient.sendMessage(
                     slackMessage.getReceiverSlackId(),

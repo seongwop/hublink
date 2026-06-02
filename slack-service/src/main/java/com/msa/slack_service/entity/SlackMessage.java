@@ -64,4 +64,9 @@ public class SlackMessage extends BaseEntity {
         this.status = SlackMessageStatus.FAILED;
         this.errorMessage = errorMessage;
     }
+
+    public void markSkipped(String reason) {
+        this.status = SlackMessageStatus.SKIPPED;
+        this.errorMessage = reason;
+    }
 }
