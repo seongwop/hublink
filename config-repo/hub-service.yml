@@ -60,6 +60,7 @@ management:
         enabled: true
 
 kakao:
+  enabled: ${KAKAO_ENABLED:false}
   rest-api-key: ${KAKAO_REST_API_KEY:dummy-kakao-key-for-test}
   base-url: "https://dapi.kakao.com"
 
@@ -100,3 +101,7 @@ resilience4j:
     instances:
       company-service:
         baseConfig: default
+
+logging:
+  level:
+    root: ${LOG_LEVEL_ROOT:WARN}

@@ -29,10 +29,10 @@ spring:
       port: ${REDIS_PORT}
       password: ${REDIS_PASSWORD:}
 
-gemini:
-  api:
-    url: ${AI_API_URL}
-    key: ${AI_API_KEY}
+ai:
+  enabled: ${AI_ENABLED:false}
+  api-url: ${AI_API_URL:https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent}
+  api-key: ${AI_API_KEY:}
 
 eureka:
   client:
@@ -70,3 +70,7 @@ resilience4j:
 
 swagger:
   gateway-url: ${SWAGGER_GATEWAY_URL}
+
+logging:
+  level:
+    root: ${LOG_LEVEL_ROOT:WARN}

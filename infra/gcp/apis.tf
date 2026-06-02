@@ -1,6 +1,6 @@
+# Terraform 관리 대상 GCP API 목록
 
-# Terraform 구성에서 필요한 Google Cloud API를 활성화
-
+# VM, 이미지 저장소, IAM, IAP, OIDC 인증 API 목록
 locals {
   required_services = toset([
     "compute.googleapis.com",
@@ -8,9 +8,13 @@ locals {
     "iam.googleapis.com",
     "cloudresourcemanager.googleapis.com",
     "serviceusage.googleapis.com",
+    "iap.googleapis.com",
+    "sts.googleapis.com",
+    "iamcredentials.googleapis.com",
   ])
 }
 
+# 프로젝트 필수 Google Cloud API 활성화
 resource "google_project_service" "required" {
   for_each = local.required_services
 

@@ -15,6 +15,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -46,6 +47,8 @@ class SlackServiceTest {
 
     @BeforeEach
     void setUp() {
+        ReflectionTestUtils.setField(slackService, "slackEnabled", true);
+
         slackMessageId = UUID.randomUUID();
 
         event = new DeadlineGeneratedEvent(
@@ -81,6 +84,24 @@ class SlackServiceTest {
 
         verify(slackClient, times(1)).sendMessage(event.getReceiverSlackId(), event.getMessage());
         verify(slackMessageService, times(1)).markSent(slackMessageId);
+        verify(slackMessageService, never()).markFailed(any(), anyString());
+        verify(slackMessageService, never()).markSkipped(any(), anyString());
+    }
+
+    @Test
+    @DisplayName("processDeadlineGenerated - Slack 비활성화 시 외부 API 호출 생략")
+    void processDeadlineGenerated_SlackDisabled_SkipSend() {
+        ReflectionTestUtils.setField(slackService, "slackEnabled", false);
+
+        when(slackMessageService.findOrCreateMessage(event, event.getEventId().toString()))
+                .thenReturn(pendingMessage);
+
+        slackService.processDeadlineGenerated(event);
+
+        verify(slackClient, never()).sendMessage(anyString(), anyString());
+        verify(slackMessageService, times(1))
+                .markSkipped(slackMessageId, "Slack 비활성화로 외부 API 호출 생략");
+        verify(slackMessageService, never()).markSent(any());
         verify(slackMessageService, never()).markFailed(any(), anyString());
     }
 

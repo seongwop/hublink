@@ -19,20 +19,28 @@ public class KakaoGeocodingAdapter implements AddressGeocodingPort {
 
     private final RestClient restClient;
     private final String kakaoRestApiKey;
+    private final boolean kakaoEnabled;
 
     public KakaoGeocodingAdapter(
             RestClient.Builder restClientBuilder,
             @Value("${kakao.rest-api-key}") String kakaoRestApiKey,
-            @Value("${kakao.base-url}") String baseUrl
+            @Value("${kakao.base-url}") String baseUrl,
+            @Value("${kakao.enabled:false}") boolean kakaoEnabled
     ) {
         this.restClient = restClientBuilder.baseUrl(baseUrl).build();
         this.kakaoRestApiKey = kakaoRestApiKey;
+        this.kakaoEnabled = kakaoEnabled;
     }
 
     @Override
     @RateLimiter(name = "kakaoApi")
     @Retry(name = "kakaoApi", fallbackMethod = "fallbackCoordinate")
     public CoordinateDto getCoordinate(String address) {
+        // Kakao enabled 설정이 false일 때 진행되는 로직
+        if (!kakaoEnabled) {
+            log.info("Kakao 비활성화로 좌표 API 호출 생략 address={}", address);
+            return new CoordinateDto(null, null);
+        }
 
         // 1. RestClient를 이용한 API 호출
         KakaoAddressResponse response = restClient.get()

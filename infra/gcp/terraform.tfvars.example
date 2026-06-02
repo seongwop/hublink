@@ -1,25 +1,31 @@
+# terraform.tfvars 복사용 예시 파일
+
+# GCP 콘솔에서 만든 프로젝트 ID
 project_id = "YOUR_GCP_PROJECT_ID"
 
+# HubLink 리소스 생성 리전과 존
 region = "asia-northeast3"
 zone   = "asia-northeast3-a"
 
+# 리소스 이름 공통 접두어
 name_prefix = "hublink"
 
-# 공인 IP를 CIDR 형식으로 넣는 것 권장 / ex) ["203.0.113.10/32"]
+# GitHub Actions OIDC 인증 허용 저장소
+github_repository = "seongwop/hublink"
 
+# SSH와 공개 서비스 포트 접근 허용 범위
 ssh_source_ranges    = ["0.0.0.0/0"]
 public_source_ranges = ["0.0.0.0/0"]
 
-# SSH 공개키를 직접 VM 메타데이터에 넣고 싶을 때 사용
-# gcloud compute ssh를 사용 시 주석 처리
-
+# SSH 공개키 직접 등록 옵션
 # ssh_username   = "hublink"
 # ssh_public_key = "ssh-ed25519 AAAA..."
 
+# 기본 VM 스펙 변경 옵션
 # vm_specs = {
 #   platform = {
 #     role         = "platform"
-#     machine_type = "e2-medium"
+#     machine_type = "e2-standard-2"
 #     disk_size_gb = 30
 #     internal_ip  = "10.10.0.10"
 #     tags         = ["hublink", "hublink-ssh", "hublink-platform"]

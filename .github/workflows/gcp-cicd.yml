@@ -1,0 +1,265 @@
+name: GCP CI/CD
+
+on:
+  # Actions 수동 전체 배포
+  workflow_dispatch:
+  # develop-infra 배포 관련 변경 감지
+  push:
+    branches:
+      - develop-infra
+    paths:
+      - '.github/workflows/gcp-cicd.yml'
+      - 'scripts/gcp/**'
+      - 'Dockerfile'
+      - 'build.gradle'
+      - 'settings.gradle'
+      - 'gradle/**'
+      - 'gradlew'
+      - 'config-repo/**'
+      - 'db/**'
+      - 'monitoring/**'
+      - 'docker-compose.*.yml'
+      - 'ai-service/**'
+      - 'api-gateway/**'
+      - 'company-service/**'
+      - 'config-server/**'
+      - 'core-common/**'
+      - 'delivery-service/**'
+      - 'eureka-server/**'
+      - 'hub-service/**'
+      - 'order-service/**'
+      - 'product-service/**'
+      - 'slack-service/**'
+      - 'stock-service/**'
+      - 'user-service/**'
+
+concurrency:
+  # 동일 브랜치 중복 배포 취소
+  # 오래된 배포 실행 방지
+  group: gcp-cicd-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  # 저장소 checkout 최소 권한
+  contents: read
+  # GitHub OIDC 토큰 발급 권한
+  id-token: write
+
+env:
+  # Terraform 리소스 기준 고정 배포 정보
+  # 민감값 GitHub Secrets 관리
+  GCP_REGION: asia-northeast3
+  GCP_ZONE: asia-northeast3-a
+  GCP_ARTIFACT_REPOSITORY: hublink
+  GCP_REMOTE_DIR: /opt/hublink
+  PLATFORM_VM: hublink-platform-vm
+  DOMAIN_A_VM: hublink-domain-a-vm
+  DOMAIN_B_VM: hublink-domain-b-vm
+  DATA_MONITOR_VM: hublink-data-monitor-vm
+  PLATFORM_VM_IP: 10.10.0.10
+  DOMAIN_A_VM_IP: 10.10.0.20
+  DOMAIN_B_VM_IP: 10.10.0.30
+  DATA_VM_IP: 10.10.0.40
+
+jobs:
+  build-and-push:
+    name: Build and push images
+    runs-on: ubuntu-latest
+    env:
+      # GitHub Secrets 기준 Registry 주소
+      GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      IMAGE_REGISTRY: asia-northeast3-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/hublink
+
+    strategy:
+      fail-fast: false
+      # SERVICE_NAME 기준 서비스별 이미지 빌드
+      matrix:
+        service:
+          - eureka-server
+          - config-server
+          - api-gateway
+          - user-service
+          - company-service
+          - hub-service
+          - product-service
+          - order-service
+          - stock-service
+          - delivery-service
+          - slack-service
+          - ai-service
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          # Workload Identity Federation 인증
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        # Artifact Registry Docker 인증
+        run: gcloud auth configure-docker "${GCP_REGION}-docker.pkg.dev" --quiet
+
+      - name: Set up Docker Buildx
+        # Docker Buildx 빌드 캐시 준비
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push ${{ matrix.service }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          push: true
+          build-args: |
+            SERVICE_NAME=${{ matrix.service }}
+          # 커밋 SHA 태그와 latest 태그 동시 push
+          tags: |
+            ${{ env.IMAGE_REGISTRY }}/hublink-${{ matrix.service }}:${{ github.sha }}
+            ${{ env.IMAGE_REGISTRY }}/hublink-${{ matrix.service }}:latest
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+  deploy:
+    name: Deploy to GCP VMs
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    environment: gcp
+
+    env:
+      # 민감값 GitHub Secrets/Variables 주입
+      # 배포 시점 .env.gcp 생성
+      GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      GCP_VM_USER: ${{ secrets.GCP_VM_USER }}
+      DB_USERNAME: ${{ secrets.DB_USERNAME }}
+      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
+      SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+      AI_API_KEY: ${{ secrets.AI_API_KEY }}
+      KAKAO_REST_API_KEY: ${{ secrets.KAKAO_REST_API_KEY }}
+      CORS_ALLOWED_ORIGIN: ${{ secrets.CORS_ALLOWED_ORIGIN }}
+      SLACK_ENABLED: ${{ vars.SLACK_ENABLED }}
+      AI_ENABLED: ${{ vars.AI_ENABLED }}
+      KAKAO_ENABLED: ${{ vars.KAKAO_ENABLED }}
+      LOG_LEVEL_ROOT: ${{ vars.LOG_LEVEL_ROOT }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          # Workload Identity Federation 인증
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Set deployment defaults
+        run: |
+          # 공통 배포값 GITHUB_ENV 저장
+          echo "IMAGE_REGISTRY=${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${GCP_ARTIFACT_REPOSITORY}" >> "${GITHUB_ENV}"
+          echo "GCP_VM_USER=${GCP_VM_USER:-github-actions}" >> "${GITHUB_ENV}"
+
+      - name: Create .env.gcp
+        run: |
+          # runner 런타임 환경파일 생성
+          # 비밀값 repo 커밋 방지
+          DB_USERNAME="${DB_USERNAME:-hublink}"
+          DB_PASSWORD="${DB_PASSWORD:?DB_PASSWORD secret is required}"
+          JWT_SECRET="${JWT_SECRET:?JWT_SECRET secret is required}"
+          SLACK_ENABLED="${SLACK_ENABLED:-false}"
+          AI_ENABLED="${AI_ENABLED:-false}"
+          KAKAO_ENABLED="${KAKAO_ENABLED:-false}"
+          CORS_ALLOWED_ORIGIN="${CORS_ALLOWED_ORIGIN:-http://localhost:3000}"
+          LOG_LEVEL_ROOT="${LOG_LEVEL_ROOT:-WARN}"
+
+          cat > .env.gcp <<EOF
+          IMAGE_REGISTRY=${IMAGE_REGISTRY}
+          IMAGE_TAG=${GITHUB_SHA}
+          HUBLINK_ENV_FILE=.env.gcp
+
+          PLATFORM_VM_IP=${PLATFORM_VM_IP}
+          DOMAIN_A_VM_IP=${DOMAIN_A_VM_IP}
+          DOMAIN_B_VM_IP=${DOMAIN_B_VM_IP}
+          DATA_VM_IP=${DATA_VM_IP}
+
+          DB_URL=jdbc:postgresql://${DATA_VM_IP}:5432/hublink
+          DB_USERNAME=${DB_USERNAME}
+          DB_PASSWORD=${DB_PASSWORD}
+
+          REDIS_HOST=${DATA_VM_IP}
+          REDIS_PORT=6379
+          REDIS_PASSWORD=
+
+          KAFKA_BOOTSTRAP_SERVERS=${DATA_VM_IP}:9092
+
+          EUREKA_URL=http://${PLATFORM_VM_IP}:19090/eureka/
+          CONFIG_SERVER_URL=http://${PLATFORM_VM_IP}:19092
+
+          SWAGGER_GATEWAY_URL=http://${PLATFORM_VM_IP}:19091
+          ZIPKIN_URL=http://${DATA_VM_IP}:9411/api/v2/spans
+
+          SLACK_ENABLED=${SLACK_ENABLED}
+          SLACK_BOT_TOKEN=${SLACK_BOT_TOKEN}
+
+          AI_ENABLED=${AI_ENABLED}
+          AI_API_URL=https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent
+          AI_API_KEY=${AI_API_KEY}
+
+          KAKAO_ENABLED=${KAKAO_ENABLED}
+          KAKAO_REST_API_KEY=${KAKAO_REST_API_KEY}
+
+          JWT_SECRET=${JWT_SECRET}
+          CORS_ALLOWED_ORIGIN=${CORS_ALLOWED_ORIGIN}
+
+          LOG_LEVEL_ROOT=${LOG_LEVEL_ROOT}
+          EOF
+
+          # heredoc 들여쓰기 공백 제거
+          sed -i 's/^          //' .env.gcp
+
+      - name: Check gcloud access
+        # VM 목록 조회 권한 확인
+        run: |
+          gcloud compute instances list \
+            --project "${GCP_PROJECT_ID}" \
+            --filter="name~'hublink-.*-vm'" \
+            --format="table(name,status,networkInterfaces[0].networkIP,networkInterfaces[0].accessConfigs[0].natIP)"
+
+      - name: Deploy data and monitoring
+        # 데이터와 모니터링 계층 선배포
+        run: |
+          chmod +x scripts/gcp/deploy-vm.sh
+          scripts/gcp/deploy-vm.sh "${DATA_MONITOR_VM}" docker-compose.data-monitor.yml db monitoring
+
+      - name: Deploy platform services
+        # Eureka와 Config Server 선배포
+        run: |
+          scripts/gcp/deploy-vm.sh "${PLATFORM_VM}" docker-compose.platform.yml config-repo
+
+      - name: Deploy domain A services
+        # domain-a 서비스 배포
+        run: |
+          scripts/gcp/deploy-vm.sh "${DOMAIN_A_VM}" docker-compose.domain-a.yml
+
+      - name: Deploy domain B services
+        # domain-b 서비스 배포
+        run: |
+          scripts/gcp/deploy-vm.sh "${DOMAIN_B_VM}" docker-compose.domain-b.yml
+
+      - name: Show service registry hints
+        run: |
+          echo "Eureka: http://<platform-external-ip>:19090"
+          echo "Gateway: http://<platform-external-ip>:19091"
+          echo "Grafana: http://<data-monitor-external-ip>:3000"
+          echo "Prometheus: http://<data-monitor-external-ip>:9090"

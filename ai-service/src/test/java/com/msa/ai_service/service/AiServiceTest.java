@@ -19,6 +19,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -57,6 +58,8 @@ class AiServiceTest {
 
     @BeforeEach
     void setUp() {
+        ReflectionTestUtils.setField(aiService, "aiEnabled", true);
+
         aiMessageId = UUID.randomUUID();
         deliveryId = UUID.randomUUID();
 
@@ -125,6 +128,42 @@ class AiServiceTest {
         assertThat(result.getMessage()).isEqualTo(message);
 
         verify(aiMessageService, times(1)).markCompleted(aiMessageId, deadline, message);
+        verify(aiMessageService, never()).markFailed(any(), anyString());
+        verify(aiMessageService, never()).markSkipped(any(), any(), anyString());
+    }
+
+    @Test
+    @DisplayName("generateDeadline - AI 비활성화 시 외부 API 호출 생략")
+    void generateDeadline_AiDisabled_SkipGenerate() throws JsonProcessingException {
+        ReflectionTestUtils.setField(aiService, "aiEnabled", false);
+
+        String prompt = "?꾨＼?꾪듃";
+        String payload = "{\"deliveryId\":\"123\"}";
+        LocalDateTime fallbackDeadline = LocalDateTime.of(2026, 5, 30, 17, 30);
+        String message = "AI 비활성화로 외부 API 호출 생략";
+
+        AiMessage savedMessage = AiMessage.builder()
+                .aiMessageId(aiMessageId)
+                .deliveryId(deliveryId)
+                .requestType(AiRequestType.DELIVERY_DEADLINE)
+                .prompt(prompt)
+                .requestPayload(payload)
+                .build();
+
+        when(deadlinePromptGenerator.generatePrompt(event)).thenReturn(prompt);
+        when(objectMapper.writeValueAsString(event)).thenReturn(payload);
+        when(aiMessageService.saveMessage(deliveryId, AiRequestType.DELIVERY_DEADLINE, prompt, payload))
+                .thenReturn(savedMessage);
+
+        AiDeadlineResult result = aiService.generateDeadline(event);
+
+        assertThat(result.getAiMessageId()).isEqualTo(aiMessageId);
+        assertThat(result.getFinalDepartureDeadline()).isEqualTo(fallbackDeadline);
+        assertThat(result.getMessage()).isEqualTo(message);
+
+        verify(aiClient, never()).generate(anyString());
+        verify(aiMessageService, times(1)).markSkipped(aiMessageId, fallbackDeadline, message);
+        verify(aiMessageService, never()).markCompleted(any(), any(), anyString());
         verify(aiMessageService, never()).markFailed(any(), anyString());
     }
 

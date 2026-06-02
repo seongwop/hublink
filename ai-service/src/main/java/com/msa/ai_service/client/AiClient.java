@@ -16,10 +16,10 @@ import org.springframework.web.client.RestClient;
 public class AiClient {
     private final RestClient restClient;
 
-    @Value("${ai.api-url}")
+    @Value("${ai.api-url:}")
     private String apiUrl;
 
-    @Value("${ai.api-key}")
+    @Value("${ai.api-key:}")
     private String apiKey;
 
     @CircuitBreaker(name = "geminiApi", fallbackMethod = "fallbackGenerate")

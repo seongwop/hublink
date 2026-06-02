@@ -62,4 +62,14 @@ public class AiMessage extends BaseEntity {
         this.status = AiMessageStatus.FAILED;
         this.errorMessage = errorMessage;
     }
+
+    public void markSkipped(
+            LocalDateTime finalDepartureDeadline,
+            String responseContent
+    ) {
+        this.status = AiMessageStatus.SKIPPED;
+        this.finalDepartureDeadline = finalDepartureDeadline;
+        this.responseContent = responseContent;
+        this.errorMessage = null;
+    }
 }

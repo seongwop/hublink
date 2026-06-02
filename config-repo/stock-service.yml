@@ -2,7 +2,7 @@ server:
   port: 19098
 
 spring:
-  #카프카 관련 설정
+  #移댄봽移?愿???ㅼ젙
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     producer:
@@ -50,3 +50,7 @@ management:
     metrics:
       export:
         enabled: true
+
+logging:
+  level:
+    root: ${LOG_LEVEL_ROOT:WARN}

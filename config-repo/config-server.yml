@@ -1,2 +1,6 @@
 test:
   message: config server connected
+
+logging:
+  level:
+    root: ${LOG_LEVEL_ROOT:WARN}
