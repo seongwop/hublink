@@ -6,6 +6,7 @@
 
 ```text
 GitHub Actions
+→ 변경 파일 분석
 → 서비스별 Docker 이미지 빌드
 → Artifact Registry에 push
 → .env.gcp 생성
@@ -13,6 +14,30 @@ GitHub Actions
 → docker compose pull
 → docker compose up -d
 ```
+
+## 변경 감지 배포
+
+현재 workflow는 변경된 서비스와 관련 VM만 배포합니다.
+
+```text
+delivery-service 변경
+→ delivery-service 이미지 빌드
+→ domain-b VM의 delivery-service만 재배포
+
+user-service 변경
+→ user-service 이미지 빌드
+→ domain-a VM의 user-service만 재배포
+
+config-repo/user-service.yml 변경
+→ config-repo를 platform VM에 복사
+→ user-service 이미지 빌드
+→ domain-a VM의 user-service 재배포
+
+db 또는 monitoring 변경
+→ data-monitor VM만 재배포
+```
+
+수동 실행(`workflow_dispatch`)은 전체 배포로 동작합니다.
 
 ## 추가된 파일
 
