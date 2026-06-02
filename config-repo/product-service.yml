@@ -12,6 +12,12 @@ spring:
     hikari:
       maximum-pool-size: 2
       minimum-idle: 1
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        default_schema: product_service
 
 eureka:
   client:

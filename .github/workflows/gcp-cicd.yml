@@ -332,8 +332,16 @@ jobs:
           SLACK_ENABLED="${SLACK_ENABLED:-false}"
           AI_ENABLED="${AI_ENABLED:-false}"
           KAKAO_ENABLED="${KAKAO_ENABLED:-false}"
-          CORS_ALLOWED_ORIGIN="${CORS_ALLOWED_ORIGIN:-http://localhost:3000}"
-          SWAGGER_GATEWAY_URL="${SWAGGER_GATEWAY_URL:-http://${PLATFORM_VM_IP}:19091}"
+          # platform 외부 IP 조회
+          PLATFORM_VM_EXTERNAL_IP="$(gcloud compute instances describe "${PLATFORM_VM}" --zone "${GCP_ZONE}" --project "${GCP_PROJECT_ID}" --format='get(networkInterfaces[0].accessConfigs[0].natIP)')"
+          if [ -z "${PLATFORM_VM_EXTERNAL_IP}" ]; then
+            echo "platform VM external IP is required" >&2
+            exit 1
+          fi
+          # Swagger 브라우저 요청 URL 기본값
+          SWAGGER_GATEWAY_URL="${SWAGGER_GATEWAY_URL:-http://${PLATFORM_VM_EXTERNAL_IP}:19091}"
+          # Swagger UI origin 기본 허용
+          CORS_ALLOWED_ORIGIN="${CORS_ALLOWED_ORIGIN:-${SWAGGER_GATEWAY_URL}}"
           LOG_LEVEL_ROOT="${LOG_LEVEL_ROOT:-WARN}"
 
           cat > .env.gcp <<EOF
