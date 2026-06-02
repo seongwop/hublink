@@ -1,0 +1,48 @@
+project_id = "YOUR_GCP_PROJECT_ID"
+
+region = "asia-northeast3"
+zone   = "asia-northeast3-a"
+
+name_prefix = "hublink"
+
+# 공인 IP를 CIDR 형식으로 넣는 것 권장 / ex) ["203.0.113.10/32"]
+
+ssh_source_ranges    = ["0.0.0.0/0"]
+public_source_ranges = ["0.0.0.0/0"]
+
+# SSH 공개키를 직접 VM 메타데이터에 넣고 싶을 때 사용
+# gcloud compute ssh를 사용 시 주석 처리
+
+# ssh_username   = "hublink"
+# ssh_public_key = "ssh-ed25519 AAAA..."
+
+# vm_specs = {
+#   platform = {
+#     role         = "platform"
+#     machine_type = "e2-medium"
+#     disk_size_gb = 30
+#     internal_ip  = "10.10.0.10"
+#     tags         = ["hublink", "hublink-ssh", "hublink-platform"]
+#   }
+#   domain-a = {
+#     role         = "domain-a"
+#     machine_type = "e2-standard-2"
+#     disk_size_gb = 30
+#     internal_ip  = "10.10.0.20"
+#     tags         = ["hublink", "hublink-ssh", "hublink-domain"]
+#   }
+#   domain-b = {
+#     role         = "domain-b"
+#     machine_type = "e2-standard-2"
+#     disk_size_gb = 30
+#     internal_ip  = "10.10.0.30"
+#     tags         = ["hublink", "hublink-ssh", "hublink-domain"]
+#   }
+#   data-monitor = {
+#     role         = "data-monitor"
+#     machine_type = "e2-standard-2"
+#     disk_size_gb = 50
+#     internal_ip  = "10.10.0.40"
+#     tags         = ["hublink", "hublink-ssh", "hublink-monitor"]
+#   }
+# }

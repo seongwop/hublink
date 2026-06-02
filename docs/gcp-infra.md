@@ -4,6 +4,18 @@
 
 ## GCP 인프라 계획
 
+Terraform 코드는 다음 경로에 있습니다.
+
+```text
+infra/gcp
+```
+
+사전 준비 도구:
+
+- Terraform
+- Google Cloud CLI
+- Docker
+
 Terraform으로 다음 리소스를 생성할 예정입니다.
 
 - VPC
@@ -94,8 +106,22 @@ GCP 배포에서는 Config Server가 `config-repo`를 읽고, 각 서비스는 C
 
 ### 1. Terraform으로 인프라 생성
 
+처음 사용하는 GCP 프로젝트라면 Service Usage API는 먼저 켜둡니다.
+
+```bash
+gcloud services enable serviceusage.googleapis.com
+```
+
+Terraform 변수 파일을 준비합니다.
+
 ```bash
 cd infra/gcp
+cp terraform.tfvars.example terraform.tfvars
+```
+
+`terraform.tfvars`에서 최소한 `project_id`는 실제 GCP 프로젝트 ID로 바꿉니다.
+
+```bash
 terraform init
 terraform plan
 terraform apply
@@ -218,12 +244,13 @@ ai_service
 
 ---
 
-## 로컬 실행과 GCP 실행
+## 기존 AWS/ECR 실행과 GCP 실행
 
-기존 로컬 실행 파일은 유지합니다.
+기존 AWS/ECR/RDS 기반 실행 파일은 이름을 분리해 보존합니다.
 
 ```text
-docker-compose.yml
+docker-compose.aws.yml
+.env.aws.example
 monitoring/prometheus.yml
 ```
 
@@ -237,12 +264,12 @@ docker-compose.data-monitor.yml
 monitoring/prometheus.gcp.yml
 ```
 
-로컬 실행과 GCP 실행은 네트워크 전제가 다릅니다.
+기존 AWS/ECR 실행과 GCP 실행은 이미지 저장소와 네트워크 전제가 다릅니다.
 
-| 환경 | 서비스 통신 방식 |
+| 환경 | 이미지 저장소 | 서비스 통신 방식 |
 | --- | --- |
-| 로컬 Docker Compose | Docker service name |
-| GCP VM | GCP internal IP |
+| 기존 AWS/ECR 실행 | ECR | Docker service name |
+| GCP VM | Artifact Registry | GCP internal IP |
 
 ---
 
