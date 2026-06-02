@@ -1,12 +1,12 @@
-# HubLink GCP Infra Lab
+# HubLink
 
 > 기존 프로젝트: [Team4-MSA/hublink](https://github.com/Team4-MSA/hublink)
 
-이 저장소는 기존 HubLink MSA 프로젝트를 기반으로, GCP 환경에서 서버 구성, 배포, 모니터링, 성능 테스트, 트러블슈팅을 실습하기 위한 레포지토리입니다.
+이 저장소는 기존 HubLink MSA 프로젝트를 기반으로, 배포 환경 구성, 성능 테스트, 모니터링, 트러블슈팅을 보강하기 위한 확장 프로젝트입니다.
 
 ---
 
-## 배포 목표
+## 배포 환경
 
 GCP에 VM 4대를 만들고, 각 VM에 역할별 서비스를 나누어 배포합니다.
 
@@ -68,11 +68,3 @@ data-monitor-vm
 ## 문서
 
 - [GCP 인프라 구성 문서](docs/gcp-infra.md)
-
----
-
-## 현재 진행 중인 작업
-
-- GCP VM 4대 기준 서비스 배치 정리
-- Terraform 기반 인프라 구성 준비
-- VM별 Docker Compose 분리

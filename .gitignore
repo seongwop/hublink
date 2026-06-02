@@ -26,10 +26,21 @@ Thumbs.db
 # Env
 .env
 *.env
+.env.aws
 .env.gcp
 
 # Test
 target/
+
+# Terraform
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log
+crash.*.log
+*.tfplan
 
 # 로컬 테스트용 설정 및 도커 파일 제외
 docker-compose-local.yml
