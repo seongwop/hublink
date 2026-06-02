@@ -1,6 +1,6 @@
+# Terraform 및 Google Provider 버전 고정
 
-# 구성에서 사용할 Terraform 및 Google Provider 버전 지정
-
+# 실행 환경별 provider 버전 차이 방지
 terraform {
   required_version = ">= 1.6.0"
 
