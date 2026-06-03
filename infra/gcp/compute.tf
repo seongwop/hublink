@@ -17,6 +17,18 @@ resource "google_compute_address" "internal" {
   subnetwork   = google_compute_subnetwork.main.id
 }
 
+# VM별 고정 외부 IP 예약
+resource "google_compute_address" "external" {
+  for_each = {
+    for name, spec in var.vm_specs : name => spec
+    if contains(var.external_ip_vm_names, name)
+  }
+
+  name         = "${var.name_prefix}-${each.key}-external-ip"
+  address_type = "EXTERNAL"
+  region       = var.region
+}
+
 # vm_specs 기준 역할별 VM 생성
 resource "google_compute_instance" "vm" {
   for_each = var.vm_specs
@@ -49,7 +61,13 @@ resource "google_compute_instance" "vm" {
     subnetwork = google_compute_subnetwork.main.id
     network_ip = google_compute_address.internal[each.key].address
 
-    access_config {}
+    dynamic "access_config" {
+      for_each = contains(var.external_ip_vm_names, each.key) ? [1] : []
+
+      content {
+        nat_ip = google_compute_address.external[each.key].address
+      }
+    }
   }
 
   # SSH 공개키 직접 등록 옵션
