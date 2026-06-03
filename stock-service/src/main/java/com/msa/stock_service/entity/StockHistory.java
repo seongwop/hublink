@@ -63,14 +63,14 @@ public class StockHistory extends BaseEntity {
     }
 
     //재고 감소시, 재고 이력 생성
-    public static StockHistory createDecreaStock(Stock stock, Integer orderQuantity) {
+    public static StockHistory createDecreaseStock(Stock stock, Integer orderQuantity, Integer beforeQuantity) {
         return StockHistory.builder().
             stockId(stock.getId()).
             productId(stock.getProductId()).
             hubId(stock.getHubId()).
             changeQuantity(orderQuantity).
-            beforeQuantity(stock.getQuantity()).
-            afterQuantity(stock.getQuantity() - orderQuantity).
+            beforeQuantity(beforeQuantity).
+            afterQuantity(stock.getQuantity()).
             reason(StockChangeReason.ORDER_CREATED).
             build();
     }
@@ -87,14 +87,14 @@ public class StockHistory extends BaseEntity {
             build();
     }
 
-    public static StockHistory restore(Stock stock, Integer orderQuantity) {
+    public static StockHistory restore(Stock stock, Integer orderQuantity, Integer beforeQuantity) {
         return StockHistory.builder().
             stockId(stock.getId()).
             productId(stock.getProductId()).
             hubId(stock.getHubId()).
             changeQuantity(orderQuantity).
-            beforeQuantity(stock.getQuantity()).
-            afterQuantity(stock.getQuantity() + orderQuantity).
+            beforeQuantity(beforeQuantity).
+            afterQuantity(stock.getQuantity()).
             reason(StockChangeReason.ORDER_CANCELED).
             build();
     }

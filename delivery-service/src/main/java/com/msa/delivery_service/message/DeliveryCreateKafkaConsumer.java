@@ -11,14 +11,13 @@ import com.msa.delivery_service.service.DeliveryService;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Validator;
+import java.util.Set;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
-
-import java.util.Set;
-import java.util.UUID;
 
 @Slf4j
 @Component
@@ -52,19 +51,16 @@ public class DeliveryCreateKafkaConsumer {
             // DeliveryRequest DTO 역직렬화 및 검증
             request = objectMapper.readValue(payload, DeliveryRequest.class);
             validate(request);
-
             messageKey = resolveMessageKey(record, request.getOrderId());
 
-            DeliveryRequest deliveryRequest = request;
-
             // 멱등성 보장을 위해 이미 존재하면 기존 결과 반환
-            var existingDelivery = deliveryService.findDeliveryByOrderId(deliveryRequest.getOrderId());
+            var existingDelivery = deliveryService.findDeliveryByOrderId(request.getOrderId());
             DeliveryResponse response;
             if (existingDelivery.isPresent()) {
                 response = existingDelivery.get();
                 publishSuccess(messageKey, response);
             } else {
-                response = deliveryService.createDelivery(deliveryRequest);
+                response = deliveryService.createDelivery(request);
             }
 
             log.info("배송 생성 이벤트를 정상 처리했습니다. orderId={}, deliveryId={}",
@@ -72,9 +68,10 @@ public class DeliveryCreateKafkaConsumer {
                     response.getDeliveryId()
             );
         } catch (CustomException e) {
-            if (messageKey == null && request != null) {
+            if (request != null && request.getOrderId() != null) {
                 messageKey = request.getOrderId().toString();
             }
+
             // 중복 배송 생성은 무시 처리
             if (e.getErrorCode() == DeliveryErrorCode.DUPLICATE_ORDER_DELIVERY) {
                 log.info("중복 배송 생성 이벤트 무시. key={}, offset={}",
@@ -147,10 +144,10 @@ public class DeliveryCreateKafkaConsumer {
             ErrorCode errorCode = customException.getErrorCode();
             return errorCode.getCode() + ":" + errorCode.getMessage();
         }
+
         String message = e.getMessage();
         return message == null ? e.getClass().getSimpleName() : e.getClass().getSimpleName() + ":" + message;
     }
-
 
     private String resolveMessageKey(ConsumerRecord<String, String> record, UUID orderId) {
         if (orderId != null) {

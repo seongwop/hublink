@@ -2,7 +2,7 @@ package com.msa.stock_service.service;
 
 import com.msa.core_common.error.exception.CustomException;
 import com.msa.core_common.response.paging.PageRes;
-import com.msa.stock_service.dto.StockDecreaRequestDto;
+import com.msa.stock_service.dto.StockItemCommandDto;
 import com.msa.stock_service.dto.StockHistoryModifyDto;
 import com.msa.stock_service.dto.StockHistorySearchResponseDto;
 import com.msa.stock_service.dto.StockRequestDto;
@@ -170,9 +170,9 @@ class StockServiceTest {
         Stock stock2 = Stock.builder().productId(productId2).hubId(hubId).quantity(50).reservedQuantity(0).build();
 
         // 수정 1: 7개 필드 생성자 사용 (불필요한 값은 null)
-        List<StockDecreaRequestDto> request = List.of(
-            new StockDecreaRequestDto(productId,  30, null, null, null, null, null),
-            new StockDecreaRequestDto(productId2, 20, null, null, null, null, null)
+        List<StockItemCommandDto> request = List.of(
+            new StockItemCommandDto(productId,  30, null, null, null, null, null),
+            new StockItemCommandDto(productId2, 20, null, null, null, null, null)
         );
 
         given(stockRepository.findAllByProductIdInForUpdate(anyList()))
@@ -202,8 +202,8 @@ class StockServiceTest {
             .build();
 
         // 수정 1: 7개 필드 생성자 사용
-        List<StockDecreaRequestDto> request = List.of(
-            new StockDecreaRequestDto(productId, 50, null, null, null, null, null) // 50개 요청
+        List<StockItemCommandDto> request = List.of(
+            new StockItemCommandDto(productId, 50, null, null, null, null, null) // 50개 요청
         );
 
         given(stockRepository.findAllByProductIdInForUpdate(anyList()))
@@ -220,9 +220,9 @@ class StockServiceTest {
     void decreaseStock_StockNotFound() {
         // given
         // 수정 1: 7개 필드 생성자 사용
-        List<StockDecreaRequestDto> request = List.of(
-            new StockDecreaRequestDto(productId,              10, null, null, null, null, null),
-            new StockDecreaRequestDto(UUID.randomUUID(), 10, null, null, null, null, null)
+        List<StockItemCommandDto> request = List.of(
+            new StockItemCommandDto(productId,              10, null, null, null, null, null),
+            new StockItemCommandDto(UUID.randomUUID(), 10, null, null, null, null, null)
         );
 
         // 2개 요청했는데 1개만 조회됨
@@ -250,8 +250,8 @@ class StockServiceTest {
             .build();
 
         // 수정 1: 7개 필드 생성자 사용
-        List<StockDecreaRequestDto> request = List.of(
-            new StockDecreaRequestDto(productId, 30, null, null, null, null, null)
+        List<StockItemCommandDto> request = List.of(
+            new StockItemCommandDto(productId, 30, null, null, null, null, null)
         );
 
         given(stockRepository.findAllByProductIdInForUpdate(anyList()))

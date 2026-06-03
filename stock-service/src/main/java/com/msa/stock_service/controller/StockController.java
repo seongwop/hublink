@@ -1,10 +1,10 @@
 package com.msa.stock_service.controller;
 
 import com.msa.core_common.response.paging.PageRes;
-import com.msa.stock_service.dto.StockDecreaRequestDto;
 import com.msa.stock_service.dto.StockHistoryModifyDto;
 import com.msa.stock_service.dto.StockHistoryResponseDto;
 import com.msa.stock_service.dto.StockHistorySearchResponseDto;
+import com.msa.stock_service.dto.StockItemCommandDto;
 import com.msa.stock_service.dto.StockRequestDto;
 import com.msa.stock_service.dto.StockResponseDto;
 import com.msa.stock_service.entity.Stock;
@@ -71,7 +71,7 @@ public class StockController {
      * @return
      */
     @PostMapping("/decrease")
-    public List<StockHistoryResponseDto> decreaseStock(List<StockDecreaRequestDto> listDto){
+    public List<StockHistoryResponseDto> decreaseStock(List<StockItemCommandDto> listDto){
         return stockOrchestrator.decreaseStock(listDto);
     }
 }
