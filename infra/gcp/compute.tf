@@ -25,6 +25,9 @@ resource "google_compute_instance" "vm" {
   machine_type = each.value.machine_type
   zone         = var.zone
   tags         = each.value.tags
+  resource_policies = [
+    google_compute_resource_policy.vm_schedule.self_link
+  ]
 
   # 비용 추적과 리소스 구분용 공통 라벨
   labels = {

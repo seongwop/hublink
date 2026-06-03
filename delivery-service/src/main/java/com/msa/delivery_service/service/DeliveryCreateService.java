@@ -85,8 +85,10 @@ public class DeliveryCreateService {
                     DeadlineRequestedEvent.of(
                             savedDelivery,
                             request,
-                            hubManager,
-                            companyDeliveryManager,
+                            hubManager.getHubManagerId(),
+                            hubManager.getHubManagerSlackId(),
+                            companyDeliveryManager.getDeliveryManagerName(),
+                            companyDeliveryManager.getDeliveryManagerEmail(),
                             hubRoutes.get(0).getDepartureHubName(),
                             toDeadlineRouteInfo(hubRoutes),
                             workStartTime,

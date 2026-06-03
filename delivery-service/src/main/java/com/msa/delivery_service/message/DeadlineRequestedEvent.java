@@ -1,8 +1,6 @@
 package com.msa.delivery_service.message;
 
 import com.msa.delivery_service.entity.Delivery;
-import com.msa.delivery_service.client.user.dto.DeliveryManagerResponse;
-import com.msa.delivery_service.client.user.dto.HubManagerResponse;
 import com.msa.delivery_service.dto.DeliveryRequest;
 import lombok.Builder;
 import lombok.Getter;
@@ -38,8 +36,10 @@ public class DeadlineRequestedEvent {
     public static DeadlineRequestedEvent of(
             Delivery delivery,
             DeliveryRequest request,
-            HubManagerResponse hubManager,
-            DeliveryManagerResponse deliveryManager,
+            UUID receiverUserId,
+            String receiverSlackId,
+            String deliveryManagerName,
+            String deliveryManagerEmail,
             String departureHubName,
             List<RouteInfo> routeInfo,
             String workStartTime,
@@ -53,14 +53,14 @@ public class DeadlineRequestedEvent {
                 .ordererEmail(request.getOrdererEmail())
                 .orderedAt(request.getOrderedAt())
                 .requestMessage(request.getRequestMessage())
-                .receiverUserId(hubManager.getHubManagerId())
-                .receiverSlackId(hubManager.getHubManagerSlackId())
+                .receiverUserId(receiverUserId)
+                .receiverSlackId(receiverSlackId)
                 .products(request.getProducts())
                 .requestedArrivalAt(request.getRequestedArrivalAt())
                 .departureHubName(departureHubName)
                 .destinationAddress(delivery.getDeliveryAddress())
-                .deliveryManagerName(deliveryManager.getDeliveryManagerName())
-                .deliveryManagerEmail(deliveryManager.getDeliveryManagerEmail())
+                .deliveryManagerName(deliveryManagerName)
+                .deliveryManagerEmail(deliveryManagerEmail)
                 .routeInfo(routeInfo)
                 .workStartTime(workStartTime)
                 .workEndTime(workEndTime)

@@ -69,6 +69,9 @@ springdoc:
     - url: ${SWAGGER_GATEWAY_URL:http://localhost:19091}
       description: API Gateway URL
 
+swagger:
+  gateway-url: ${SWAGGER_GATEWAY_URL:http://localhost:19091}
+
 resilience4j:
   ratelimiter:
     instances:

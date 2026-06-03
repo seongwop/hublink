@@ -17,6 +17,6 @@ public interface UserClient {
     @GetMapping("/hubs/{hubId}")
     HubManagerResponse getHubManager(@PathVariable UUID hubId);
 
-    @PostMapping("/hubs/delivery-managers/search")
+    @PostMapping("/delivery-managers/search")
     List<DeliveryManagerResponse> getDeliveryManagers(@RequestBody List<UUID> hubIds);
 }

@@ -1,0 +1,12 @@
+{
+  "supplierCompanyId": "20000000-0000-0000-0000-000000000001",
+  "receiverCompanyId": "20000000-0000-0000-0000-000000000002",
+  "requestMemo": "정상 주문 시나리오",
+  "requestedDeliveryDeadline": "2026-12-31T18:00:00",
+  "items": [
+    {
+      "productId": "30000000-0000-0000-0000-000000000001",
+      "quantity": 3
+    }
+  ]
+}

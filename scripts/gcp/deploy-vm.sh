@@ -4,6 +4,8 @@ set -euo pipefail
 # VM 단위 공통 배포 스크립트
 # 사용 예시: deploy-vm.sh hublink-platform-vm docker-compose.platform.yml config-repo
 # 추가 복사 파일과 디렉터리 인자
+# DEPLOY_SERVICES 공백 구분 서비스명
+# SKIP_COMPOSE=true 설정 시 파일 복사만 수행
 if [ "$#" -lt 2 ]; then
   echo "Usage: deploy-vm.sh <vm-name> <compose-file> [extra-path ...]" >&2
   exit 1
@@ -46,8 +48,26 @@ for path in "$@"; do
   gcloud compute scp --recurse "${path}" "${REMOTE}:${REMOTE_DIR}/" "${GCLOUD_FLAGS[@]}"
 done
 
-# 커밋 SHA 이미지 pull
-# 변경 컨테이너 교체와 orphan 정리
+# 설정 파일만 반영하는 복사 전용 모드
+if [ "${SKIP_COMPOSE:-false}" = "true" ]; then
+  echo "Skip docker compose on ${VM_NAME}"
+  exit 0
+fi
+
+# 지정 서비스만 pull/up
+if [ -n "${DEPLOY_SERVICES:-}" ]; then
+  echo "Deploying services on ${VM_NAME}: ${DEPLOY_SERVICES}"
+  for service in ${DEPLOY_SERVICES}; do
+    gcloud compute ssh "${REMOTE}" "${GCLOUD_FLAGS[@]}" \
+      --command "cd '${REMOTE_DIR}' && sudo docker compose --env-file .env.gcp -f '${COMPOSE_FILE}' pull '${service}' && sudo docker compose --env-file .env.gcp -f '${COMPOSE_FILE}' up -d --no-deps '${service}'"
+  done
+
+  gcloud compute ssh "${REMOTE}" "${GCLOUD_FLAGS[@]}" \
+    --command "cd '${REMOTE_DIR}' && sudo docker compose -f '${COMPOSE_FILE}' ps"
+  exit 0
+fi
+
+# 전체 compose pull/up
 echo "Deploying ${COMPOSE_FILE} on ${VM_NAME}"
 gcloud compute ssh "${REMOTE}" "${GCLOUD_FLAGS[@]}" \
   --command "cd '${REMOTE_DIR}' && sudo docker compose --env-file .env.gcp -f '${COMPOSE_FILE}' pull && sudo docker compose --env-file .env.gcp -f '${COMPOSE_FILE}' up -d --remove-orphans && sudo docker compose -f '${COMPOSE_FILE}' ps"

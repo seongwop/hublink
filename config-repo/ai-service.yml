@@ -69,7 +69,7 @@ resilience4j:
         permitted-number-of-calls-in-half-open-state: 3
 
 swagger:
-  gateway-url: ${SWAGGER_GATEWAY_URL}
+  gateway-url: ${SWAGGER_GATEWAY_URL:http://localhost:19091}
 
 logging:
   level:

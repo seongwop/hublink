@@ -5,11 +5,10 @@ spring:
   config:
     import: ""
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/hublink_test}
-    username: ${DB_USERNAME:test}
-    password: ${DB_PASSWORD:test}
+    url: jdbc:h2:mem:delivery_test;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
   jpa:
-    database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
       ddl-auto: create-drop
   data:

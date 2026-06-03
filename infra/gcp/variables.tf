@@ -6,6 +6,27 @@ variable "project_id" {
   type        = string
 }
 
+# VM 자동 시작 cron
+variable "vm_start_schedule" {
+  description = "VM 자동 시작 cron"
+  type        = string
+  default     = "0 10 * * MON-FRI"
+}
+
+# VM 자동 종료 cron
+variable "vm_stop_schedule" {
+  description = "VM 자동 종료 cron"
+  type        = string
+  default     = "0 2 * * *"
+}
+
+# VM 스케줄 타임존
+variable "vm_schedule_time_zone" {
+  description = "VM 스케줄 타임존"
+  type        = string
+  default     = "Asia/Seoul"
+}
+
 # 전체 리소스 생성 리전
 variable "region" {
   description = "GCP 리전"

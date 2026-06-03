@@ -54,7 +54,7 @@ public class OrderConsumer {
         }
     }
 
-    @KafkaListener(topics = "delivery.succeed", groupId = "order-group")
+    @KafkaListener(topics = "delivery.create.succeed", groupId = "order-group")
     @RetryableTopic(attempts = "5", backoff = @Backoff(delay = 1000, multiplier = 2))
     public void handleDeliverySuccess(String jsonMessage, Acknowledgment ack) {
         try {
@@ -70,7 +70,7 @@ public class OrderConsumer {
         }
     }
 
-    @KafkaListener(topics = "delivery.failed", groupId = "order-group")
+    @KafkaListener(topics = "delivery.create.failed", groupId = "order-group")
     @RetryableTopic(attempts = "5", backoff = @Backoff(delay = 1000, multiplier = 2))
     public void handleDeliveryFailed(String jsonMessage, Acknowledgment ack) {
         try {

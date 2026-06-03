@@ -2,13 +2,16 @@ package com.msa.stock_service.message;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.msa.core_common.error.exception.CustomException;
 import com.msa.stock_service.dto.StockDecreaRequestDto;
 import com.msa.stock_service.dto.StockHistoryResponseDto;
 import com.msa.stock_service.service.StockOrchestrator;
 import com.msa.stock_service.service.StockService;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -61,8 +64,7 @@ public class OrderEventConsumer {
             List<StockHistoryResponseDto> result =
                 stockOrchestrator.decreaseStock(request);
 
-            // 성공 결과 발행 (payload = 차감 결과 리스트)
-            eventPublisher.publish("stock.decrease.success", orderId, result);
+            eventPublisher.publish("stock.decrease.success", orderId, toStockResult(orderId, result));
             log.info("[재고 차감 성공] orderId={}", orderId);
 
         } catch (IllegalArgumentException e) {
@@ -71,7 +73,15 @@ public class OrderEventConsumer {
             eventPublisher.publish(
                 "stock.decrease.failed",
                 orderId,
-                Map.of("reason", e.getMessage() != null ? e.getMessage() : "Unknown Error")
+                toStockFailure(orderId, e.getMessage())
+            );
+
+        } catch (CustomException e) {
+            log.warn("[?ш퀬 李④컧 ?ㅽ뙣] orderId={}, ?ъ쑀={}", orderId, e.getMessage());
+            eventPublisher.publish(
+                    "stock.decrease.failed",
+                    orderId,
+                    toStockFailure(orderId, e.getMessage())
             );
 
         } catch (Exception e) {
@@ -117,5 +127,41 @@ public class OrderEventConsumer {
             log.error("[재고 복원 처리 중 오류] orderId={}", orderId, e);
             throw new RuntimeException(e);
         }
+    }
+
+    private Map<String, Object> toStockResult(UUID orderId, List<StockHistoryResponseDto> result) {
+        StockHistoryResponseDto first = result.isEmpty() ? null : result.get(0);
+
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("orderId", orderId);
+        payload.put("products", result.stream()
+                .map(this::toProductPayload)
+                .collect(Collectors.toList()));
+        payload.put("ordererName", first == null ? "" : first.getOrderName());
+        payload.put("ordererEmail", first == null ? "" : first.getOrderEmail());
+        payload.put("deliveryAddress", first == null ? "" : first.getDeliveryAddress());
+        payload.put("receiverCompanyName", first == null ? "" : first.getReceiverCompanyName());
+
+        return payload;
+    }
+
+    private Map<String, Object> toProductPayload(StockHistoryResponseDto item) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("productId", item.getProductId());
+        payload.put("isSuccess", item.isSuccess());
+        payload.put("failureReason", "");
+        payload.put("name", item.getName());
+        payload.put("price", item.getPrice());
+        payload.put("hubId", item.getHubId());
+
+        return payload;
+    }
+
+    private Map<String, Object> toStockFailure(UUID orderId, String reason) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("orderId", orderId.toString());
+        payload.put("reason", reason != null ? reason : "Unknown Error");
+
+        return payload;
     }
 }

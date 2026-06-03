@@ -1,5 +1,6 @@
 package com.msa.stock_service.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -9,6 +10,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class StockDecreaRequestDto {
+    @JsonAlias("productId")
     private UUID id;
     private Integer quantity;
 

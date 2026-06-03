@@ -52,3 +52,8 @@ public_source_ranges = ["0.0.0.0/0"]
 #     tags         = ["hublink", "hublink-ssh", "hublink-monitor"]
 #   }
 # }
+
+# VM 자동 시작과 종료 스케줄
+vm_start_schedule     = "0 10 * * MON-FRI"
+vm_stop_schedule      = "0 2 * * *"
+vm_schedule_time_zone = "Asia/Seoul"
