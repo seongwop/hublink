@@ -29,7 +29,7 @@ public class StockHistoryResponseDto {
     private String deliveryAddress;
     private String receiverCompanyName;
 
-    public static StockHistoryResponseDto from(StockHistory stockHistory,boolean isSuccess,String name, Integer price,StockDecreaRequestDto listDto) {
+    public static StockHistoryResponseDto from(StockHistory stockHistory, boolean isSuccess, String name, Integer price, StockItemCommandDto listDto) {
         return StockHistoryResponseDto.builder().
             productId(stockHistory.getProductId()).
             stockId(stockHistory.getId()).

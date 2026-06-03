@@ -2,9 +2,9 @@ package com.msa.stock_service.service;
 
 import com.msa.core_common.error.exception.CustomException;
 import com.msa.core_common.response.paging.PageRes;
-import com.msa.stock_service.dto.StockDecreaRequestDto;
 import com.msa.stock_service.dto.StockHistoryModifyDto;
 import com.msa.stock_service.dto.StockHistorySearchResponseDto;
+import com.msa.stock_service.dto.StockItemCommandDto;
 import com.msa.stock_service.dto.StockRequestDto;
 import com.msa.stock_service.entity.Stock;
 import com.msa.stock_service.entity.StockHistory;
@@ -77,12 +77,12 @@ public class StockService {
      * @param listDto
      */
     @Transactional
-    public void restoreStock(List<StockDecreaRequestDto> listDto){
+    public void restoreStock(List<StockItemCommandDto> listDto){
         //전달 받은 데이터 리스트를 map으로 변환한다.
         // 한번 요청에 동일한 productId가 올 수 있으므로, 아래와 같이 수량을 합산.
         Map<UUID,Integer> restoreQuantityMap = listDto.stream().collect(Collectors.toMap(
-            StockDecreaRequestDto :: getId,
-            StockDecreaRequestDto :: getQuantity,
+            StockItemCommandDto :: getId,
+            StockItemCommandDto :: getQuantity,
             Integer::sum
         ));
 
@@ -101,11 +101,12 @@ public class StockService {
 
             // 그 수량이 0인 경우에만
             if (restoreQuantity > 0) {
+                Integer beforeQuantity = stock.getQuantity();
                 // 재고 복원
                 stock.restore(restoreQuantity);
 
                 // 복원된 재고의 이력을 만든다.
-                StockHistory newHistory = StockHistory.restore(stock, restoreQuantity);
+                StockHistory newHistory = StockHistory.restore(stock, restoreQuantity, beforeQuantity);
                 // 복원된 재고의 이력만 리스트를 만들어
                 restoreStockHistory.add(newHistory);
             }
@@ -123,12 +124,12 @@ public class StockService {
      * @return
      */
     @Transactional
-    public List<StockHistory> decreaseStock (List<StockDecreaRequestDto> listDto){
+    public List<StockHistory> decreaseStock (List<StockItemCommandDto> listDto){
        //listDto에서는 id와 quantity만 사용하므로 이 둘의 값을 가진 Map을 만든다.
         Map<UUID, Integer> requestQuantityMap = listDto.stream()
             .collect(Collectors.toMap(
-                StockDecreaRequestDto::getId,
-                StockDecreaRequestDto::getQuantity,
+                StockItemCommandDto::getId,
+                StockItemCommandDto::getQuantity,
                 Integer::sum
             ));
 
@@ -154,9 +155,10 @@ public class StockService {
 
             //현재 재고의 수량이 주문한 수량보다 더 크다면
             if (stock.getQuantity() >= requestQuantity) {
+                Integer beforeQuantity = stock.getQuantity();
                 // 정상 차감 및 이력 생성.
                 stock.decreaseStock(requestQuantity);
-                newStockHistory.add(StockHistory.createDecreaStock(stock, requestQuantity));
+                newStockHistory.add(StockHistory.createDecreaseStock(stock, requestQuantity, beforeQuantity));
             } else {
                 // 그 외로 재고가 부족하다면, 에러를 일으킨다.
                 throw new IllegalArgumentException("재고가 부족합니다. 상품 ID: " + stock.getProductId());

@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
-public class StockDecreaRequestDto {
+public class StockItemCommandDto {
     @JsonAlias("productId")
     private UUID id;
     private Integer quantity;

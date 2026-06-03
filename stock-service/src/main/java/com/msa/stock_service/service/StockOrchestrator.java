@@ -3,8 +3,8 @@ package com.msa.stock_service.service;
 import com.msa.core_common.error.exception.CustomException;
 import com.msa.stock_service.client.ProductClient;
 import com.msa.stock_service.client.ProductResponse;
-import com.msa.stock_service.dto.StockDecreaRequestDto;
 import com.msa.stock_service.dto.StockHistoryResponseDto;
+import com.msa.stock_service.dto.StockItemCommandDto;
 import com.msa.stock_service.entity.StockHistory;
 import com.msa.stock_service.global.StockError;
 import java.util.ArrayList;
@@ -28,10 +28,10 @@ public class StockOrchestrator {
      * @param listDto
      * @return
      */
-    public List<StockHistoryResponseDto> decreaseStock(List<StockDecreaRequestDto> listDto) {
+    public List<StockHistoryResponseDto> decreaseStock(List<StockItemCommandDto> listDto) {
 
-        Map<UUID, StockDecreaRequestDto> mapDto = new HashMap<>();
-        for (StockDecreaRequestDto dto : listDto) {
+        Map<UUID, StockItemCommandDto> mapDto = new HashMap<>();
+        for (StockItemCommandDto dto : listDto) {
             mapDto.put(dto.getId(), dto);
         }
 
@@ -64,7 +64,7 @@ public class StockOrchestrator {
             //이 상품 정보들은 전부 성공 여부가 true인 것들이고,
             boolean isSuccess = true;
             //요청 값으로 날린 Order 정보들을 그대로 다시 응답해야하므로, dto 객체 다시 가져옴.
-            StockDecreaRequestDto dto = mapDto.get(history.getProductId());
+            StockItemCommandDto dto = mapDto.get(history.getProductId());
 
             //그 dto가 null인 경우에도 다시 방어
             if(dto == null) {

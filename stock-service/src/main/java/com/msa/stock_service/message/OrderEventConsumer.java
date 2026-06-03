@@ -3,8 +3,9 @@ package com.msa.stock_service.message;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.msa.core_common.error.exception.CustomException;
-import com.msa.stock_service.dto.StockDecreaRequestDto;
+import com.msa.stock_service.dto.StockDecreaseCommandDto;
 import com.msa.stock_service.dto.StockHistoryResponseDto;
+import com.msa.stock_service.dto.StockItemCommandDto;
 import com.msa.stock_service.service.StockOrchestrator;
 import com.msa.stock_service.service.StockService;
 import java.util.LinkedHashMap;
@@ -40,42 +41,36 @@ public class OrderEventConsumer {
 
     /**
      * 재고 차감 명령 수신.
-     * payload: List<StockDecreaRequestDto>를 직렬화한 JSON 배열.
+     * payload: StockDecreaseCommandDto를 직렬화한 JSON 객체.
      */
     @KafkaListener(
-        topics  = "stock.decrease",
-        groupId = "inventory-service.stock-decrease.handler"
+            topics = "stock.decrease",
+            groupId = "inventory-service.stock-decrease.handler"
     )
     public void onStockDecrease(
-        @Payload String message,
-        @Header(KafkaHeaders.RECEIVED_KEY) String key
+            @Payload String message,
+            @Header(KafkaHeaders.RECEIVED_KEY) String key
     ) {
         UUID orderId = UUID.fromString(key);
         log.info("[재고 차감 요청 수신] orderId={}", orderId);
 
         try {
-            // payload(JSON 배열)를 바로 DTO 리스트로 역직렬화
-            List<StockDecreaRequestDto> request = objectMapper.readValue(
-                message,
-                new TypeReference<List<StockDecreaRequestDto>>() {}
-            );
+            StockDecreaseCommandDto command = objectMapper.readValue(message, StockDecreaseCommandDto.class);
+            List<StockItemCommandDto> request = toDecreaseRequests(command);
 
             // 기존 재고 차감 로직 그대로 호출
-            List<StockHistoryResponseDto> result =
-                stockOrchestrator.decreaseStock(request);
+            List<StockHistoryResponseDto> result = stockOrchestrator.decreaseStock(request);
 
             eventPublisher.publish("stock.decrease.success", orderId, toStockResult(orderId, result));
             log.info("[재고 차감 성공] orderId={}", orderId);
-
         } catch (IllegalArgumentException e) {
             // 재고 부족·상품 없음 등 예상된 실패 → 실패 편지 발행
             log.warn("[재고 차감 실패] orderId={}, 사유={}", orderId, e.getMessage());
             eventPublisher.publish(
-                "stock.decrease.failed",
-                orderId,
-                toStockFailure(orderId, e.getMessage())
+                    "stock.decrease.failed",
+                    orderId,
+                    toStockFailure(orderId, e.getMessage())
             );
-
         } catch (CustomException e) {
             log.warn("[?ш퀬 李④컧 ?ㅽ뙣] orderId={}, ?ъ쑀={}", orderId, e.getMessage());
             eventPublisher.publish(
@@ -83,7 +78,6 @@ public class OrderEventConsumer {
                     orderId,
                     toStockFailure(orderId, e.getMessage())
             );
-
         } catch (Exception e) {
             // JSON 파싱 오류 등 예상 못 한 실패 → 다시 던져 Kafka가 재시도하게 한다
             log.error("[재고 차감 처리 중 오류] orderId={}", orderId, e);
@@ -93,23 +87,24 @@ public class OrderEventConsumer {
 
     /**
      * 재고 복원 명령 수신 (배송 실패 등 보상 흐름).
-     * payload: List<StockDecreaRequestDto>를 직렬화한 JSON 배열.
+     * payload: List<StockItemCommandDto>를 직렬화한 JSON 배열.
      */
     @KafkaListener(
-        topics  = "stock.increase",
-        groupId = "inventory-service.stock-increase.handler"
+            topics = "stock.increase",
+            groupId = "inventory-service.stock-increase.handler"
     )
     public void onStockIncrease(
-        @Payload String message,
-        @Header(KafkaHeaders.RECEIVED_KEY) String key
+            @Payload String message,
+            @Header(KafkaHeaders.RECEIVED_KEY) String key
     ) {
         UUID orderId = UUID.fromString(key);
         log.info("[재고 복원 요청 수신] orderId={}", orderId);
 
         try {
-            List<StockDecreaRequestDto> request = objectMapper.readValue(
-                message,
-                new TypeReference<List<StockDecreaRequestDto>>() {}
+            List<StockItemCommandDto> request = objectMapper.readValue(
+                    message,
+                    new TypeReference<List<StockItemCommandDto>>() {
+                    }
             );
 
             // 기존 재고 복원 로직 그대로 호출
@@ -117,12 +112,11 @@ public class OrderEventConsumer {
 
             // 완료 알림 발행 (payload는 orderId만 담은 단순 맵)
             eventPublisher.publish(
-                "stock.increase.success",
-                orderId,
-                Map.of("orderId", orderId.toString())
+                    "stock.increase.success",
+                    orderId,
+                    Map.of("orderId", orderId.toString())
             );
             log.info("[재고 복원 완료] orderId={}", orderId);
-
         } catch (Exception e) {
             log.error("[재고 복원 처리 중 오류] orderId={}", orderId, e);
             throw new RuntimeException(e);
@@ -155,6 +149,24 @@ public class OrderEventConsumer {
         payload.put("hubId", item.getHubId());
 
         return payload;
+    }
+
+    private List<StockItemCommandDto> toDecreaseRequests(StockDecreaseCommandDto command) {
+        if (command.getItems() == null) {
+            return List.of();
+        }
+
+        return command.getItems().stream()
+                .map(item -> new StockItemCommandDto(
+                        item.getProductId(),
+                        item.getQuantity(),
+                        command.getOrderId(),
+                        command.getOrdererName(),
+                        command.getOrdererEmail(),
+                        command.getDeliveryAddress(),
+                        command.getReceiverCompanyName()
+                ))
+                .toList();
     }
 
     private Map<String, Object> toStockFailure(UUID orderId, String reason) {
