@@ -57,13 +57,8 @@ fi
 # 지정 서비스만 pull/up
 if [ -n "${DEPLOY_SERVICES:-}" ]; then
   echo "Deploying services on ${VM_NAME}: ${DEPLOY_SERVICES}"
-  for service in ${DEPLOY_SERVICES}; do
-    gcloud compute ssh "${REMOTE}" "${GCLOUD_FLAGS[@]}" \
-      --command "cd '${REMOTE_DIR}' && sudo docker compose --env-file .env.gcp -f '${COMPOSE_FILE}' pull '${service}' && sudo docker compose --env-file .env.gcp -f '${COMPOSE_FILE}' up -d --no-deps '${service}'"
-  done
-
   gcloud compute ssh "${REMOTE}" "${GCLOUD_FLAGS[@]}" \
-    --command "cd '${REMOTE_DIR}' && sudo docker compose -f '${COMPOSE_FILE}' ps"
+    --command "cd '${REMOTE_DIR}' && sudo docker compose --env-file .env.gcp -f '${COMPOSE_FILE}' pull ${DEPLOY_SERVICES} && sudo docker compose --env-file .env.gcp -f '${COMPOSE_FILE}' up -d --no-deps ${DEPLOY_SERVICES} && sudo docker compose -f '${COMPOSE_FILE}' ps"
   exit 0
 fi
 

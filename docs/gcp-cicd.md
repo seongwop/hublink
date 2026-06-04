@@ -203,16 +203,20 @@ Zipkin:     http://34.64.89.47:9411
 
 현재 workflow는 안전하게 전체 영향 범위를 잡는 대신 공통 파일 변경 시 빌드 범위가 넓어진다.
 
-주요 병목:
+적용된 개선:
 
-- Docker build 내부 Gradle `bootJar` 반복
+- Actions runner에서 Gradle build 후 `Dockerfile.cd`로 JAR만 이미지에 복사
+- VM별 여러 서비스 pull/up을 한 번의 SSH 명령으로 묶기
+
+남은 병목 후보:
+
 - 공통 파일 변경 시 전체 서비스 빌드
 - IAP 기반 VM별 `ssh/scp` 반복
 - VM별 Docker image pull
 
-개선 후보:
+추가 개선 후보:
 
-- Actions runner에서 Gradle build 후 JAR만 Docker image에 복사
-- VM별 여러 서비스 pull/up을 한 번의 SSH 명령으로 묶기
 - 공통 변경 감지 범위 세분화
 - Docker build cache hit율 확인
+- 서비스별 테스트와 이미지 빌드 job 분리
+- 자주 바뀌지 않는 data/monitoring 배포 조건 축소

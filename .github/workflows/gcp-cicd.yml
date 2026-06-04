@@ -11,6 +11,7 @@ on:
       - '.github/workflows/gcp-cicd.yml'
       - 'scripts/gcp/**'
       - 'Dockerfile'
+      - 'Dockerfile.cd'
       - 'build.gradle'
       - 'settings.gradle'
       - 'gradle/**'
@@ -143,7 +144,7 @@ jobs:
               if (
                   normalized == ".github/workflows/gcp-cicd.yml"
                   or normalized.startswith("scripts/gcp/")
-                  or normalized in {"Dockerfile", "build.gradle", "settings.gradle", "gradlew"}
+                  or normalized in {"Dockerfile", "Dockerfile.cd", "build.gradle", "settings.gradle", "gradlew"}
                   or normalized.startswith("gradle/")
                   or normalized.startswith("core-common/")
               ):
@@ -251,6 +252,14 @@ jobs:
       - name: Set up gcloud
         uses: google-github-actions/setup-gcloud@v2
 
+      - name: Set up JDK 17
+        # Gradle 캐시 기반 JAR 빌드
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+
       - name: Configure Docker for Artifact Registry
         # Artifact Registry Docker 인증
         run: gcloud auth configure-docker "${GCP_REGION}-docker.pkg.dev" --quiet
@@ -259,14 +268,22 @@ jobs:
         # Docker Buildx 빌드 캐시 준비
         uses: docker/setup-buildx-action@v3
 
+      - name: Build JAR ${{ matrix.service }}
+        # Docker 내부 Gradle 반복 빌드 방지
+        run: |
+          sed -i 's/\r$//' ./gradlew
+          chmod +x ./gradlew
+          ./gradlew :${{ matrix.service }}:clean :${{ matrix.service }}:bootJar -x test
+          find ./${{ matrix.service }}/build/libs/ \
+            -name "*.jar" ! -name "*plain.jar" \
+            -exec cp {} ./app.jar \;
+
       - name: Build and push ${{ matrix.service }}
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: Dockerfile
+          file: Dockerfile.cd
           push: true
-          build-args: |
-            SERVICE_NAME=${{ matrix.service }}
           # 커밋 SHA 태그와 latest 태그 동시 push
           tags: |
             ${{ env.IMAGE_REGISTRY }}/hublink-${{ matrix.service }}:${{ github.sha }}
