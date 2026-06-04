@@ -68,3 +68,5 @@ data-monitor-vm
 ## 문서
 
 - [GCP 인프라 구성 문서](docs/gcp-infra.md)
+- [배송 도메인 시나리오 테스트 계획](docs/scenario-test-plan.md)
+- [배송 도메인 성능 테스트 계획](docs/performance-test-plan.md)
