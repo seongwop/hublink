@@ -11,7 +11,6 @@ on:
       - '.github/workflows/gcp-cicd.yml'
       - 'scripts/gcp/**'
       - 'Dockerfile'
-      - 'Dockerfile.cd'
       - 'build.gradle'
       - 'settings.gradle'
       - 'gradle/**'
@@ -63,169 +62,9 @@ env:
   DATA_VM_IP: 10.10.0.40
 
 jobs:
-  detect-changes:
-    name: Detect changed services
-    runs-on: ubuntu-latest
-    outputs:
-      services_json: ${{ steps.changes.outputs.services_json }}
-      any_services: ${{ steps.changes.outputs.any_services }}
-      any_deploy: ${{ steps.changes.outputs.any_deploy }}
-      deploy_data: ${{ steps.changes.outputs.deploy_data }}
-      deploy_platform: ${{ steps.changes.outputs.deploy_platform }}
-      platform_services: ${{ steps.changes.outputs.platform_services }}
-      domain_a_services: ${{ steps.changes.outputs.domain_a_services }}
-      domain_b_services: ${{ steps.changes.outputs.domain_b_services }}
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Detect changes
-        id: changes
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          BEFORE_SHA: ${{ github.event.before }}
-          AFTER_SHA: ${{ github.sha }}
-        run: |
-          python - <<'PY'
-          import json
-          import os
-          import subprocess
-
-          all_services = [
-              "eureka-server",
-              "config-server",
-              "api-gateway",
-              "user-service",
-              "company-service",
-              "hub-service",
-              "product-service",
-              "order-service",
-              "stock-service",
-              "delivery-service",
-              "slack-service",
-              "ai-service",
-          ]
-
-          platform_services = {"eureka-server", "config-server", "api-gateway"}
-          domain_a_services = {"user-service", "company-service", "hub-service", "product-service"}
-          domain_b_services = {"order-service", "stock-service", "delivery-service", "slack-service", "ai-service"}
-
-          event_name = os.environ["EVENT_NAME"]
-          before_sha = os.environ.get("BEFORE_SHA", "")
-          after_sha = os.environ["AFTER_SHA"]
-
-          if event_name == "workflow_dispatch" or not before_sha or set(before_sha) == {"0"}:
-              changed_files = ["__full__"]
-          else:
-              changed_files = subprocess.check_output(
-                  ["git", "diff", "--name-only", before_sha, after_sha],
-                  text=True,
-              ).splitlines()
-
-          services = set()
-          deploy_data = False
-          deploy_platform = False
-
-          def add_all():
-              services.update(all_services)
-
-          for path in changed_files:
-              normalized = path.replace("\\", "/")
-
-              if normalized == "__full__":
-                  add_all()
-                  deploy_data = True
-                  deploy_platform = True
-                  continue
-
-              if (
-                  normalized == ".github/workflows/gcp-cicd.yml"
-                  or normalized.startswith("scripts/gcp/")
-                  or normalized in {"Dockerfile", "Dockerfile.cd", "build.gradle", "settings.gradle", "gradlew"}
-                  or normalized.startswith("gradle/")
-                  or normalized.startswith("core-common/")
-              ):
-                  add_all()
-                  deploy_data = True
-                  deploy_platform = True
-                  continue
-
-              if normalized == "docker-compose.platform.yml":
-                  services.update(platform_services)
-                  deploy_platform = True
-                  continue
-
-              if normalized == "docker-compose.domain-a.yml":
-                  services.update(domain_a_services)
-                  continue
-
-              if normalized == "docker-compose.domain-b.yml":
-                  services.update(domain_b_services)
-                  continue
-
-              if normalized == "docker-compose.data-monitor.yml":
-                  deploy_data = True
-                  continue
-
-              if normalized.startswith("db/") or normalized.startswith("monitoring/"):
-                  deploy_data = True
-                  continue
-
-              if normalized.startswith("config-repo/") and normalized.endswith(".yml"):
-                  deploy_platform = True
-                  service = normalized.removeprefix("config-repo/").removesuffix(".yml")
-                  if service in all_services:
-                      services.add(service)
-                  else:
-                      add_all()
-                  continue
-
-              for service in all_services:
-                  if normalized.startswith(f"{service}/"):
-                      services.add(service)
-                      break
-
-          selected = sorted(services, key=all_services.index)
-          selected_platform = [service for service in selected if service in platform_services]
-          selected_domain_a = [service for service in selected if service in domain_a_services]
-          selected_domain_b = [service for service in selected if service in domain_b_services]
-
-          if selected_platform:
-              deploy_platform = True
-
-          any_deploy = deploy_data or deploy_platform or bool(selected_domain_a) or bool(selected_domain_b)
-
-          outputs = {
-              "services_json": json.dumps(selected),
-              "any_services": str(bool(selected)).lower(),
-              "any_deploy": str(any_deploy).lower(),
-              "deploy_data": str(deploy_data).lower(),
-              "deploy_platform": str(deploy_platform).lower(),
-              "platform_services": " ".join(selected_platform),
-              "domain_a_services": " ".join(selected_domain_a),
-              "domain_b_services": " ".join(selected_domain_b),
-          }
-
-          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
-              for key, value in outputs.items():
-                  output.write(f"{key}={value}\n")
-
-          print("changed_files=", changed_files)
-          print("services=", selected)
-          print("deploy_data=", deploy_data)
-          print("deploy_platform=", deploy_platform)
-          print("domain_a_services=", selected_domain_a)
-          print("domain_b_services=", selected_domain_b)
-          PY
-
   build-and-push:
     name: Build and push images
     runs-on: ubuntu-latest
-    needs: detect-changes
-    if: needs.detect-changes.outputs.any_services == 'true'
     env:
       # GitHub Secrets 기준 Registry 주소
       GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
@@ -233,9 +72,21 @@ jobs:
 
     strategy:
       fail-fast: false
-      # 변경 서비스 기준 이미지 빌드
+      # SERVICE_NAME 기준 서비스별 이미지 빌드
       matrix:
-        service: ${{ fromJson(needs.detect-changes.outputs.services_json) }}
+        service:
+          - eureka-server
+          - config-server
+          - api-gateway
+          - user-service
+          - company-service
+          - hub-service
+          - product-service
+          - order-service
+          - stock-service
+          - delivery-service
+          - slack-service
+          - ai-service
 
     steps:
       - name: Checkout
@@ -252,14 +103,6 @@ jobs:
       - name: Set up gcloud
         uses: google-github-actions/setup-gcloud@v2
 
-      - name: Set up JDK 17
-        # Gradle 캐시 기반 JAR 빌드
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-          cache: gradle
-
       - name: Configure Docker for Artifact Registry
         # Artifact Registry Docker 인증
         run: gcloud auth configure-docker "${GCP_REGION}-docker.pkg.dev" --quiet
@@ -268,22 +111,14 @@ jobs:
         # Docker Buildx 빌드 캐시 준비
         uses: docker/setup-buildx-action@v3
 
-      - name: Build JAR ${{ matrix.service }}
-        # Docker 내부 Gradle 반복 빌드 방지
-        run: |
-          sed -i 's/\r$//' ./gradlew
-          chmod +x ./gradlew
-          ./gradlew :${{ matrix.service }}:clean :${{ matrix.service }}:bootJar -x test
-          find ./${{ matrix.service }}/build/libs/ \
-            -name "*.jar" ! -name "*plain.jar" \
-            -exec cp {} ./app.jar \;
-
       - name: Build and push ${{ matrix.service }}
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: Dockerfile.cd
+          file: Dockerfile
           push: true
+          build-args: |
+            SERVICE_NAME=${{ matrix.service }}
           # 커밋 SHA 태그와 latest 태그 동시 push
           tags: |
             ${{ env.IMAGE_REGISTRY }}/hublink-${{ matrix.service }}:${{ github.sha }}
@@ -294,10 +129,7 @@ jobs:
   deploy:
     name: Deploy to GCP VMs
     runs-on: ubuntu-latest
-    needs:
-      - detect-changes
-      - build-and-push
-    if: always() && needs.detect-changes.outputs.any_deploy == 'true' && (needs.build-and-push.result == 'success' || needs.build-and-push.result == 'skipped')
+    needs: build-and-push
     environment: gcp
 
     env:
@@ -415,43 +247,23 @@ jobs:
             --format="table(name,status,networkInterfaces[0].networkIP,networkInterfaces[0].accessConfigs[0].natIP)"
 
       - name: Deploy data and monitoring
-        if: needs.detect-changes.outputs.deploy_data == 'true'
-        # 데이터와 모니터링 계층 배포
+        # 데이터와 모니터링 계층 선배포
         run: |
           chmod +x scripts/gcp/deploy-vm.sh
           scripts/gcp/deploy-vm.sh "${DATA_MONITOR_VM}" docker-compose.data-monitor.yml db monitoring
 
       - name: Deploy platform services
-        if: needs.detect-changes.outputs.deploy_platform == 'true' && needs.detect-changes.outputs.platform_services != ''
-        # platform 변경 서비스 배포
-        env:
-          DEPLOY_SERVICES: ${{ needs.detect-changes.outputs.platform_services }}
+        # Eureka와 Config Server 선배포
         run: |
-          chmod +x scripts/gcp/deploy-vm.sh
-          scripts/gcp/deploy-vm.sh "${PLATFORM_VM}" docker-compose.platform.yml config-repo
-
-      - name: Copy platform config
-        if: needs.detect-changes.outputs.deploy_platform == 'true' && needs.detect-changes.outputs.platform_services == ''
-        # config-repo 변경 파일 복사
-        env:
-          SKIP_COMPOSE: "true"
-        run: |
-          chmod +x scripts/gcp/deploy-vm.sh
           scripts/gcp/deploy-vm.sh "${PLATFORM_VM}" docker-compose.platform.yml config-repo
 
       - name: Deploy domain A services
-        if: needs.detect-changes.outputs.domain_a_services != ''
-        # domain-a 변경 서비스 배포
-        env:
-          DEPLOY_SERVICES: ${{ needs.detect-changes.outputs.domain_a_services }}
+        # domain-a 서비스 배포
         run: |
           scripts/gcp/deploy-vm.sh "${DOMAIN_A_VM}" docker-compose.domain-a.yml
 
       - name: Deploy domain B services
-        if: needs.detect-changes.outputs.domain_b_services != ''
-        # domain-b 변경 서비스 배포
-        env:
-          DEPLOY_SERVICES: ${{ needs.detect-changes.outputs.domain_b_services }}
+        # domain-b 서비스 배포
         run: |
           scripts/gcp/deploy-vm.sh "${DOMAIN_B_VM}" docker-compose.domain-b.yml
 
