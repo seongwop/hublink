@@ -37,7 +37,7 @@ REMOTE="${VM_USER}@${VM_NAME}"
 # Docker 설치 상태 확인
 echo "Checking Docker on ${VM_NAME}"
 gcloud compute ssh "${REMOTE}" "${GCLOUD_FLAGS[@]}" \
-  --command "set -e; if ! command -v docker >/dev/null 2>&1; then echo 'Docker not found. Installing Docker...'; sudo apt-get update; sudo apt-get install -y ca-certificates curl; curl -fsSL https://get.docker.com | sudo sh; fi; sudo systemctl enable --now docker; if command -v gcloud >/dev/null 2>&1; then gcloud auth configure-docker '${REGION}-docker.pkg.dev' --quiet || true; fi; sudo docker version; sudo docker compose version"
+  --command "set -e; if ! command -v docker >/dev/null 2>&1; then echo 'Docker not found. Installing Docker...'; sudo apt-get update; sudo apt-get install -y ca-certificates curl; curl -fsSL https://get.docker.com | sudo sh; fi; sudo systemctl enable --now docker; if command -v gcloud >/dev/null 2>&1; then gcloud auth configure-docker '${REGION}-docker.pkg.dev' --quiet || true; sudo mkdir -p /root/.docker; printf '{\"credHelpers\":{\"${REGION}-docker.pkg.dev\":\"gcloud\"}}' | sudo tee /root/.docker/config.json >/dev/null; fi; sudo docker version; sudo docker compose version"
 
 # 원격 배포 디렉터리 권한 준비
 echo "Preparing ${REMOTE}:${REMOTE_DIR}"

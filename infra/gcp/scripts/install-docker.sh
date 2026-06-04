@@ -37,4 +37,6 @@ fi
 
 if command -v gcloud >/dev/null 2>&1; then
   gcloud auth configure-docker "${region}-docker.pkg.dev" --quiet || true
+  mkdir -p /root/.docker
+  printf '{"credHelpers":{"%s-docker.pkg.dev":"gcloud"}}' "${region}" >/root/.docker/config.json
 fi
