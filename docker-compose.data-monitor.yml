@@ -86,7 +86,7 @@ services:
 
   # data-monitor VM Docker 로그 수집기
   promtail:
-    image: grafana/promtail:latest
+    image: ${IMAGE_REGISTRY}/hublink-promtail:latest
     container_name: hublink-promtail-data-monitor
     env_file:
       - ${HUBLINK_ENV_FILE:-.env.gcp}
