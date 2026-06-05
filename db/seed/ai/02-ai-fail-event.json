@@ -1,0 +1,28 @@
+{
+  "eventId": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+  "deliveryId": null,
+  "orderId": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+
+  "ordererName": "실패테스트",
+  "ordererEmail": "fail@test.world",
+  "orderedAt": "2025-12-08T10:00:00",
+  "requestMessage": "실패 케이스 테스트입니다.",
+
+  "receiverUserId": "cccccccc-cccc-cccc-cccc-cccccccccccc",
+  "receiverSlackId": "UFAIL000001",
+
+  "products": [],
+
+  "requestedArrivalAt": null,
+
+  "departureHubName": "",
+  "destinationAddress": "",
+
+  "deliveryManagerName": "실패담당자",
+  "deliveryManagerEmail": "fail-manager@test.world",
+
+  "routeInfo": [],
+
+  "workStartTime": "09:00",
+  "workEndTime": "18:00"
+}
