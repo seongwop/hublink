@@ -38,3 +38,28 @@ fi
 if command -v gcloud >/dev/null 2>&1; then
   gcloud auth configure-docker "${region}-docker.pkg.dev" --quiet || true
 fi
+
+if [ "${role}" = "load-test" ]; then
+  cat >/usr/local/bin/hublink-k6-smoke <<'SCRIPT'
+#!/usr/bin/env bash
+set -euo pipefail
+
+TARGET_URL="$${1:-http://10.10.0.10:19091/actuator/health}"
+
+docker run --rm -i grafana/k6:latest run -e TARGET_URL="$TARGET_URL" - <<'K6'
+import http from 'k6/http';
+import { sleep } from 'k6';
+
+export const options = {
+  vus: 10,
+  duration: '30s',
+};
+
+export default function () {
+  http.get(__ENV.TARGET_URL);
+  sleep(1);
+}
+K6
+SCRIPT
+  chmod +x /usr/local/bin/hublink-k6-smoke
+fi

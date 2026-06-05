@@ -18,7 +18,7 @@ ssh_source_ranges    = ["0.0.0.0/0"]
 public_source_ranges = ["0.0.0.0/0"]
 
 # 고정 외부 IP 대상 VM
-external_ip_vm_names = ["platform", "data-monitor"]
+external_ip_vm_names = ["platform", "data-monitor", "load-test"]
 
 # SSH 공개키 직접 등록 옵션
 # ssh_username   = "hublink"
@@ -53,6 +53,13 @@ external_ip_vm_names = ["platform", "data-monitor"]
 #     disk_size_gb = 50
 #     internal_ip  = "10.10.0.40"
 #     tags         = ["hublink", "hublink-ssh", "hublink-monitor"]
+#   }
+#   load-test = {
+#     role         = "load-test"
+#     machine_type = "e2-medium"
+#     disk_size_gb = 20
+#     internal_ip  = "10.10.0.50"
+#     tags         = ["hublink", "hublink-ssh", "hublink-load-test"]
 #   }
 # }
 

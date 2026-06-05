@@ -1,6 +1,6 @@
 # GCP 인프라 구성 문서
 
-이 문서는 HubLink 프로젝트를 GCP Compute Engine VM 4대로 실행하기 위한 인프라 구성을 정리한다.
+이 문서는 HubLink 프로젝트를 GCP Compute Engine VM 5대로 실행하기 위한 인프라 구성을 정리한다.
 
 ## 구성 요약
 
@@ -32,8 +32,11 @@ infra/gcp
 | hublink-domain-a-vm | `10.10.0.20` | 없음 | user, company, hub, product |
 | hublink-domain-b-vm | `10.10.0.30` | 없음 | order, stock, delivery, slack, ai |
 | hublink-data-monitor-vm | `10.10.0.40` | `34.64.89.47` | PostgreSQL, Redis, Kafka, Kafka UI, Zipkin, Prometheus, Grafana |
+| hublink-load-test-vm | `10.10.0.50` | Terraform output 확인 | k6 부하 발생 |
 
-외부 IP는 브라우저 접속이 필요한 `platform`, `data-monitor`에만 고정 IP로 연결한다. `domain-a`, `domain-b`는 외부 IP 없이 내부 통신과 IAP SSH를 사용한다.
+외부 IP는 브라우저 접속이 필요한 `platform`, `data-monitor`와 부하 테스트 VM 접속용 `load-test`에만 고정 IP로 연결한다. `domain-a`, `domain-b`는 외부 IP 없이 내부 통신과 IAP SSH를 사용한다.
+
+`load-test`는 외부 IP로 접속하더라도 실제 부하는 `platform` 내부 IP인 `10.10.0.10:19091`로 전송한다.
 
 현재 IP 확인:
 
@@ -62,6 +65,7 @@ PostgreSQL:    10.10.0.40:5432
 Redis:         10.10.0.40:6379
 Kafka:         10.10.0.40:9092
 Zipkin:        http://10.10.0.40:9411/api/v2/spans
+Load Test:     10.10.0.50
 ```
 
 ## 공개 접속 주소
@@ -176,6 +180,20 @@ http://34.50.23.39:19090
 
 ```text
 http://34.64.89.47:8082
+```
+
+부하 테스트 VM 접속:
+
+```bash
+gcloud compute ssh hublink-load-test-vm \
+  --zone asia-northeast3-a \
+  --project hublink-498115
+```
+
+k6 smoke 테스트:
+
+```bash
+hublink-k6-smoke http://10.10.0.10:19091/actuator/health
 ```
 
 모니터링 확인:
