@@ -28,6 +28,7 @@ Thumbs.db
 *.env
 .env.aws
 .env.gcp
+performance/k6/.env.k6
 
 # Test
 target/
