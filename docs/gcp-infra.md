@@ -207,6 +207,4 @@ http://34.64.89.47:9090
 
 GitHub Actions 기반 배포 흐름은 별도 문서에서 정리한다.
 
-```text
-docs/gcp-cicd.md
-```
+[gcp-cicd.md](gcp-cicd.md)

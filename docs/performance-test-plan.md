@@ -6,8 +6,6 @@
 
 | 문서 | 내용 |
 | --- | --- |
-| [gcp-infra.md](gcp-infra.md) | GCP VM, 네트워크, Terraform 구성 |
-| [gcp-cicd.md](gcp-cicd.md) | GitHub Actions 기반 GCP 배포 흐름 |
 | [scenario-test-plan.md](scenario-test-plan.md) | 배송 도메인 기능 시나리오와 장애 유도 |
 
 ## 테스트 목표
