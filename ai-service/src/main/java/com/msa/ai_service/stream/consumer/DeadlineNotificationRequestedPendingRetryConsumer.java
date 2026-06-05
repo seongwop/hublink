@@ -89,6 +89,7 @@ public class DeadlineNotificationRequestedPendingRetryConsumer {
 
                 DeadlineGeneratedEvent generatedEvent = DeadlineGeneratedEvent.builder()
                         .eventId(UUID.randomUUID())
+                        .deliveryId(event.getDeliveryId())
                         .aiMessageId(result.getAiMessageId())
                         .receiverUserId(event.getReceiverUserId())
                         .receiverSlackId(event.getReceiverSlackId())
