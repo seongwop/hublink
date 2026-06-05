@@ -6,7 +6,7 @@ on:
   # develop-infra 배포 관련 변경 감지
   push:
     branches:
-      - develop-infra
+      - develop
     paths:
       - '.github/workflows/gcp-cicd.yml'
       - 'scripts/gcp/**'
