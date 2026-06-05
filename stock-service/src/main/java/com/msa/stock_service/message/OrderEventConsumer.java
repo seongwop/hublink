@@ -52,7 +52,7 @@ public class OrderEventConsumer {
             @Header(KafkaHeaders.RECEIVED_KEY) String key
     ) {
         UUID orderId = UUID.fromString(key);
-        log.info("[재고 차감 요청 수신] orderId={}", orderId);
+        log.info("event=STOCK_DECREASE_CONSUMED orderId={}", orderId);
 
         try {
             StockDecreaseCommandDto command = objectMapper.readValue(message, StockDecreaseCommandDto.class);
@@ -62,17 +62,17 @@ public class OrderEventConsumer {
             List<StockHistoryResponseDto> result = stockOrchestrator.decreaseStock(request);
 
             eventPublisher.publish("stock.decrease.success", orderId, toStockResult(orderId, result));
-            log.info("[재고 차감 성공] orderId={}", orderId);
+            log.info("event=STOCK_DECREASE_COMPLETED orderId={}", orderId);
         } catch (IllegalArgumentException e) {
             // 재고 부족·상품 없음 등 예상된 실패 → 실패 편지 발행
-            log.warn("[재고 차감 실패] orderId={}, 사유={}", orderId, e.getMessage());
+            log.warn("event=STOCK_DECREASE_REJECTED orderId={} reason={}", orderId, e.getMessage());
             eventPublisher.publish(
                     "stock.decrease.failed",
                     orderId,
                     toStockFailure(orderId, e.getMessage())
             );
         } catch (CustomException e) {
-            log.warn("[?ш퀬 李④컧 ?ㅽ뙣] orderId={}, ?ъ쑀={}", orderId, e.getMessage());
+            log.warn("event=STOCK_DECREASE_REJECTED orderId={} reason={}", orderId, e.getMessage());
             eventPublisher.publish(
                     "stock.decrease.failed",
                     orderId,
@@ -80,7 +80,7 @@ public class OrderEventConsumer {
             );
         } catch (Exception e) {
             // JSON 파싱 오류 등 예상 못 한 실패 → 다시 던져 Kafka가 재시도하게 한다
-            log.error("[재고 차감 처리 중 오류] orderId={}", orderId, e);
+            log.error("event=STOCK_DECREASE_PROCESSING_FAILED orderId={}", orderId, e);
             throw new RuntimeException(e);
         }
     }
@@ -98,7 +98,7 @@ public class OrderEventConsumer {
             @Header(KafkaHeaders.RECEIVED_KEY) String key
     ) {
         UUID orderId = UUID.fromString(key);
-        log.info("[재고 복원 요청 수신] orderId={}", orderId);
+        log.info("event=STOCK_RESTORE_CONSUMED orderId={}", orderId);
 
         try {
             List<StockItemCommandDto> request = objectMapper.readValue(
@@ -116,9 +116,9 @@ public class OrderEventConsumer {
                     orderId,
                     Map.of("orderId", orderId.toString())
             );
-            log.info("[재고 복원 완료] orderId={}", orderId);
+            log.info("event=STOCK_RESTORE_COMPLETED orderId={}", orderId);
         } catch (Exception e) {
-            log.error("[재고 복원 처리 중 오류] orderId={}", orderId, e);
+            log.error("event=STOCK_RESTORE_PROCESSING_FAILED orderId={}", orderId, e);
             throw new RuntimeException(e);
         }
     }

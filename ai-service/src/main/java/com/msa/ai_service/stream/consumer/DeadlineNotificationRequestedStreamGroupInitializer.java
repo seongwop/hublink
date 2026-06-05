@@ -26,19 +26,19 @@ public class DeadlineNotificationRequestedStreamGroupInitializer {
                     ReadOffset.from("0"),
                     DeadlineStreamConstants.AI_SERVICE_GROUP
             );
-            log.info("Redis Stream consumer group 생성 완료. stream={}, group={}",
+            log.info("event=AI_STREAM_GROUP_CREATED stream={} group={}",
                     DeadlineStreamConstants.DEADLINE_REQUESTED_STREAM,
                     DeadlineStreamConstants.AI_SERVICE_GROUP
             );
         } catch (RedisSystemException e) {
             if (isBusyGroup(e)) {
-                log.info("Redis Stream consumer group 기존 존재. stream={}, group={}",
+                log.info("event=AI_STREAM_GROUP_EXISTS stream={} group={}",
                         DeadlineStreamConstants.DEADLINE_REQUESTED_STREAM,
                         DeadlineStreamConstants.AI_SERVICE_GROUP
                 );
                 return;
             }
-            log.error("Redis Stream consumer group 생성 실패. stream={}, group={}",
+            log.error("event=AI_STREAM_GROUP_CREATE_FAILED stream={} group={}",
                     DeadlineStreamConstants.DEADLINE_REQUESTED_STREAM,
                     DeadlineStreamConstants.AI_SERVICE_GROUP,
                     e

@@ -14,6 +14,7 @@ import com.msa.delivery_service.message.RedisStreamEventPublisher;
 import com.msa.delivery_service.dto.DeliveryRequest;
 import com.msa.delivery_service.dto.DeliveryResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -26,6 +27,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class DeliveryCreateService {
     private static final String UK_ACTIVE_ORDER_ID =
             "uk_p_deliveries_active_order_id";
@@ -70,6 +72,12 @@ public class DeliveryCreateService {
             );
             delivery.updateEstimatedArrival(calculateEstimatedArrivalAt(hubRoutes));
             Delivery savedDelivery = deliveryRepository.saveAndFlush(delivery);
+            log.info("event=DELIVERY_ENTITY_SAVED orderId={} deliveryId={} departureHubId={} destinationHubId={}",
+                    request.getOrderId(),
+                    savedDelivery.getDeliveryId(),
+                    departureHubId,
+                    destinationHubId
+            );
 
             List<DeliveryRouteHistory> routeHistories = HubRouteResponse.toDeliveryRouteHistories(
                     savedDelivery,
@@ -78,6 +86,11 @@ public class DeliveryCreateService {
                     hubDeliveryManagerIds
             );
             deliveryRouteHistoryRepository.saveAllAndFlush(routeHistories);
+            log.info("event=DELIVERY_ROUTE_HISTORY_SAVED orderId={} deliveryId={} routeHistoryCount={}",
+                    request.getOrderId(),
+                    savedDelivery.getDeliveryId(),
+                    routeHistories.size()
+            );
 
             // 커밋이 완료되면 콜백으로 이벤트 발행
             redisStreamEventPublisher.publishAfterCommit(
@@ -95,11 +108,25 @@ public class DeliveryCreateService {
                             workEndTime
                     )
             );
+            log.info("event=AI_DEADLINE_REQUEST_REGISTERED orderId={} deliveryId={} stream={}",
+                    request.getOrderId(),
+                    savedDelivery.getDeliveryId(),
+                    RedisStreamEventPublisher.DEADLINE_REQUESTED_STREAM
+            );
 
             DeliveryResponse response = DeliveryResponse.from(savedDelivery);
             deliveryOutboxService.enqueue(CREATE_SUCCEED_TOPIC, request.getOrderId().toString(), response);
+            log.info("event=DELIVERY_SUCCESS_OUTBOX_ENQUEUED orderId={} deliveryId={} topic={}",
+                    request.getOrderId(),
+                    savedDelivery.getDeliveryId(),
+                    CREATE_SUCCEED_TOPIC
+            );
             return response;
         } catch (DataIntegrityViolationException e) {
+            log.warn("event=DELIVERY_CREATE_INTEGRITY_FAILED orderId={} reason={}",
+                    request.getOrderId(),
+                    e.getMostSpecificCause().getMessage()
+            );
             throw new CustomException(translateIntegrityException(e));
         }
     }

@@ -1,0 +1,36 @@
+# 단일 VM 실습용 Loki 설정
+auth_enabled: false
+
+# Loki HTTP 서버 포트
+server:
+  http_listen_port: 3100
+
+# 로컬 파일 저장소 공통 설정
+common:
+  path_prefix: /loki
+  replication_factor: 1
+  ring:
+    kvstore:
+      store: inmemory
+  storage:
+    filesystem:
+      chunks_directory: /loki/chunks
+      rules_directory: /loki/rules
+
+# 로그 인덱스 스키마 설정
+schema_config:
+  configs:
+    - from: 2024-01-01
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+
+# 알림 규칙 저장소
+ruler:
+  storage:
+    type: local
+    local:
+      directory: /loki/rules

@@ -110,9 +110,14 @@ public class OrderService {
                     .createdAt(LocalDateTime.now())
                     .build();
 
-            outboxRepository.save(stockOutbox);
+            Outbox savedOutbox = outboxRepository.save(stockOutbox);
+            log.info("event=ORDER_OUTBOX_ENQUEUED topic={} orderId={} outboxId={}",
+                    savedOutbox.getTopic(),
+                    orderId,
+                    savedOutbox.getId()
+            );
         }catch (Exception e) {
-            log.error("재고 차감 직렬화 실패", e);
+            log.error("event=ORDER_STOCK_OUTBOX_SERIALIZE_FAILED orderId={}", orderId, e);
             throw new CustomException(OrderErrorCode.FAIL_OUTBOX);
         }
     }
@@ -131,9 +136,14 @@ public class OrderService {
                     .createdAt(LocalDateTime.now())
                     .build();
 
-            outboxRepository.save(stockOutbox);
+            Outbox savedOutbox = outboxRepository.save(stockOutbox);
+            log.info("event=ORDER_OUTBOX_ENQUEUED topic={} orderId={} outboxId={}",
+                    savedOutbox.getTopic(),
+                    makeDeliveryReqDto.getOrderId(),
+                    savedOutbox.getId()
+            );
         }catch (Exception e) {
-            log.error("재고 차감 직렬화 실패", e);
+            log.error("event=ORDER_DELIVERY_OUTBOX_SERIALIZE_FAILED orderId={}", makeDeliveryReqDto.getOrderId(), e);
             throw new CustomException(OrderErrorCode.FAIL_OUTBOX);
         }
     }
@@ -251,12 +261,20 @@ public class OrderService {
 
     @Transactional
     public MakeOrderDetailResDto makeOrders(OrderMakeReqDto orderMakeReqDto, UUID userId, UUID orderKey) {
+        log.info("event=ORDER_CREATE_REQUESTED userId={} orderKey={} supplierCompanyId={} receiverCompanyId={} itemCount={}",
+                userId,
+                orderKey,
+                orderMakeReqDto.getSupplierCompanyId(),
+                orderMakeReqDto.getReceiverCompanyId(),
+                orderMakeReqDto.getItems() == null ? 0 : orderMakeReqDto.getItems().size()
+        );
 
         // 레디스 중복 주문 방지
         String redisKey = "order:make" + orderKey;
         Boolean b = redisTemplate.opsForValue().setIfAbsent(redisKey, "PROCESSING", Duration.ofMinutes(1));
 
         if (Boolean.FALSE.equals(b)) {
+            log.warn("event=ORDER_CREATE_DUPLICATED userId={} orderKey={}", userId, orderKey);
             throw new CustomException(OrderErrorCode.ALREADY_EXIST_ORDER);
         }
 
@@ -301,6 +319,12 @@ public class OrderService {
 
         // 내 주문 DB에 선반영
         Orders savedOrder = orderJpaRepository.saveAndFlush(initOrder);
+        log.info("event=ORDER_CREATED orderId={} userId={} status={} itemCount={}",
+                savedOrder.getId(),
+                userId,
+                savedOrder.getStatus(),
+                savedOrder.getOrderItems().size()
+        );
 
         ModifyStockReqDto modifyStockReqDto = new ModifyStockReqDto(savedOrder.getId(), orderer.name(), orderer.email(), deliveryAddress, receiverCompanyName, items);
         // 재고 차감 Outbox 발행 메서드 호출
@@ -328,9 +352,9 @@ public class OrderService {
     private void rollbackStock(List<OrderMakeReqDto.Items> items) {
         try {
             productCircuitService.increaseProductStock(items);
-            log.info("[보상 로직 완료] 차감되었던 상품 재고가 정상적으로 롤백되었습니다.");
+            log.info("event=ORDER_STOCK_ROLLBACK_COMPLETED");
         } catch (Exception re) {
-            log.error("보상 로직인 재고 복구 API 실패하였습니다. 즉시 수동 데이터 보정이 필요합니다. 원인: {}", re.getMessage());
+            log.error("event=ORDER_STOCK_ROLLBACK_FAILED reason={}", re.getMessage());
         }
     }
 
@@ -402,11 +426,15 @@ public class OrderService {
     @Transactional
     public void processStockSuccess(StockResultDto result) {
         UUID orderId = result.getOrderId();
+        log.info("event=STOCK_DECREASE_SUCCEEDED orderId={} productCount={}",
+                orderId,
+                result.getProducts() == null ? 0 : result.getProducts().size()
+        );
         Orders order = orderJpaRepository.findById(orderId)
                 .orElseThrow(() -> new CustomException(OrderErrorCode.NOT_EXIST_ORDER));
 
         if (order.getStatus() != Status.PENDING) {
-            log.warn("이미 처리 완료된 재고 신호 스킵. 주문 ID: {}", orderId);
+            log.warn("event=STOCK_DECREASE_ALREADY_PROCESSED orderId={}", orderId);
             return;
         }
 
@@ -433,14 +461,21 @@ public class OrderService {
         );
 
         this.publishMakeDeliveryEvent(deliveryReqDto);
+        log.info("event=DELIVERY_CREATE_REQUEST_PREPARED orderId={} status={} totalPrice={}",
+                orderId,
+                order.getStatus(),
+                order.getTotalPrice()
+        );
     }
 
     @Transactional
     public void processStockFailed(UUID orderId) {
+        log.warn("event=STOCK_DECREASE_FAILED orderId={}", orderId);
         Orders order = orderJpaRepository.findById(orderId).orElse(null);
         if (order != null) {
             order.setStatus(Status.FAILED);
             order.getOrderItems().forEach(item -> item.setStatus(Status.FAILED));
+            log.warn("event=ORDER_FAILED_BY_STOCK orderId={}", orderId);
         }
     }
 
@@ -449,15 +484,18 @@ public class OrderService {
         Orders order = orderJpaRepository.findById(orderId).orElse(null);
         if (order != null) {
             order.setStatus(Status.COMPLETED);
+            log.info("event=ORDER_COMPLETED orderId={}", orderId);
         }
     }
 
     @Transactional
     public void processDeliveryFailed(UUID orderId) throws com.fasterxml.jackson.core.JsonProcessingException {
+        log.warn("event=DELIVERY_CREATE_FAILED_CONSUMED orderId={}", orderId);
         Orders order = orderJpaRepository.findById(orderId)
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 주문입니다. ID: " + orderId));
 
         if (order.getStatus() == Status.FAILED) {
+            log.warn("event=ORDER_ALREADY_FAILED orderId={}", orderId);
             return;
         }
 
@@ -478,7 +516,11 @@ public class OrderService {
                 .createdAt(java.time.LocalDateTime.now())
                 .build();
 
-        outboxRepository.save(stockRollbackOutbox);
+        Outbox savedOutbox = outboxRepository.save(stockRollbackOutbox);
+        log.warn("event=STOCK_ROLLBACK_OUTBOX_ENQUEUED orderId={} outboxId={}",
+                orderId,
+                savedOutbox.getId()
+        );
     }
 
 }

@@ -7,6 +7,7 @@ import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
@@ -24,6 +25,7 @@ import java.util.Base64;
 import java.util.List;
 
 @Component
+@Slf4j
 public class JwtAuthFilter implements GlobalFilter, Ordered {
 
     private static final String INTERNAL_PATH_PREFIX = "/internal/";
@@ -60,6 +62,7 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
         String path = exchange.getRequest().getPath().value();
 
         if (path.startsWith(INTERNAL_PATH_PREFIX)) {
+            log.warn("event=GATEWAY_INTERNAL_PATH_BLOCKED path={}", path);
             return WebFluxResponseUtils.writeErrorResponse(exchange, HttpStatus.FORBIDDEN, "접근이 거부되었습니다.");
         }
 
@@ -71,11 +74,13 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
 
         String authHeader = exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            log.warn("event=GATEWAY_AUTH_MISSING path={}", path);
             return WebFluxResponseUtils.writeErrorResponse(exchange, HttpStatus.UNAUTHORIZED, "인증 토큰이 없습니다.");
         }
 
         String token = authHeader.substring(7);
         if (token.isBlank()) {
+            log.warn("event=GATEWAY_AUTH_BLANK path={}", path);
             return WebFluxResponseUtils.writeErrorResponse(exchange, HttpStatus.UNAUTHORIZED, "인증 토큰이 없습니다.");
         }
 
@@ -87,8 +92,10 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
                     .parseSignedClaims(token)
                     .getPayload();
         } catch (ExpiredJwtException e) {
+            log.warn("event=GATEWAY_AUTH_EXPIRED path={}", path);
             return WebFluxResponseUtils.writeErrorResponse(exchange, HttpStatus.UNAUTHORIZED, "토큰이 만료되었습니다.");
         } catch (JwtException e) {
+            log.warn("event=GATEWAY_AUTH_INVALID path={} reason={}", path, e.getClass().getSimpleName());
             return WebFluxResponseUtils.writeErrorResponse(exchange, HttpStatus.UNAUTHORIZED, "유효하지 않은 토큰입니다.");
         }
 
@@ -99,6 +106,11 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
 
         // 필수 Claim(userId, role) null 검증
         if (userId == null || role == null) {
+            log.warn("event=GATEWAY_AUTH_CLAIM_MISSING path={} userIdPresent={} rolePresent={}",
+                    path,
+                    userId != null,
+                    role != null
+            );
             return WebFluxResponseUtils.writeErrorResponse(exchange, HttpStatus.UNAUTHORIZED, "토큰에 필수 정보가 누락되었습니다.");
         }
 
@@ -111,6 +123,12 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
         return Mono.zip(tokenBlacklisted, userBlocked)
                 .flatMap(tuple -> {
                     if (Boolean.TRUE.equals(tuple.getT1()) || Boolean.TRUE.equals(tuple.getT2())) {
+                        log.warn("event=GATEWAY_AUTH_BLACKLISTED path={} userId={} tokenBlacklisted={} userBlocked={}",
+                                path,
+                                userId,
+                                tuple.getT1(),
+                                tuple.getT2()
+                        );
                         return WebFluxResponseUtils.writeErrorResponse(exchange, HttpStatus.UNAUTHORIZED, "인증이 만료되었습니다.");
                     }
 
@@ -132,8 +150,10 @@ public class JwtAuthFilter implements GlobalFilter, Ordered {
 
                     return chain.filter(mutatedExchange);
                 })
-                .onErrorResume(RedisUnavailableException.class, e ->
-                        WebFluxResponseUtils.writeErrorResponse(exchange, HttpStatus.SERVICE_UNAVAILABLE, "서비스가 일시적으로 불가합니다."));
+                .onErrorResume(RedisUnavailableException.class, e -> {
+                    log.warn("event=GATEWAY_REDIS_UNAVAILABLE path={}", path);
+                    return WebFluxResponseUtils.writeErrorResponse(exchange, HttpStatus.SERVICE_UNAVAILABLE, "서비스가 일시적으로 불가합니다.");
+                });
     }
 
     @Override

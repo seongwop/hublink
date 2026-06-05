@@ -191,7 +191,7 @@ jobs:
           SWAGGER_GATEWAY_URL="${SWAGGER_GATEWAY_URL:-http://${PLATFORM_VM_EXTERNAL_IP}:19091}"
           # Swagger UI origin 기본 허용
           CORS_ALLOWED_ORIGIN="${CORS_ALLOWED_ORIGIN:-${SWAGGER_GATEWAY_URL}}"
-          LOG_LEVEL_ROOT="${LOG_LEVEL_ROOT:-WARN}"
+          LOG_LEVEL_ROOT="${LOG_LEVEL_ROOT:-INFO}"
 
           cat > .env.gcp <<EOF
           IMAGE_REGISTRY=${IMAGE_REGISTRY}
@@ -255,17 +255,17 @@ jobs:
       - name: Deploy platform services
         # Eureka와 Config Server 선배포
         run: |
-          scripts/gcp/deploy-vm.sh "${PLATFORM_VM}" docker-compose.platform.yml config-repo
+          scripts/gcp/deploy-vm.sh "${PLATFORM_VM}" docker-compose.platform.yml config-repo monitoring
 
       - name: Deploy domain A services
         # domain-a 서비스 배포
         run: |
-          scripts/gcp/deploy-vm.sh "${DOMAIN_A_VM}" docker-compose.domain-a.yml
+          scripts/gcp/deploy-vm.sh "${DOMAIN_A_VM}" docker-compose.domain-a.yml monitoring
 
       - name: Deploy domain B services
         # domain-b 서비스 배포
         run: |
-          scripts/gcp/deploy-vm.sh "${DOMAIN_B_VM}" docker-compose.domain-b.yml
+          scripts/gcp/deploy-vm.sh "${DOMAIN_B_VM}" docker-compose.domain-b.yml monitoring
 
       - name: Show service registry hints
         run: |

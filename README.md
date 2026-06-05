@@ -2,13 +2,11 @@
 
 > 기존 프로젝트: [Team4-MSA/hublink](https://github.com/Team4-MSA/hublink)
 
-이 저장소는 기존 HubLink MSA 프로젝트를 기반으로, 배포 환경 구성, 성능 테스트, 모니터링, 트러블슈팅을 보강하기 위한 확장 프로젝트입니다.
+기존 HubLink MSA 프로젝트를 기반으로, 배포 환경 구성, 성능 테스트, 모니터링, 트러블슈팅을 보강하기 위한 확장 프로젝트
 
----
+## 배포 구조
 
-## 배포 환경
-
-GCP에 VM 4대를 만들고, 각 VM에 역할별 서비스를 나누어 배포합니다.
+GCP VM 5개를 기준으로 서비스를 나누어 배포한다.
 
 ```text
 platform-vm
@@ -36,23 +34,27 @@ data-monitor-vm
   - Kafka UI
   - Zipkin
   - Prometheus
+  - Loki
   - Grafana
+
+load-test-vm
+  - k6
+  - 부하 테스트 스크립트
 ```
 
-서비스 컨테이너들은 같은 Docker 네트워크에 있는 것이 아니므로, GCP 내부 IP를 기준으로 통신합니다.
-
----
+서비스 컨테이너들은 각 VM의 Docker 네트워크에 따로 올라가므로, 서비스 간 통신은 GCP 내부 IP를 기준으로 연결한다.
 
 ## VM 구성
 
 | VM | 역할 | 주요 포트 |
 | --- | --- | --- |
-| platform-vm | 서비스 디스커버리, 중앙 설정, API 진입점 | 19090, 19091, 19092 |
-| domain-a-vm | 사용자/업체/허브/상품 도메인 서비스 | 19093, 19095, 19096, 19097 |
-| domain-b-vm | 주문/재고/배송/알림/AI 도메인 서비스 | 19094, 19098, 19099, 19100, 19101 |
-| data-monitor-vm | 데이터 저장소, 메시징, 모니터링 | 5432, 6379, 9092, 8082, 9411, 9090, 3000 |
+| platform-vm | 서비스 디스커버리, 설정 서버, API 진입점 | 19090, 19091, 19092 |
+| domain-a-vm | 사용자, 업체, 허브, 상품 도메인 서비스 | 19093, 19095, 19096, 19097 |
+| domain-b-vm | 주문, 재고, 배송, 알림, AI 도메인 서비스 | 19094, 19098, 19099, 19100, 19101 |
+| data-monitor-vm | 데이터 저장소, 메시징, 모니터링 | 5432, 6379, 9092, 8082, 9411, 9090, 3100, 3000 |
+| load-test-vm | GCP 내부 부하 발생 | k6 실행 |
 
-예정 내부 IP:
+## 고정 내부 IP
 
 | VM | Internal IP |
 | --- | --- |
@@ -60,13 +62,34 @@ data-monitor-vm
 | domain-a-vm | `10.10.0.20` |
 | domain-b-vm | `10.10.0.30` |
 | data-monitor-vm | `10.10.0.40` |
+| load-test-vm | `10.10.0.50` |
 
-이 IP는 `.env.gcp`와 `monitoring/prometheus.gcp.yml`에서 사용합니다.
+## 관측 도구
 
----
+| 도구 | 주소 | 용도 |
+| --- | --- | --- |
+| Grafana | `http://34.64.89.47:3000` | 메트릭, 로그 통합 조회 |
+| Prometheus | `http://34.64.89.47:9090` | JVM, HTTP, 시스템 메트릭 조회 |
+| Zipkin | `http://34.64.89.47:9411` | 분산 추적 |
+| Kafka UI | `http://34.64.89.47:8082` | topic, message, consumer lag 확인 |
+| Loki | Grafana datasource | Docker 로그 검색 |
+
+## 테스트 방향
+
+이 프로젝트의 테스트 초점은 배송 도메인 흐름이다.
+
+```text
+Gateway 부하
+주문 생성 이후 배송 생성 Kafka 흐름
+배송 기사 배정과 배송 생성 처리량
+배송 -> AI -> Slack Redis Stream 흐름
+Kafka lag, Redis pending, JVM heap, p95/p99 기반 병목 확인
+```
+
+부하 테스트 스크립트는 `performance/k6`에서 관리하고, GitHub Actions의 `GCP Load Test Sync` workflow가 `load-test-vm`으로 동기화한다.
 
 ## 문서
 
-- [GCP 인프라 구성 문서](docs/gcp-infra.md)
+- [GCP 인프라 구성](docs/gcp-infra.md)
 - [배송 도메인 시나리오 테스트 계획](docs/scenario-test-plan.md)
 - [배송 도메인 성능 테스트 계획](docs/performance-test-plan.md)

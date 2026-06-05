@@ -6,14 +6,17 @@ import com.msa.slack_service.service.SlackService;
 import com.msa.slack_service.stream.event.DeadlineGeneratedEvent;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.connection.stream.*;
+import org.springframework.data.redis.connection.stream.Consumer;
+import org.springframework.data.redis.connection.stream.MapRecord;
+import org.springframework.data.redis.connection.stream.ReadOffset;
+import org.springframework.data.redis.connection.stream.StreamOffset;
+import org.springframework.data.redis.connection.stream.StreamReadOptions;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-
-import java.util.Set;
 
 @Slf4j
 @Component
@@ -47,7 +50,7 @@ public class DeadlineGeneratedPendingRetryConsumer {
                 Object payloadObj = record.getValue().get("payload");
 
                 if (payloadObj == null) {
-                    log.warn("Pending Slack 이벤트 payload 누락으로 ACK 처리: recordId={}", record.getId());
+                    log.warn("event=SLACK_PENDING_PAYLOAD_MISSING recordId={}", record.getId());
                     acknowledge(record);
                     continue;
                 }
@@ -59,7 +62,7 @@ public class DeadlineGeneratedPendingRetryConsumer {
 
                 Set<ConstraintViolation<DeadlineGeneratedEvent>> violations = validator.validate(event);
                 if (!violations.isEmpty()) {
-                    log.warn("Pending Slack 이벤트 유효성 검증 실패로 ACK 처리: recordId={}, violations={}",
+                    log.warn("event=SLACK_PENDING_VALIDATION_FAILED recordId={} violations={}",
                             record.getId(),
                             violations.stream()
                                     .map(ConstraintViolation::getMessage)
@@ -69,17 +72,17 @@ public class DeadlineGeneratedPendingRetryConsumer {
                     continue;
                 }
 
-                log.info("Pending Slack 이벤트 재처리 시작: recordId={}, eventId={}",
+                log.info("event=SLACK_PENDING_RETRY_STARTED recordId={} eventId={}",
                         record.getId(), event.getEventId());
 
                 slackService.processDeadlineGenerated(event);
 
                 acknowledge(record);
 
-                log.info("Pending Slack 이벤트 ACK 완료: recordId={}", record.getId());
+                log.info("event=SLACK_PENDING_ACK_COMPLETED recordId={}", record.getId());
 
             } catch (Exception e) {
-                log.error("Pending Slack 이벤트 재처리 실패로 ACK 처리: recordId={}", record.getId(), e);
+                log.error("event=SLACK_PENDING_RETRY_FAILED recordId={}", record.getId(), e);
                 acknowledge(record);
             }
         }

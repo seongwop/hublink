@@ -1,0 +1,50 @@
+# VM별 Docker 로그 수집 설정
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+# 로그 읽기 위치 저장
+positions:
+  filename: /var/lib/promtail/positions.yaml
+
+# Loki push 대상
+clients:
+  - url: http://${DATA_VM_IP}:3100/loki/api/v1/push
+
+# Docker 컨테이너 로그 수집
+scrape_configs:
+  - job_name: hublink-docker
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 10s
+
+    # Docker json 로그 파일 경로 매핑
+    relabel_configs:
+      - source_labels: ['__meta_docker_container_id']
+        target_label: '__path__'
+        replacement: '/var/lib/docker/containers/$1/$1-json.log'
+
+      # 컨테이너 이름 라벨
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/(.*)'
+        target_label: container
+
+      # compose 서비스명 라벨
+      - source_labels: ['__meta_docker_container_label_com_docker_compose_service']
+        target_label: service
+
+      # compose 프로젝트명 라벨
+      - source_labels: ['__meta_docker_container_label_com_docker_compose_project']
+        target_label: compose_project
+
+      # VM 역할 라벨
+      - target_label: vm_role
+        replacement: ${HUBLINK_VM_ROLE}
+
+      # Grafana 조회용 공통 job 라벨
+      - target_label: job
+        replacement: hublink-docker
+
+    # Docker 로그 포맷 파싱
+    pipeline_stages:
+      - docker: {}

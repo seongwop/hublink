@@ -47,15 +47,20 @@ public class DeliveryOutboxService {
     @Transactional
     public void enqueueSerialized(String topic, String eventKey, String serializedPayload) {
         if (outboxRepository.existsByTopicAndEventKey(topic, eventKey)) {
-            log.debug("Kafka outbox 이벤트가 이미 존재합니다. topic={}, eventKey={}", topic, eventKey);
+            log.debug("event=DELIVERY_OUTBOX_ALREADY_EXISTS topic={} eventKey={}", topic, eventKey);
             return;
         }
 
         try {
             // 같은 topic + eventKey 조합에 의한 중복 key 제약조건 충돌 제어
-            outboxRepository.saveAndFlush(DeliveryOutbox.create(topic, eventKey, serializedPayload));
+            DeliveryOutbox savedOutbox = outboxRepository.saveAndFlush(DeliveryOutbox.create(topic, eventKey, serializedPayload));
+            log.info("event=DELIVERY_OUTBOX_ENQUEUED outboxId={} topic={} eventKey={}",
+                    savedOutbox.getOutboxId(),
+                    savedOutbox.getTopic(),
+                    savedOutbox.getEventKey()
+            );
         } catch (DataIntegrityViolationException e) {
-            log.debug("Kafka outbox 이벤트가 동시에 먼저 저장되었습니다. topic={}, eventKey={}", topic, eventKey);
+            log.debug("event=DELIVERY_OUTBOX_ALREADY_SAVED topic={} eventKey={}", topic, eventKey);
         }
     }
 
@@ -93,8 +98,7 @@ public class DeliveryOutboxService {
                     .get(SEND_TIMEOUT_SECONDS, TimeUnit.SECONDS); // 브로커로부터 ack 수신 대기
             // 전송 성공을 확인한 경우만 상태 변경
             markPublished(outbox.getOutboxId());
-            log.info(
-                    "Kafka outbox 이벤트를 발행했습니다. outboxId={}, topic={}, eventKey={}",
+            log.info("event=DELIVERY_OUTBOX_PUBLISHED outboxId={} topic={} eventKey={}",
                     outbox.getOutboxId(),
                     outbox.getTopic(),
                     outbox.getEventKey()
@@ -102,8 +106,7 @@ public class DeliveryOutboxService {
         } catch (Exception e) {
             // 상태 변경 및 추후 재처리
             markFailed(outbox.getOutboxId(), e.getMessage());
-            log.error(
-                    "Kafka outbox 이벤트 발행에 실패했습니다. outboxId={}, topic={}, eventKey={}, retryCount={}",
+            log.error("event=DELIVERY_OUTBOX_PUBLISH_FAILED outboxId={} topic={} eventKey={} retryCount={}",
                     outbox.getOutboxId(),
                     outbox.getTopic(),
                     outbox.getEventKey(),

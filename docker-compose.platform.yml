@@ -1,4 +1,6 @@
+# 플랫폼 VM 서비스 묶음
 services:
+  # 서비스 디스커버리 서버
   eureka-server:
     image: ${IMAGE_REGISTRY}/hublink-eureka-server:${IMAGE_TAG:-latest}
     container_name: hublink-eureka-server
@@ -17,6 +19,7 @@ services:
       retries: 5
       start_period: 30s
 
+  # Config Server
   config-server:
     image: ${IMAGE_REGISTRY}/hublink-config-server:${IMAGE_TAG:-latest}
     container_name: hublink-config-server
@@ -42,6 +45,7 @@ services:
       retries: 5
       start_period: 30s
 
+  # 외부 요청 진입 Gateway
   api-gateway:
     image: ${IMAGE_REGISTRY}/hublink-api-gateway:${IMAGE_TAG:-latest}
     container_name: hublink-api-gateway
@@ -59,3 +63,22 @@ services:
         condition: service_healthy
       config-server:
         condition: service_healthy
+
+  # platform VM Docker 로그 수집기
+  promtail:
+    image: grafana/promtail:latest
+    container_name: hublink-promtail-platform
+    env_file:
+      - ${HUBLINK_ENV_FILE:-.env.gcp}
+    environment:
+      HUBLINK_VM_ROLE: platform
+    volumes:
+      - ./monitoring/promtail.yml:/etc/promtail/config.yml:ro
+      - promtail-positions:/var/lib/promtail
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command: -config.file=/etc/promtail/config.yml -config.expand-env=true
+
+# 로그 수집 위치 저장 볼륨
+volumes:
+  promtail-positions:

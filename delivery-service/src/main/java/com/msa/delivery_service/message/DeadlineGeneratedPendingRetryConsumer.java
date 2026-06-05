@@ -1,6 +1,9 @@
 package com.msa.delivery_service.message;
 
 import com.msa.core_common.stream.DeadlineStreamConstants;
+import java.time.Duration;
+import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Range;
@@ -13,10 +16,6 @@ import org.springframework.data.redis.core.StreamOperations;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-
-import java.time.Duration;
-import java.util.List;
-import java.util.Map;
 
 @Slf4j
 @Component
@@ -44,7 +43,9 @@ public class DeadlineGeneratedPendingRetryConsumer {
                 PENDING_SCAN_COUNT
         );
 
-        if (pendingMessages.isEmpty()) return;
+        if (pendingMessages.isEmpty()) {
+            return;
+        }
 
         for (PendingMessage pendingMessage : pendingMessages) {
             // MIN_IDLE_TIME을 설정하여 메인 스트림이 처리 중인 메세지는 스킵
@@ -75,9 +76,9 @@ public class DeadlineGeneratedPendingRetryConsumer {
         try {
             streamConsumer.process(targetRecord);
             acknowledge(streamOps, targetRecord.getId());
-            log.info("배송 최종시한 pending 메시지 재처리를 완료했습니다. recordId={}", targetRecord.getId());
+            log.info("event=DELIVERY_PENDING_RETRY_COMPLETED recordId={}", targetRecord.getId());
         } catch (Exception e) {
-            log.error("배송 최종시한 pending 메시지 재처리에 실패했습니다. recordId={}", pendingMessage.getId(), e);
+            log.error("event=DELIVERY_PENDING_RETRY_FAILED recordId={}", pendingMessage.getId(), e);
         }
     }
 
@@ -97,7 +98,7 @@ public class DeadlineGeneratedPendingRetryConsumer {
                 Map.of("payload", String.valueOf(targetRecord.getValue().get("payload")))
         );
         acknowledge(streamOps, targetRecord.getId());
-        log.warn("배송 최종시한 메시지를 DLQ로 이동했습니다. recordId={}, deliveryCount={}",
+        log.warn("event=DELIVERY_PENDING_DLQ_MOVED recordId={} deliveryCount={}",
                 targetRecord.getId(),
                 pendingMessage.getTotalDeliveryCount()
         );
@@ -114,7 +115,7 @@ public class DeadlineGeneratedPendingRetryConsumer {
         );
 
         if (records == null || records.isEmpty()) {
-            log.warn("pending 메시지의 stream 본문을 찾을 수 없습니다. recordId={}", recordId);
+            log.warn("event=DELIVERY_PENDING_STREAM_BODY_MISSING recordId={}", recordId);
             return null;
         }
 

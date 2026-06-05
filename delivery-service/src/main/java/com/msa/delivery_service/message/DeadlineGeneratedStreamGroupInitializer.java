@@ -25,7 +25,7 @@ public class DeadlineGeneratedStreamGroupInitializer {
                     ReadOffset.from("0"),
                     DeadlineStreamConstants.DELIVERY_SERVICE_GROUP
             );
-            log.info("Redis Stream consumer group을 생성했습니다. stream={}, group={}",
+            log.info("event=DELIVERY_STREAM_GROUP_CREATED stream={} group={}",
                     DeadlineStreamConstants.DEADLINE_GENERATED_STREAM,
                     DeadlineStreamConstants.DELIVERY_SERVICE_GROUP
             );
@@ -35,13 +35,13 @@ public class DeadlineGeneratedStreamGroupInitializer {
             Throwable cause = e.getCause();
             if ((e.getMessage() != null && e.getMessage().contains("BUSYGROUP"))
                     || (cause != null && cause.getMessage() != null && cause.getMessage().contains("BUSYGROUP"))) {
-                log.info("Redis Stream consumer group이 이미 존재합니다. stream={}, group={}",
+                log.info("event=DELIVERY_STREAM_GROUP_EXISTS stream={} group={}",
                         DeadlineStreamConstants.DEADLINE_GENERATED_STREAM,
                         DeadlineStreamConstants.DELIVERY_SERVICE_GROUP
                 );
                 return;
             }
-            log.error("Redis Stream consumer group 생성에 실패했습니다. stream={}, group={}",
+            log.error("event=DELIVERY_STREAM_GROUP_CREATE_FAILED stream={} group={}",
                     DeadlineStreamConstants.DEADLINE_GENERATED_STREAM,
                     DeadlineStreamConstants.DELIVERY_SERVICE_GROUP,
                     e

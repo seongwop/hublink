@@ -6,14 +6,17 @@ import com.msa.slack_service.service.SlackService;
 import com.msa.slack_service.stream.event.DeadlineGeneratedEvent;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.connection.stream.*;
+import org.springframework.data.redis.connection.stream.Consumer;
+import org.springframework.data.redis.connection.stream.MapRecord;
+import org.springframework.data.redis.connection.stream.ReadOffset;
+import org.springframework.data.redis.connection.stream.StreamOffset;
+import org.springframework.data.redis.connection.stream.StreamReadOptions;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-
-import java.util.Set;
 
 @Slf4j
 @Component
@@ -41,13 +44,17 @@ public class DeadlineGeneratedStreamConsumer {
         if (records == null || records.isEmpty()) {
             return;
         }
+        log.info("event=SLACK_STREAM_BATCH_RECEIVED stream={} count={}",
+                DeadlineStreamConstants.DEADLINE_GENERATED_STREAM,
+                records.size()
+        );
 
         for (MapRecord<String, Object, Object> record : records) {
             try {
                 Object payloadObj = record.getValue().get("payload");
 
                 if (payloadObj == null) {
-                    log.warn("Slack Stream 이벤트 payload 누락으로 ACK 처리: recordId={}", record.getId());
+                    log.warn("event=SLACK_STREAM_PAYLOAD_MISSING recordId={}", record.getId());
 
                     stringRedisTemplate.opsForStream().acknowledge(
                             DeadlineStreamConstants.DEADLINE_GENERATED_STREAM,
@@ -66,7 +73,7 @@ public class DeadlineGeneratedStreamConsumer {
                 // 유효성 검증
                 Set<ConstraintViolation<DeadlineGeneratedEvent>> violations = validator.validate(event);
                 if (!violations.isEmpty()) {
-                    log.warn("Slack Stream 이벤트 유효성 검증 실패: recordId={}, violations={}",
+                    log.warn("event=SLACK_STREAM_VALIDATION_FAILED recordId={} violations={}",
                             record.getId(),
                             violations.stream()
                                     .map(ConstraintViolation::getMessage)
@@ -82,12 +89,18 @@ public class DeadlineGeneratedStreamConsumer {
                     continue;
                 }
 
-                log.info("Slack 발송 이벤트 수신: eventId={}, receiverSlackId={}",
+                log.info("event=SLACK_STREAM_EVENT_RECEIVED eventId={} receiverSlackId={}",
                         event.getEventId(),
                         event.getReceiverSlackId()
                 );
 
                 slackService.processDeadlineGenerated(event);
+                log.info("event=SLACK_DEADLINE_EVENT_PROCESSED recordId={} eventId={} deliveryId={} aiMessageId={}",
+                        record.getId(),
+                        event.getEventId(),
+                        event.getDeliveryId(),
+                        event.getAiMessageId()
+                );
 
                 stringRedisTemplate.opsForStream().acknowledge(
                         DeadlineStreamConstants.DEADLINE_GENERATED_STREAM,
@@ -95,10 +108,14 @@ public class DeadlineGeneratedStreamConsumer {
                         record.getId()
                 );
 
-                log.info("Slack 이벤트 ACK 완료: recordId={}", record.getId());
+                log.info("event=SLACK_STREAM_ACKED stream={} group={} recordId={}",
+                        DeadlineStreamConstants.DEADLINE_GENERATED_STREAM,
+                        DeadlineStreamConstants.SLACK_SERVICE_GROUP,
+                        record.getId()
+                );
 
             } catch (Exception e) {
-                log.error("Slack Stream 이벤트 처리 실패: recordId={}", record.getId(), e);
+                log.error("event=SLACK_STREAM_PROCESSING_FAILED recordId={}", record.getId(), e);
             }
         }
     }

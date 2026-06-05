@@ -1,4 +1,6 @@
+# domain-b VM 서비스 묶음
 services:
+  # 주문 서비스
   order-service:
     image: ${IMAGE_REGISTRY}/hublink-order-service:${IMAGE_TAG:-latest}
     container_name: hublink-order-service
@@ -12,6 +14,7 @@ services:
     ports:
       - "19094:19094"
 
+  # 재고 서비스
   stock-service:
     image: ${IMAGE_REGISTRY}/hublink-stock-service:${IMAGE_TAG:-latest}
     container_name: hublink-stock-service
@@ -25,6 +28,7 @@ services:
     ports:
       - "19098:19098"
 
+  # 배송 서비스
   delivery-service:
     image: ${IMAGE_REGISTRY}/hublink-delivery-service:${IMAGE_TAG:-latest}
     container_name: hublink-delivery-service
@@ -38,6 +42,7 @@ services:
     ports:
       - "19099:19099"
 
+  # Slack 알림 서비스
   slack-service:
     image: ${IMAGE_REGISTRY}/hublink-slack-service:${IMAGE_TAG:-latest}
     container_name: hublink-slack-service
@@ -51,6 +56,7 @@ services:
     ports:
       - "19100:19100"
 
+  # AI 연계 서비스
   ai-service:
     image: ${IMAGE_REGISTRY}/hublink-ai-service:${IMAGE_TAG:-latest}
     container_name: hublink-ai-service
@@ -63,3 +69,22 @@ services:
       EUREKA_INSTANCE_NON_SECURE_PORT: "19101"
     ports:
       - "19101:19101"
+
+  # domain-b VM Docker 로그 수집기
+  promtail:
+    image: grafana/promtail:latest
+    container_name: hublink-promtail-domain-b
+    env_file:
+      - ${HUBLINK_ENV_FILE:-.env.gcp}
+    environment:
+      HUBLINK_VM_ROLE: domain-b
+    volumes:
+      - ./monitoring/promtail.yml:/etc/promtail/config.yml:ro
+      - promtail-positions:/var/lib/promtail
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command: -config.file=/etc/promtail/config.yml -config.expand-env=true
+
+# 로그 수집 위치 저장 볼륨
+volumes:
+  promtail-positions:

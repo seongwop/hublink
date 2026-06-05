@@ -1,0 +1,19 @@
+# Grafana 기본 datasource 설정
+apiVersion: 1
+
+# Prometheus와 Loki 자동 등록
+datasources:
+  # 메트릭 조회 datasource
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: true
+
+  # 로그 조회 datasource
+  - name: Loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    editable: true

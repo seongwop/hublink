@@ -3,56 +3,31 @@ global:
   evaluation_interval: 30s
 
 scrape_configs:
-  - job_name: 'hublink-user-service'
+  # platform VM 서비스 메트릭
+  - job_name: 'hublink-platform'
     metrics_path: '/actuator/prometheus'
     static_configs:
       - targets:
-          - 'user-service:19093'
+          - '10.10.0.10:19091'
+          - '10.10.0.10:19092'
 
-  - job_name: 'hublink-order-service'
+  # domain-a VM 서비스 메트릭
+  - job_name: 'hublink-domain-a'
     metrics_path: '/actuator/prometheus'
     static_configs:
       - targets:
-          - 'order-service:19094'
+          - '10.10.0.20:19093'
+          - '10.10.0.20:19095'
+          - '10.10.0.20:19096'
+          - '10.10.0.20:19097'
 
-  - job_name: 'hublink-hub-service'
+  # domain-b VM 서비스 메트릭
+  - job_name: 'hublink-domain-b'
     metrics_path: '/actuator/prometheus'
     static_configs:
       - targets:
-          - 'hub-service:19095'
-
-  - job_name: 'hublink-company-service'
-    metrics_path: '/actuator/prometheus'
-    static_configs:
-      - targets:
-          - 'company-service:19096'
-
-  - job_name: 'hublink-product-service'
-    metrics_path: '/actuator/prometheus'
-    static_configs:
-      - targets:
-          - 'product-service:19097'
-
-  - job_name: 'hublink-stock-service'
-    metrics_path: '/actuator/prometheus'
-    static_configs:
-      - targets:
-          - 'stock-service:19098'
-
-  - job_name: 'hublink-delivery-service'
-    metrics_path: '/actuator/prometheus'
-    static_configs:
-      - targets:
-          - 'delivery-service:19099'
-
-  - job_name: 'hublink-slack-service'
-    metrics_path: '/actuator/prometheus'
-    static_configs:
-      - targets:
-          - 'slack-service:19100'
-
-  - job_name: 'hublink-ai-service'
-    metrics_path: '/actuator/prometheus'
-    static_configs:
-      - targets:
-          - 'ai-service:19101'
+          - '10.10.0.30:19094'
+          - '10.10.0.30:19098'
+          - '10.10.0.30:19099'
+          - '10.10.0.30:19100'
+          - '10.10.0.30:19101'

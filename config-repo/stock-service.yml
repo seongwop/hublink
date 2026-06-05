@@ -62,4 +62,4 @@ swagger:
 
 logging:
   level:
-    root: ${LOG_LEVEL_ROOT:WARN}
+    root: ${LOG_LEVEL_ROOT:INFO}

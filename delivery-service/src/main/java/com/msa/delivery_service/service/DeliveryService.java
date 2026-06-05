@@ -21,6 +21,7 @@ import com.msa.delivery_service.dto.DeliveryRouteHistoryResponse;
 import com.msa.delivery_service.dto.DeliveryRouteStatusUpdateRequest;
 import com.msa.delivery_service.dto.DeliveryStatusUpdateRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -39,6 +40,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class DeliveryService {
 
     // 배송 담당자 근무 시간 고정
@@ -204,13 +206,30 @@ public class DeliveryService {
     */
 
     public DeliveryResponse createDelivery(DeliveryRequest request) {
+        log.info("event=DELIVERY_CREATE_STARTED orderId={} receiverCompanyId={} productCount={}",
+                request.getOrderId(),
+                request.getReceiverCompanyId(),
+                request.getProducts() == null ? 0 : request.getProducts().size()
+        );
         if (deliveryRepository.existsByOrderId(request.getOrderId())) {
             throw new CustomException(DeliveryErrorCode.DUPLICATE_ORDER_DELIVERY);
         }
 
         List<HubRouteResponse> hubRoutes = getHubRoutes(request);
+        log.info("event=DELIVERY_ROUTE_RESOLVED orderId={} routeCount={}",
+                request.getOrderId(),
+                hubRoutes.size()
+        );
         HubManagerResponse hubManager = getHubManager(getDepartureHubId(hubRoutes));
+        log.info("event=DELIVERY_HUB_MANAGER_RESOLVED orderId={} hubManagerId={}",
+                request.getOrderId(),
+                hubManager.getHubManagerId()
+        );
         List<DeliveryManagerResponse> deliveryManagers = getDeliveryManagers(hubRoutes);
+        log.info("event=DELIVERY_MANAGER_CANDIDATES_RESOLVED orderId={} candidateCount={}",
+                request.getOrderId(),
+                deliveryManagers.size()
+        );
         // 업체 배송 기사 Lock 키 1개 + 허브 배송 기사 Lock 키 N개
         List<String> lockKeys = buildAssignmentLockKeys(hubRoutes);
 
@@ -221,8 +240,13 @@ public class DeliveryService {
                     getDestinationHubId(hubRoutes)
             );
             Map<UUID, UUID> hubDeliveryManagerIds = assignHubDeliveryManagers(hubRoutes, deliveryManagers);
+            log.info("event=DELIVERY_MANAGER_ASSIGNED orderId={} companyDeliveryManagerId={} hubRouteAssignmentCount={}",
+                    request.getOrderId(),
+                    companyDeliveryManager.getDeliveryManagerId(),
+                    hubDeliveryManagerIds.size()
+            );
 
-            return deliveryCreateService.createDelivery(
+            DeliveryResponse response = deliveryCreateService.createDelivery(
                     request,
                     hubManager,
                     companyDeliveryManager,
@@ -231,6 +255,11 @@ public class DeliveryService {
                     WORK_START_TIME,
                     WORK_END_TIME
             );
+            log.info("event=DELIVERY_CREATED orderId={} deliveryId={}",
+                    request.getOrderId(),
+                    response.getDeliveryId()
+            );
+            return response;
         });
     }
 
@@ -254,10 +283,16 @@ public class DeliveryService {
                 .orElseThrow(() -> new CustomException(DeliveryErrorCode.DELIVERY_NOT_FOUND));
         delivery.updateFinalDepartureDeadline(event.getFinalDepartureDeadline());
         deliveryRepository.flush();
+        log.info("event=DELIVERY_DEADLINE_UPDATED deliveryId={} eventId={} finalDepartureDeadline={}",
+                event.getDeliveryId(),
+                event.getEventId(),
+                event.getFinalDepartureDeadline()
+        );
     }
 
     @Transactional
     public void compensateDeliveryCreation(UUID orderId) {
+        log.warn("event=DELIVERY_COMPENSATION_STARTED orderId={}", orderId);
         deliveryRepository.findByOrderId(orderId)
                 .ifPresent(delivery -> {
                     delivery.cancel();
@@ -271,6 +306,10 @@ public class DeliveryService {
                         });
                     deliveryRouteHistoryRepository.flush();
                     deliveryRepository.flush();
+                    log.warn("event=DELIVERY_COMPENSATED orderId={} deliveryId={}",
+                            orderId,
+                            delivery.getDeliveryId()
+                    );
                 });
     }
 

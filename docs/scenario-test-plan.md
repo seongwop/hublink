@@ -6,8 +6,6 @@
 
 | 문서 | 내용 |
 | --- | --- |
-| [gcp-infra.md](gcp-infra.md) | GCP VM, 네트워크, Terraform 구성 |
-| [gcp-cicd.md](gcp-cicd.md) | GitHub Actions 기반 GCP 배포 흐름 |
 | [performance-test-plan.md](performance-test-plan.md) | 배송 중심 성능 테스트와 병목 관찰 |
 
 ## 테스트 목표
