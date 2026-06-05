@@ -50,4 +50,4 @@ done
 # 변경 컨테이너 교체와 orphan 정리
 echo "Deploying ${COMPOSE_FILE} on ${VM_NAME}"
 gcloud compute ssh "${REMOTE}" "${GCLOUD_FLAGS[@]}" \
-  --command "cd '${REMOTE_DIR}' && sudo docker compose --env-file .env.gcp -f '${COMPOSE_FILE}' pull && sudo docker compose --env-file .env.gcp -f '${COMPOSE_FILE}' up -d --remove-orphans && sudo docker compose -f '${COMPOSE_FILE}' ps"
+  --command "cd '${REMOTE_DIR}' && for attempt in 1 2 3; do sudo docker compose --env-file .env.gcp -f '${COMPOSE_FILE}' pull && break; echo \"docker compose pull failed. attempt=\${attempt}\" >&2; if [ \"\${attempt}\" -eq 3 ]; then exit 1; fi; sleep \$((attempt * 20)); done && sudo docker compose --env-file .env.gcp -f '${COMPOSE_FILE}' up -d --remove-orphans && sudo docker compose -f '${COMPOSE_FILE}' ps"

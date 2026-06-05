@@ -126,10 +126,46 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
 
+  mirror-external-images:
+    name: Mirror external images
+    runs-on: ubuntu-latest
+    env:
+      GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      IMAGE_REGISTRY: asia-northeast3-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/hublink
+
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker "${GCP_REGION}-docker.pkg.dev" --quiet
+
+      - name: Mirror promtail image
+        run: |
+          for attempt in 1 2 3; do
+            docker pull grafana/promtail:latest && break
+            echo "promtail image pull failed. attempt=${attempt}" >&2
+            if [ "${attempt}" -eq 3 ]; then
+              exit 1
+            fi
+            sleep $((attempt * 20))
+          done
+          docker tag grafana/promtail:latest "${IMAGE_REGISTRY}/hublink-promtail:latest"
+          docker push "${IMAGE_REGISTRY}/hublink-promtail:latest"
+
   deploy:
     name: Deploy to GCP VMs
     runs-on: ubuntu-latest
-    needs: build-and-push
+    needs:
+      - build-and-push
+      - mirror-external-images
     environment: gcp
 
     env:
