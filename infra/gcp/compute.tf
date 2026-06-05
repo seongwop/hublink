@@ -17,6 +17,18 @@ resource "google_compute_address" "internal" {
   subnetwork   = google_compute_subnetwork.main.id
 }
 
+# VM별 고정 외부 IP 예약
+resource "google_compute_address" "external" {
+  for_each = {
+    for name, spec in var.vm_specs : name => spec
+    if contains(var.external_ip_vm_names, name)
+  }
+
+  name         = "${var.name_prefix}-${each.key}-external-ip"
+  address_type = "EXTERNAL"
+  region       = var.region
+}
+
 # vm_specs 기준 역할별 VM 생성
 resource "google_compute_instance" "vm" {
   for_each = var.vm_specs
@@ -49,7 +61,13 @@ resource "google_compute_instance" "vm" {
     subnetwork = google_compute_subnetwork.main.id
     network_ip = google_compute_address.internal[each.key].address
 
-    access_config {}
+    dynamic "access_config" {
+      for_each = contains(var.external_ip_vm_names, each.key) ? [1] : []
+
+      content {
+        nat_ip = google_compute_address.external[each.key].address
+      }
+    }
   }
 
   # SSH 공개키 직접 등록 옵션
@@ -58,11 +76,11 @@ resource "google_compute_instance" "vm" {
   }
 
   # 최초 부팅 시 Docker 설치 스크립트
-  metadata_startup_script = templatefile("${path.module}/scripts/install-docker.sh", {
+  metadata_startup_script = replace(templatefile("${path.module}/scripts/install-docker.sh", {
     linux_user = var.ssh_username
     region     = var.region
     role       = each.value.role
-  })
+  }), "\r\n", "\n")
 
   # 이미지 pull과 로그/메트릭 기록용 서비스 계정
   service_account {
@@ -74,6 +92,11 @@ resource "google_compute_instance" "vm" {
 
   # 머신 타입 변경 시 stop/start 허용
   allow_stopping_for_update = true
+
+  # 부팅 스크립트 줄바꿈 보정으로 인한 기존 VM 재생성 방지
+  lifecycle {
+    ignore_changes = [metadata_startup_script]
+  }
 
   # VM 서비스 계정 권한 부여 후 VM 생성
   depends_on = [

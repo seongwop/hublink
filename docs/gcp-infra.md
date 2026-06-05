@@ -1,285 +1,212 @@
 # GCP 인프라 구성 문서
 
-이 문서는 HubLink 프로젝트를 GCP Compute Engine VM 4대에 배포하기 위한 인프라 구성과 배포 흐름을 정리합니다.
+이 문서는 HubLink 프로젝트를 GCP Compute Engine VM 5대로 실행하기 위한 인프라 구성을 정리한다.
 
-## GCP 인프라 계획
+## 구성 요약
 
-Terraform 코드는 다음 경로에 있습니다.
+인프라는 Terraform으로 생성한다.
+
+```text
+Terraform
+  -> VPC
+  -> Subnet
+  -> Firewall
+  -> Compute Engine VM
+  -> Artifact Registry
+  -> Service Account
+  -> Workload Identity Federation
+  -> VM start/stop schedule
+```
+
+Terraform 코드 위치:
 
 ```text
 infra/gcp
 ```
 
-사전 준비 도구:
+## VM 구성
 
-- Terraform
-- Google Cloud CLI
-- Docker
+| VM | 내부 IP | 외부 IP | 역할 |
+| --- | --- | --- | --- |
+| hublink-platform-vm | `10.10.0.10` | `34.50.23.39` | Eureka, Config Server, API Gateway |
+| hublink-domain-a-vm | `10.10.0.20` | 없음 | user, company, hub, product |
+| hublink-domain-b-vm | `10.10.0.30` | 없음 | order, stock, delivery, slack, ai |
+| hublink-data-monitor-vm | `10.10.0.40` | `34.64.89.47` | PostgreSQL, Redis, Kafka, Kafka UI, Zipkin, Prometheus, Grafana |
+| hublink-load-test-vm | `10.10.0.50` | Terraform output 확인 | k6 부하 발생 |
 
-Terraform으로 다음 리소스를 생성할 예정입니다.
+외부 IP는 브라우저 접속이 필요한 `platform`, `data-monitor`와 부하 테스트 VM 접속용 `load-test`에만 고정 IP로 연결한다. `domain-a`, `domain-b`는 외부 IP 없이 내부 통신과 IAP SSH를 사용한다.
 
-- VPC
-- Subnet
-- Firewall Rule
-- Compute Engine VM 4대
-- VM별 고정 internal IP
-- Artifact Registry
-- VM 실행용 Service Account
-- Docker 설치용 startup script
+`load-test`는 외부 IP로 접속하더라도 실제 부하는 `platform` 내부 IP인 `10.10.0.10:19091`로 전송한다.
 
-Terraform은 인프라 생성을 담당하고, 애플리케이션 이미지는 Docker로 빌드한 뒤 Artifact Registry에 push합니다.
-
-```text
-Terraform
-  -> GCP 네트워크와 VM 생성
-
-Docker / Gradle
-  -> 서비스별 이미지 빌드
-
-Artifact Registry
-  -> 이미지 저장
-
-Docker Compose
-  -> VM별 서비스 실행
-```
-
----
-
-## 배포 파일 구조
-
-GCP VM 배포를 위해 Docker Compose 파일을 VM 역할별로 분리했습니다.
-
-```text
-docker-compose.platform.yml
-docker-compose.domain-a.yml
-docker-compose.domain-b.yml
-docker-compose.data-monitor.yml
-```
-
-환경 변수 예시는 다음 파일에 있습니다.
-
-```text
-.env.gcp.example
-```
-
-각 VM에서는 이 파일을 `.env.gcp`로 복사한 뒤 실제 GCP 프로젝트, 내부 IP, DB 비밀번호, 외부 API 키 등을 설정합니다.
-
-```bash
-cp .env.gcp.example .env.gcp
-```
-
----
-
-## 서비스 설정 구조
-
-각 서비스의 `src/main/resources/application.yaml`은 최소 설정만 유지합니다.
-
-```yaml
-spring:
-  application:
-    name: service-name
-  config:
-    import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:19092}
-```
-
-실제 런타임 설정은 `config-repo`에서 관리합니다.
-
-```text
-config-repo/
-  api-gateway.yml
-  user-service.yml
-  order-service.yml
-  hub-service.yml
-  company-service.yml
-  product-service.yml
-  stock-service.yml
-  delivery-service.yml
-  slack-service.yml
-  ai-service.yml
-```
-
-GCP 배포에서는 Config Server가 `config-repo`를 읽고, 각 서비스는 Config Server에서 DB, Redis, Kafka, Eureka, Zipkin 설정을 받아옵니다.
-
----
-
-## 배포 흐름
-
-### 1. Terraform으로 인프라 생성
-
-처음 사용하는 GCP 프로젝트라면 Service Usage API는 먼저 켜둡니다.
-
-```bash
-gcloud services enable serviceusage.googleapis.com
-```
-
-Terraform 변수 파일을 준비합니다.
+현재 IP 확인:
 
 ```bash
 cd infra/gcp
-cp terraform.tfvars.example terraform.tfvars
+terraform output vm_internal_ips
+terraform output vm_external_ips
 ```
 
-`terraform.tfvars`에서 최소한 `project_id`는 실제 GCP 프로젝트 ID로 바꿉니다.
+## 네트워크
+
+| 항목 | 값 |
+| --- | --- |
+| VPC | `hublink-vpc` |
+| Subnet | `hublink-subnet` |
+| CIDR | `10.10.0.0/24` |
+| Region | `asia-northeast3` |
+| Zone | `asia-northeast3-a` |
+
+서비스 간 통신은 외부 IP가 아니라 내부 IP를 사용한다.
+
+```text
+Eureka:        http://10.10.0.10:19090/eureka/
+Config Server: http://10.10.0.10:19092
+PostgreSQL:    10.10.0.40:5432
+Redis:         10.10.0.40:6379
+Kafka:         10.10.0.40:9092
+Zipkin:        http://10.10.0.40:9411/api/v2/spans
+Load Test:     10.10.0.50
+```
+
+## 공개 접속 주소
+
+| 항목 | URL |
+| --- | --- |
+| Swagger/API Gateway | `http://34.50.23.39:19091/swagger-ui/index.html` |
+| Eureka Dashboard | `http://34.50.23.39:19090` |
+| Kafka UI | `http://34.64.89.47:8082` |
+| Grafana | `http://34.64.89.47:3000` |
+| Prometheus | `http://34.64.89.47:9090` |
+| Zipkin | `http://34.64.89.47:9411` |
+
+Swagger에서 직접 요청을 보내려면 배포 환경의 `SWAGGER_GATEWAY_URL`, `CORS_ALLOWED_ORIGIN`이 `platform` 외부 IP를 바라봐야 한다.
+
+```text
+SWAGGER_GATEWAY_URL=http://34.50.23.39:19091
+CORS_ALLOWED_ORIGIN=http://34.50.23.39:19091
+```
+
+## Docker Compose 분리
+
+VM 역할별로 Compose 파일을 분리한다.
+
+| 파일 | 실행 VM | 포함 항목 |
+| --- | --- | --- |
+| `docker-compose.data-monitor.yml` | data-monitor | PostgreSQL, Redis, Kafka, Kafka UI, Zipkin, Prometheus, Grafana |
+| `docker-compose.platform.yml` | platform | Eureka, Config Server, API Gateway |
+| `docker-compose.domain-a.yml` | domain-a | user, company, hub, product |
+| `docker-compose.domain-b.yml` | domain-b | order, stock, delivery, slack, ai |
+
+공통 환경값은 `.env.gcp`로 주입한다. 실제 배포 시에는 GitHub Actions가 Secrets/Variables를 기준으로 `.env.gcp`를 생성한다.
+
+## Terraform 주요 파일
+
+| 파일 | 역할 |
+| --- | --- |
+| `main.tf` | Provider와 Terraform 기본 설정 |
+| `apis.tf` | 필요한 GCP API 활성화 |
+| `network.tf` | VPC, Subnet, Firewall 설정 |
+| `compute.tf` | VM, 고정 내부 IP, 고정 외부 IP, startup script 연결 |
+| `iam.tf` | VM 실행용 Service Account와 권한 |
+| `artifact-registry.tf` | Docker 이미지 저장소 |
+| `workload-identity.tf` | GitHub Actions OIDC 인증 |
+| `schedule.tf` | VM 자동 시작/종료 스케줄 |
+| `variables.tf` | 입력 변수 선언 |
+| `outputs.tf` | 배포 후 확인할 주요 값 |
+| `terraform.tfvars` | 실제 프로젝트별 입력값 |
+
+`terraform.tfvars`는 개인 환경 파일이므로 git에 올리지 않는다.
+
+## VM 자동 시작과 종료
+
+비용 절감을 위해 VM 스케줄을 적용한다.
+
+| 항목 | 값 |
+| --- | --- |
+| 시작 | 평일 10:00 |
+| 종료 | 매일 02:00 |
+| 타임존 | `Asia/Seoul` |
+
+Terraform 변수:
+
+```hcl
+vm_start_schedule     = "0 10 * * MON-FRI"
+vm_stop_schedule      = "0 2 * * *"
+vm_schedule_time_zone = "Asia/Seoul"
+```
+
+수정 후 반영:
 
 ```bash
-terraform init
+cd infra/gcp
 terraform plan
 terraform apply
 ```
 
-생성 예정 리소스:
+## 운영 확인
 
-- `platform-vm`
-- `domain-a-vm`
-- `domain-b-vm`
-- `data-monitor-vm`
-- VPC/Subnet/Firewall
-- Artifact Registry
-
-### 2. 서비스 이미지 빌드
-
-서비스별 이미지는 루트 `Dockerfile`의 `SERVICE_NAME` build arg를 사용해 빌드합니다.
+VM 상태 확인:
 
 ```bash
-docker build --build-arg SERVICE_NAME=eureka-server -t hublink-eureka-server .
-docker build --build-arg SERVICE_NAME=config-server -t hublink-config-server .
-docker build --build-arg SERVICE_NAME=api-gateway -t hublink-api-gateway .
+gcloud compute instances list --project hublink-498115
 ```
 
-다른 서비스도 같은 방식으로 빌드합니다.
+IAP SSH 접속:
 
 ```bash
-docker build --build-arg SERVICE_NAME=user-service -t hublink-user-service .
-docker build --build-arg SERVICE_NAME=order-service -t hublink-order-service .
-docker build --build-arg SERVICE_NAME=delivery-service -t hublink-delivery-service .
+gcloud compute ssh hublink-domain-a-vm \
+  --zone asia-northeast3-a \
+  --project hublink-498115 \
+  --tunnel-through-iap
 ```
 
-### 3. Artifact Registry에 push
-
-이미지 태그는 `.env.gcp`의 `IMAGE_REGISTRY` 값과 맞춥니다.
+컨테이너 상태 확인:
 
 ```bash
-docker tag hublink-user-service asia-northeast3-docker.pkg.dev/PROJECT_ID/hublink/hublink-user-service:latest
-docker push asia-northeast3-docker.pkg.dev/PROJECT_ID/hublink/hublink-user-service:latest
+gcloud compute ssh hublink-platform-vm \
+  --zone asia-northeast3-a \
+  --project hublink-498115 \
+  --tunnel-through-iap \
+  --command "cd /opt/hublink && sudo docker compose -f docker-compose.platform.yml ps"
 ```
 
-### 4. VM별 Docker Compose 실행
+서비스 등록 확인:
 
-각 VM에서 자기 역할에 맞는 Compose 파일을 실행합니다.
+```text
+http://34.50.23.39:19090
+```
+
+메시지 흐름 확인:
+
+```text
+http://34.64.89.47:8082
+```
+
+부하 테스트 VM 접속:
 
 ```bash
-docker compose --env-file .env.gcp -f docker-compose.data-monitor.yml up -d
-docker compose --env-file .env.gcp -f docker-compose.platform.yml up -d
-docker compose --env-file .env.gcp -f docker-compose.domain-a.yml up -d
-docker compose --env-file .env.gcp -f docker-compose.domain-b.yml up -d
+gcloud compute ssh hublink-load-test-vm \
+  --zone asia-northeast3-a \
+  --project hublink-498115
 ```
 
-권장 실행 순서:
+k6 smoke 테스트:
+
+```bash
+hublink-k6-smoke http://10.10.0.10:19091/actuator/health
+```
+
+모니터링 확인:
 
 ```text
-1. data-monitor-vm
-2. platform-vm
-3. domain-a-vm
-4. domain-b-vm
+http://34.64.89.47:3000
+http://34.64.89.47:9090
 ```
 
----
+## CI/CD
 
-## 접속 주소
-
-| 항목 | URL |
-| --- | --- |
-| API Gateway | `http://<platform-vm-external-ip>:19091` |
-| Eureka Dashboard | `http://<platform-vm-external-ip>:19090` |
-| Kafka UI | `http://<data-monitor-vm-external-ip>:8082` |
-| Zipkin | `http://<data-monitor-vm-external-ip>:9411` |
-| Prometheus | `http://<data-monitor-vm-external-ip>:9090` |
-| Grafana | `http://<data-monitor-vm-external-ip>:3000` |
-
-외부 공개가 필요하지 않은 포트는 GCP 방화벽에서 내부 통신만 허용합니다.
-
----
-
-## 모니터링
-
-GCP VM 배포용 Prometheus 설정은 다음 파일을 사용합니다.
+GitHub Actions 기반 배포 흐름은 별도 문서에서 정리한다.
 
 ```text
-monitoring/prometheus.gcp.yml
+docs/gcp-cicd.md
 ```
-
-이 파일은 Docker 컨테이너 이름이 아니라 VM 내부 IP를 기준으로 Actuator Prometheus endpoint를 scrape합니다.
-
-```text
-10.10.0.20:19093
-10.10.0.30:19094
-10.10.0.30:19099
-```
-
-로컬 단일 Docker Compose 환경에서는 기존 `monitoring/prometheus.yml`을 사용할 수 있습니다.
-
----
-
-## DB 초기화
-
-GCP 배포용 PostgreSQL 컨테이너는 다음 SQL을 사용해 서비스별 schema를 생성합니다.
-
-```text
-db/init/01-create-schemas.sql
-```
-
-각 서비스는 하나의 PostgreSQL 인스턴스를 공유하되, `currentSchema`를 통해 서비스별 schema를 사용합니다.
-
-```text
-user_service
-order_service
-hub_service
-company_service
-product_service
-stock_service
-delivery_service
-slack_service
-ai_service
-```
-
----
-
-## 기존 AWS/ECR 실행과 GCP 실행
-
-기존 AWS/ECR/RDS 기반 실행 파일은 이름을 분리해 보존합니다.
-
-```text
-docker-compose.aws.yml
-.env.aws.example
-monitoring/prometheus.yml
-```
-
-GCP VM 실행 파일은 별도로 사용합니다.
-
-```text
-docker-compose.platform.yml
-docker-compose.domain-a.yml
-docker-compose.domain-b.yml
-docker-compose.data-monitor.yml
-monitoring/prometheus.gcp.yml
-```
-
-기존 AWS/ECR 실행과 GCP 실행은 이미지 저장소와 네트워크 전제가 다릅니다.
-
-| 환경 | 이미지 저장소 | 서비스 통신 방식 |
-| --- | --- |
-| 기존 AWS/ECR 실행 | ECR | Docker service name |
-| GCP VM | Artifact Registry | GCP internal IP |
-
----
-
-## 다음 작업
-
-- Terraform 디렉터리 구성
-- GCP VPC/Subnet/Firewall 작성
-- Compute Engine VM 4대 생성
-- Artifact Registry 생성
-- Docker 설치 startup script 작성
-- 이미지 빌드 및 push 스크립트 작성
-- VM 배포 후 Eureka, Gateway, Prometheus 확인
-- k6 기반 성능 테스트 시나리오 작성

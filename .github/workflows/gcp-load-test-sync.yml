@@ -1,0 +1,64 @@
+name: GCP Load Test Sync
+
+on:
+  # Actions 화면 수동 실행
+  workflow_dispatch:
+  # k6 스크립트 변경 시 자동 동기화
+  push:
+    branches:
+      - develop-infra
+    paths:
+      - '.github/workflows/gcp-load-test-sync.yml'
+      - 'scripts/gcp/deploy-load-test.sh'
+      - 'performance/k6/**'
+
+concurrency:
+  # 같은 브랜치 동기화 중복 방지
+  group: gcp-load-test-sync-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  # 저장소 checkout 권한
+  contents: read
+  # Workload Identity 인증 토큰 권한
+  id-token: write
+
+env:
+  # 부하 테스트 VM 고정 정보
+  GCP_ZONE: asia-northeast3-a
+  GCP_LOAD_TEST_VM: hublink-load-test-vm
+  GCP_LOAD_TEST_REMOTE_DIR: /opt/hublink/performance
+
+jobs:
+  sync:
+    name: Sync k6 scripts to load-test VM
+    runs-on: ubuntu-latest
+    environment: gcp
+
+    env:
+      # GitHub Secrets 접속 정보
+      GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      GCP_VM_USER: ${{ secrets.GCP_VM_USER }}
+
+    steps:
+      - name: Checkout
+        # k6 스크립트와 배포 스크립트 checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        # 서비스 계정 키 없는 OIDC 인증
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Set up gcloud
+        # runner gcloud CLI 준비
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Sync load test scripts
+        # load-test VM으로 performance/k6 복사
+        run: |
+          chmod +x scripts/gcp/deploy-load-test.sh
+          scripts/gcp/deploy-load-test.sh

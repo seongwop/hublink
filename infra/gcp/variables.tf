@@ -97,6 +97,13 @@ variable "public_source_ranges" {
   default     = ["0.0.0.0/0"]
 }
 
+# 고정 외부 IP 대상 VM 목록
+variable "external_ip_vm_names" {
+  description = "고정 외부 IP를 연결할 VM 이름 목록"
+  type        = set(string)
+  default     = ["platform", "data-monitor", "load-test"]
+}
+
 # Docker 이미지 저장소 ID
 variable "artifact_registry_repository_id" {
   description = "Artifact Registry Docker 저장소 ID"
@@ -150,6 +157,13 @@ variable "vm_specs" {
       disk_size_gb = 50
       internal_ip  = "10.10.0.40"
       tags         = ["hublink", "hublink-ssh", "hublink-monitor"]
+    }
+    load-test = {
+      role         = "load-test"
+      machine_type = "e2-medium"
+      disk_size_gb = 20
+      internal_ip  = "10.10.0.50"
+      tags         = ["hublink", "hublink-ssh", "hublink-load-test"]
     }
   }
 }
