@@ -1,16 +1,14 @@
 package com.msa.hub_service.client;
 
 import com.msa.core_common.error.exception.CustomException;
-import com.msa.core_common.response.GlobalResponse;
 import com.msa.hub_service.dto.CompanyDto;
 import com.msa.hub_service.dto.CompanyNameResponse;
 import com.msa.hub_service.global.HubErrorCode;
+import java.util.List;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.openfeign.FallbackFactory;
 import org.springframework.stereotype.Component;
-
-import java.util.List;
-import java.util.UUID;
 
 @Slf4j
 @Component
@@ -25,7 +23,7 @@ public class CompanyClientFallbackFactory implements FallbackFactory<CompanyClie
 
             @Override
             public List<CompanyNameResponse> getCompanyNames(List<UUID> companyIds) {
-                log.error("Company 서비스 장애로 업체 이름을 가져오지 못했습니다. 요청 IDs: {}", companyIds);
+                log.error("event=HUB_COMPANY_NAMES_CALL_FAILED companyIds={}", companyIds);
                 return java.util.Collections.emptyList();
             }
         };

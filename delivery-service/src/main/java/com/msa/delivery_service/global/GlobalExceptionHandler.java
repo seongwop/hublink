@@ -6,6 +6,8 @@ import com.msa.core_common.response.GlobalResponse;
 import com.msa.delivery_service.enums.DeliveryErrorCode;
 import feign.FeignException;
 import jakarta.persistence.OptimisticLockException;
+import java.util.HashMap;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -14,9 +16,6 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-
-import java.util.HashMap;
-import java.util.Map;
 
 @Slf4j
 @RestControllerAdvice
@@ -59,7 +58,7 @@ public class GlobalExceptionHandler {
             OptimisticLockException.class
     })
     public ResponseEntity<GlobalResponse<?>> handleOptimisticLockException(Exception e) {
-        log.warn("동시성 충돌이 발생했습니다. message={}", e.getMessage());
+        log.warn("event=DELIVERY_CONCURRENCY_CONFLICT message={}", e.getMessage());
 
         ErrorResponse errorResponse = ErrorResponse.of(
                 DeliveryErrorCode.CONCURRENT_DELIVERY_UPDATE.getCode(),
@@ -77,7 +76,7 @@ public class GlobalExceptionHandler {
     // 4xx/5xx 응답은 FeignException 발생
     @ExceptionHandler(FeignException.class)
     public ResponseEntity<GlobalResponse<?>> handleFeignException(FeignException e) {
-        log.warn("하위 서비스 호출에 실패했습니다. status={}, message={}", e.status(), e.getMessage());
+        log.warn("event=DELIVERY_DOWNSTREAM_CALL_FAILED status={} message={}", e.status(), e.getMessage());
 
         ErrorResponse errorResponse = ErrorResponse.of(
                 "DOWNSTREAM_SERVICE_ERROR",
@@ -94,7 +93,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<GlobalResponse<?>> handleException(Exception e) {
-        log.error("예상하지 못한 오류가 발생했습니다.", e);
+        log.error("event=DELIVERY_UNEXPECTED_EXCEPTION", e);
 
         ErrorResponse errorResponse = ErrorResponse.of(
                 "INTERNAL_SERVER_ERROR",

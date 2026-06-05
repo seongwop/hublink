@@ -30,8 +30,13 @@ public class DeadlineGeneratedStreamConsumer implements StreamListener<String, M
         try {
             process(record);
             acknowledge(record.getId());
+            log.info("event=DELIVERY_DEADLINE_STREAM_ACKED stream={} group={} recordId={}",
+                    DeadlineStreamConstants.DEADLINE_GENERATED_STREAM,
+                    DeadlineStreamConstants.DELIVERY_SERVICE_GROUP,
+                    record.getId()
+            );
         } catch (Exception e) {
-            log.error("배송 최종시한 이벤트 처리에 실패했습니다. recordId={}", record.getId(), e);
+            log.error("event=DELIVERY_DEADLINE_PROCESSING_FAILED recordId={}", record.getId(), e);
         }
     }
 
@@ -39,7 +44,7 @@ public class DeadlineGeneratedStreamConsumer implements StreamListener<String, M
     void process(MapRecord<String, ?, ?> record) throws Exception {
         Object payloadObj = record.getValue().get("payload");
         if (payloadObj == null) {
-            log.warn("배송 최종시한 이벤트에 payload가 없습니다. recordId={}", record.getId());
+            log.warn("event=DELIVERY_DEADLINE_PAYLOAD_MISSING recordId={}", record.getId());
             return;
         }
 
@@ -50,7 +55,7 @@ public class DeadlineGeneratedStreamConsumer implements StreamListener<String, M
         // 데이터 검증
         Set<ConstraintViolation<DeadlineGeneratedEvent>> violations = validator.validate(event);
         if (!violations.isEmpty()) {
-            log.warn("배송 최종시한 이벤트 검증에 실패했습니다. recordId={}, violations={}",
+            log.warn("event=DELIVERY_DEADLINE_VALIDATION_FAILED recordId={} violations={}",
                     record.getId(),
                     violations.stream()
                             .map(ConstraintViolation::getMessage)
@@ -60,7 +65,13 @@ public class DeadlineGeneratedStreamConsumer implements StreamListener<String, M
         }
 
         deliveryService.updateFinalDepartureDeadline(event);
-        log.info("배송 최종 출발시한을 반영했습니다. deliveryId={}, eventId={}",
+        log.info("event=DELIVERY_DEADLINE_EVENT_PROCESSED recordId={} eventId={} deliveryId={} aiMessageId={}",
+                record.getId(),
+                event.getEventId(),
+                event.getDeliveryId(),
+                event.getAiMessageId()
+        );
+        log.info("event=DELIVERY_DEADLINE_APPLIED deliveryId={} eventId={}",
                 event.getDeliveryId(),
                 event.getEventId()
         );

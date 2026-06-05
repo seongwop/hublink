@@ -1,16 +1,15 @@
 package com.msa.order_service.client.circuit;
 
 import com.msa.core_common.error.exception.CustomException;
+import com.msa.order_service.client.ProductFeignClient;
 import com.msa.order_service.dto.req.OrderMakeReqDto;
 import com.msa.order_service.dto.res.ProductNPAResDto;
 import com.msa.order_service.error.OrderErrorCode;
-import com.msa.order_service.client.ProductFeignClient;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-
-import java.util.List;
 
 @Component
 @RequiredArgsConstructor
@@ -25,19 +24,17 @@ public class ProductCircuitService {
     }
 
     public List<ProductNPAResDto> increaseFallback(List<OrderMakeReqDto.Items> items, Throwable t) {
-        log.error("[Product Service] 장애로 인해 재고 감소 요청 불가. 원인: {}", t.getMessage());
-
+        log.error("event=ORDER_PRODUCT_DECREASE_FALLBACK reason={}", t.getMessage());
         throw new CustomException(OrderErrorCode.PRODUCT_FEIGN_FAIL);
     }
 
     @CircuitBreaker(name = "increaseProductStock", fallbackMethod = "decreaseFallback")
-    public Boolean increaseProductStock (List<OrderMakeReqDto.Items> items) {
+    public Boolean increaseProductStock(List<OrderMakeReqDto.Items> items) {
         return productFeignClient.increaseProductStock(items).getIsSuccess();
     }
 
     public Boolean decreaseFallback(List<OrderMakeReqDto.Items> items, Throwable t) {
-        log.error("[Product Service] 장애로 인해 재고 복구 요청 불가. 원인: {}", t.getMessage());
-
+        log.error("event=ORDER_PRODUCT_INCREASE_FALLBACK reason={}", t.getMessage());
         throw new CustomException(OrderErrorCode.PRODUCT_FEIGN_FAIL);
     }
 }

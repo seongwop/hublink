@@ -33,9 +33,9 @@ public class InventoryEventPublisher {
         try {
             String message = objectMapper.writeValueAsString(payload);
             kafkaTemplate.send(topic, orderId.toString(), message);
-            log.info("[Kafka 발행] topic={}, orderId={}", topic, orderId);
+            log.info("event=STOCK_EVENT_PUBLISHED topic={} orderId={}", topic, orderId);
         } catch (Exception e) {
-            log.error("[Kafka 발행 실패] topic={}, orderId={}", topic, orderId, e);
+            log.error("event=STOCK_EVENT_PUBLISH_FAILED topic={} orderId={}", topic, orderId, e);
             throw new RuntimeException("이벤트 발행 실패", e);
         }
     }

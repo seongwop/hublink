@@ -11,6 +11,7 @@ import com.msa.slack_service.exception.SlackErrorCode;
 import com.msa.slack_service.repository.SlackMessageRepository;
 import com.msa.slack_service.stream.event.DeadlineGeneratedEvent;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -21,6 +22,7 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
+@Slf4j
 public class SlackMessageService {
     private final SlackMessageRepository slackMessageRepository;
 
@@ -28,16 +30,33 @@ public class SlackMessageService {
     @Transactional
     public SlackMessage findOrCreateMessage(DeadlineGeneratedEvent event, String idempotencyKey) {
         return slackMessageRepository.findByIdempotencyKey(idempotencyKey)
-                .orElseGet(() -> slackMessageRepository.save(
-                        SlackMessage.builder()
-                                .receiverUserId(event.getReceiverUserId())
-                                .aiMessageId(event.getAiMessageId())
-                                .receiverSlackId(event.getReceiverSlackId())
-                                .idempotencyKey(idempotencyKey)
-                                .messageType(event.getMessageType())
-                                .message(event.getMessage())
-                                .build()
-                ));
+                .map(slackMessage -> {
+                    log.info("event=SLACK_MESSAGE_FOUND slackMessageId={} idempotencyKey={} status={}",
+                            slackMessage.getSlackMessageId(),
+                            idempotencyKey,
+                            slackMessage.getStatus()
+                    );
+                    return slackMessage;
+                })
+                .orElseGet(() -> {
+                    SlackMessage savedMessage = slackMessageRepository.save(
+                            SlackMessage.builder()
+                                    .receiverUserId(event.getReceiverUserId())
+                                    .aiMessageId(event.getAiMessageId())
+                                    .receiverSlackId(event.getReceiverSlackId())
+                                    .idempotencyKey(idempotencyKey)
+                                    .messageType(event.getMessageType())
+                                    .message(event.getMessage())
+                                    .build()
+                    );
+                    log.info("event=SLACK_MESSAGE_CREATED slackMessageId={} idempotencyKey={} receiverUserId={} aiMessageId={}",
+                            savedMessage.getSlackMessageId(),
+                            idempotencyKey,
+                            savedMessage.getReceiverUserId(),
+                            savedMessage.getAiMessageId()
+                    );
+                    return savedMessage;
+                });
     }
 
     // 발송 성공
@@ -47,6 +66,7 @@ public class SlackMessageService {
                 .orElseThrow(() -> new CustomException(SlackErrorCode.SLACK_MESSAGE_NOT_FOUND));
 
         slackMessage.markSent();
+        log.info("event=SLACK_MESSAGE_MARKED_SENT slackMessageId={}", slackMessageId);
     }
 
     // 발송 실패
@@ -56,6 +76,7 @@ public class SlackMessageService {
                 .orElseThrow(() -> new CustomException(SlackErrorCode.SLACK_MESSAGE_NOT_FOUND));
 
         slackMessage.markFailed(reason);
+        log.warn("event=SLACK_MESSAGE_MARKED_FAILED slackMessageId={} reason={}", slackMessageId, reason);
     }
 
     @Transactional
@@ -64,6 +85,7 @@ public class SlackMessageService {
                 .orElseThrow(() -> new CustomException(SlackErrorCode.SLACK_MESSAGE_NOT_FOUND));
 
         slackMessage.markSkipped(reason);
+        log.info("event=SLACK_MESSAGE_MARKED_SKIPPED slackMessageId={} reason={}", slackMessageId, reason);
     }
 
     // 목록 조회

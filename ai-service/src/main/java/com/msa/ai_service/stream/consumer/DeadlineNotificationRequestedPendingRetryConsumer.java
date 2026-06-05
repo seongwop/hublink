@@ -12,15 +12,19 @@ import com.msa.core_common.error.exception.CustomException;
 import com.msa.core_common.stream.DeadlineStreamConstants;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
+import java.util.Set;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.connection.stream.*;
+import org.springframework.data.redis.connection.stream.Consumer;
+import org.springframework.data.redis.connection.stream.MapRecord;
+import org.springframework.data.redis.connection.stream.ReadOffset;
+import org.springframework.data.redis.connection.stream.RecordId;
+import org.springframework.data.redis.connection.stream.StreamOffset;
+import org.springframework.data.redis.connection.stream.StreamReadOptions;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-
-import java.util.Set;
-import java.util.UUID;
 
 @Slf4j
 @Component
@@ -52,12 +56,12 @@ public class DeadlineNotificationRequestedPendingRetryConsumer {
 
         for (MapRecord<String, Object, Object> record : records) {
             try {
-                log.info("AI Pending 이벤트 재처리 시작: recordId={}", record.getId());
+                log.info("event=AI_PENDING_RETRY_STARTED recordId={}", record.getId());
 
                 Object payloadObj = record.getValue().get("payload");
 
                 if (payloadObj == null) {
-                    log.warn("AI Pending 이벤트 payload 누락으로 ACK 처리: recordId={}", record.getId());
+                    log.warn("event=AI_PENDING_PAYLOAD_MISSING recordId={}", record.getId());
                     acknowledge(record.getId());
                     continue;
                 }
@@ -71,7 +75,7 @@ public class DeadlineNotificationRequestedPendingRetryConsumer {
                         validator.validate(event);
 
                 if (!violations.isEmpty()) {
-                    log.warn("AI Pending 이벤트 유효성 검증 실패로 ACK 처리: recordId={}, violations={}",
+                    log.warn("event=AI_PENDING_VALIDATION_FAILED recordId={} violations={}",
                             record.getId(),
                             violations.stream()
                                     .map(ConstraintViolation::getMessage)
@@ -97,17 +101,17 @@ public class DeadlineNotificationRequestedPendingRetryConsumer {
 
                 acknowledge(record.getId());
 
-                log.info("AI Pending 이벤트 재처리 ACK 완료: recordId={}", record.getId());
+                log.info("event=AI_PENDING_ACK_COMPLETED recordId={}", record.getId());
 
             } catch (CustomException e) {
                 if (e.getErrorCode() == AiErrorCode.AI_CIRCUIT_BREAKER_OPEN) {
-                    log.warn("AI Pending 이벤트 재처리 일시 실패. Circuit Breaker OPEN으로 ACK 미처리: recordId={}", record.getId(), e);
+                    log.warn("event=AI_PENDING_CIRCUIT_OPEN recordId={}", record.getId(), e);
                     continue;
                 }
-                log.error("AI Pending 이벤트 재처리 최종 실패. 실패 처리 후 ACK: recordId={}", record.getId(), e);
+                log.error("event=AI_PENDING_FINAL_FAILED recordId={}", record.getId(), e);
                 acknowledge(record.getId());
-            }   catch (Exception e) {
-                log.error("AI Pending 이벤트 재처리 실패. 실패 처리 후 ACK: recordId={}", record.getId(), e);
+            } catch (Exception e) {
+                log.error("event=AI_PENDING_RETRY_FAILED recordId={}", record.getId(), e);
                 acknowledge(record.getId());
             }
         }

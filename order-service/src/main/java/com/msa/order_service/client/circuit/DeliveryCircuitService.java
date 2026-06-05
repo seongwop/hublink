@@ -1,10 +1,10 @@
 package com.msa.order_service.client.circuit;
 
 import com.msa.core_common.error.exception.CustomException;
+import com.msa.order_service.client.DeliveryFeignClient;
 import com.msa.order_service.dto.req.MakeDeliveryReqDto;
 import com.msa.order_service.dto.res.MakeDeliveryResDto;
 import com.msa.order_service.error.OrderErrorCode;
-import com.msa.order_service.client.DeliveryFeignClient;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,14 +19,12 @@ public class DeliveryCircuitService {
     private final DeliveryFeignClient deliveryFeignClient;
 
     @CircuitBreaker(name = "makeDelivery", fallbackMethod = "makeDeliveryFallback")
-    public MakeDeliveryResDto makeDelivery (@RequestBody MakeDeliveryReqDto makeDeliveryReqDto) {
+    public MakeDeliveryResDto makeDelivery(@RequestBody MakeDeliveryReqDto makeDeliveryReqDto) {
         return deliveryFeignClient.makeDelivery(makeDeliveryReqDto);
     }
 
-    public MakeDeliveryResDto makeDeliveryFallback (MakeDeliveryReqDto makeDeliveryReqDto, Throwable t) {
-        log.error("[Delivery Service] 가 응답하지 않아 Fallback 로직이 실행됩니다. 원인: {}", t.getMessage());
-
+    public MakeDeliveryResDto makeDeliveryFallback(MakeDeliveryReqDto makeDeliveryReqDto, Throwable t) {
+        log.error("event=ORDER_DELIVERY_FALLBACK orderId={} reason={}", makeDeliveryReqDto.getOrderId(), t.getMessage());
         throw new CustomException(OrderErrorCode.FAIL_DELIVERY);
     }
-
 }

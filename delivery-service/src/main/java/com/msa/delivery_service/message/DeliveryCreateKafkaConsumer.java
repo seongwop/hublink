@@ -42,6 +42,12 @@ public class DeliveryCreateKafkaConsumer {
     )
     public void consume(ConsumerRecord<String, String> record) {
         String payload = record.value();
+        log.info("event=DELIVERY_CREATE_CONSUMED topic={} partition={} offset={} key={}",
+                record.topic(),
+                record.partition(),
+                record.offset(),
+                record.key()
+        );
 
         // 메세지 키는 orderId 우선, 없으면 record key, 둘 다 없으면 offset 사용
         String messageKey = resolveMessageKey(record, null);
@@ -52,18 +58,26 @@ public class DeliveryCreateKafkaConsumer {
             request = objectMapper.readValue(payload, DeliveryRequest.class);
             validate(request);
             messageKey = resolveMessageKey(record, request.getOrderId());
+            log.info("event=DELIVERY_CREATE_VALIDATED orderId={} messageKey={}",
+                    request.getOrderId(),
+                    messageKey
+            );
 
             // 멱등성 보장을 위해 이미 존재하면 기존 결과 반환
             var existingDelivery = deliveryService.findDeliveryByOrderId(request.getOrderId());
             DeliveryResponse response;
             if (existingDelivery.isPresent()) {
                 response = existingDelivery.get();
+                log.info("event=DELIVERY_CREATE_DUPLICATE orderId={} deliveryId={}",
+                        request.getOrderId(),
+                        response.getDeliveryId()
+                );
                 publishSuccess(messageKey, response);
             } else {
                 response = deliveryService.createDelivery(request);
             }
 
-            log.info("배송 생성 이벤트를 정상 처리했습니다. orderId={}, deliveryId={}",
+            log.info("event=DELIVERY_CREATE_COMPLETED orderId={} deliveryId={}",
                     request.getOrderId(),
                     response.getDeliveryId()
             );
@@ -74,7 +88,7 @@ public class DeliveryCreateKafkaConsumer {
 
             // 중복 배송 생성은 무시 처리
             if (e.getErrorCode() == DeliveryErrorCode.DUPLICATE_ORDER_DELIVERY) {
-                log.info("중복 배송 생성 이벤트 무시. key={}, offset={}",
+                log.info("event=DELIVERY_CREATE_DUPLICATE_SKIPPED key={} offset={}",
                         messageKey,
                         record.offset()
                 );
@@ -85,7 +99,7 @@ public class DeliveryCreateKafkaConsumer {
             if (messageKey == null) {
                 messageKey = "offset-" + record.offset();
             }
-            log.error("배송 생성 이벤트 처리 실패. key={}, offset={}", messageKey, record.offset(), e);
+            log.error("event=DELIVERY_CREATE_CUSTOM_EXCEPTION key={} offset={}", messageKey, record.offset(), e);
 
             // orderId가 존재할 경우만 보상 트랜잭션을 위해 failed 처리
             if (request != null && request.getOrderId() != null) {
@@ -99,7 +113,7 @@ public class DeliveryCreateKafkaConsumer {
                 messageKey = "offset-" + record.offset();
             }
             log.error(
-                    "배송 생성 이벤트 처리에 실패했습니다. key={}, offset={}",
+                    "event=DELIVERY_CREATE_UNEXPECTED_FAILED key={} offset={}",
                     messageKey,
                     record.offset(),
                     e
@@ -121,10 +135,16 @@ public class DeliveryCreateKafkaConsumer {
 
     private void publishSuccess(String key, DeliveryResponse response) {
         outboxService.enqueue(CREATE_SUCCEED_TOPIC, key, response);
+        log.info("event=DELIVERY_CREATE_SUCCESS_ENQUEUED topic={} key={} deliveryId={}",
+                CREATE_SUCCEED_TOPIC,
+                key,
+                response.getDeliveryId()
+        );
     }
 
     private void publishFailed(String key, String originalPayload) {
         outboxService.enqueueSerialized(CREATE_FAILED_TOPIC, key, originalPayload);
+        log.warn("event=DELIVERY_CREATE_FAILED_ENQUEUED topic={} key={}", CREATE_FAILED_TOPIC, key);
     }
 
     private void publishDlq(String key, ConsumerRecord<String, String> record, String originalPayload, Exception e) {
@@ -136,6 +156,13 @@ public class DeliveryCreateKafkaConsumer {
                 failureReason(e),
                 originalPayload
         ));
+        log.warn("event=DELIVERY_CREATE_DLQ_ENQUEUED topic={} key={} sourceTopic={} partition={} offset={}",
+                CREATE_DLQ_TOPIC,
+                key,
+                record.topic(),
+                record.partition(),
+                record.offset()
+        );
     }
 
     // DLQ에 이벤트를 발행할 때 넣을 실패 상세 원인

@@ -33,12 +33,25 @@ public class OutboxService {
 
             future.whenComplete((result, ex) -> {
                 if (ex == null) {
-                    log.debug("카프카 메시지 발행 성공 - Outbox Id : {}, offset: {}",
+                    log.debug("event=ORDER_OUTBOX_PUBLISH_CONFIRMED outboxId={} offset={}",
                             outbox.getId(), result.getRecordMetadata().offset());
 
+                    log.info("event=ORDER_OUTBOX_PUBLISHED outboxId={} topic={} aggregateId={} partition={} offset={}",
+                            outbox.getId(),
+                            outbox.getTopic(),
+                            outbox.getAggregateId(),
+                            result.getRecordMetadata().partition(),
+                            result.getRecordMetadata().offset()
+                    );
                     orderService.markOutboxProcessed(outbox.getId());
                 } else {
-                    log.error("카프카 메시지 발행 실패 - Outbox Id : {}", outbox.getId(), ex);
+                    log.error("event=ORDER_OUTBOX_PUBLISH_FAILED outboxId={} topic={} aggregateId={}",
+                            outbox.getId(),
+                            outbox.getTopic(),
+                            outbox.getAggregateId(),
+                            ex
+                    );
+                    log.error("event=ORDER_OUTBOX_PUBLISH_EXCEPTION outboxId={}", outbox.getId(), ex);
                 }
             });
         }

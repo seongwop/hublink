@@ -10,15 +10,19 @@ import com.msa.ai_service.stream.publisher.DeadlineGeneratedEventPublisher;
 import com.msa.core_common.stream.DeadlineStreamConstants;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
+import java.util.Set;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.connection.stream.*;
+import org.springframework.data.redis.connection.stream.Consumer;
+import org.springframework.data.redis.connection.stream.MapRecord;
+import org.springframework.data.redis.connection.stream.ReadOffset;
+import org.springframework.data.redis.connection.stream.RecordId;
+import org.springframework.data.redis.connection.stream.StreamOffset;
+import org.springframework.data.redis.connection.stream.StreamReadOptions;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-
-import java.util.Set;
-import java.util.UUID;
 
 @Slf4j
 @Component
@@ -47,13 +51,17 @@ public class DeadlineNotificationRequestedStreamConsumer {
         if (records == null || records.isEmpty()) {
             return;
         }
+        log.info("event=AI_STREAM_BATCH_RECEIVED stream={} count={}",
+                DeadlineStreamConstants.DEADLINE_REQUESTED_STREAM,
+                records.size()
+        );
 
         for (MapRecord<String, Object, Object> record : records) {
             try {
                 Object payloadObj = record.getValue().get("payload");
 
                 if (payloadObj == null) {
-                    log.warn("AI Stream 이벤트 payload 누락으로 ACK 처리: recordId={}", record.getId());
+                    log.warn("event=AI_STREAM_PAYLOAD_MISSING recordId={}", record.getId());
 
                     stringRedisTemplate.opsForStream().acknowledge(
                             DeadlineStreamConstants.DEADLINE_REQUESTED_STREAM,
@@ -73,7 +81,7 @@ public class DeadlineNotificationRequestedStreamConsumer {
                         validator.validate(event);
 
                 if (!violations.isEmpty()) {
-                    log.warn("AI Stream 이벤트 유효성 검증 실패: recordId={}, violations={}",
+                    log.warn("event=AI_STREAM_VALIDATION_FAILED recordId={} violations={}",
                             record.getId(),
                             violations.stream()
                                     .map(ConstraintViolation::getMessage)
@@ -89,13 +97,19 @@ public class DeadlineNotificationRequestedStreamConsumer {
                     continue;
                 }
 
-                log.info("AI 발송 시한 생성 요청 이벤트 수신: eventId={}, deliveryId={}, orderId={}",
+                log.info("event=AI_STREAM_EVENT_RECEIVED eventId={} deliveryId={} orderId={}",
                         event.getEventId(),
                         event.getDeliveryId(),
                         event.getOrderId()
                 );
 
                 AiDeadlineResult result = aiService.generateDeadline(event);
+                log.info("event=AI_DEADLINE_REQUEST_PROCESSED recordId={} eventId={} deliveryId={} orderId={}",
+                        record.getId(),
+                        event.getEventId(),
+                        event.getDeliveryId(),
+                        event.getOrderId()
+                );
 
                 DeadlineGeneratedEvent generatedEvent = DeadlineGeneratedEvent.builder()
                         .eventId(UUID.randomUUID())
@@ -108,8 +122,13 @@ public class DeadlineNotificationRequestedStreamConsumer {
                         .message(result.getMessage())
                         .build();
 
-
-                deadlineGeneratedEventPublisher.publish(generatedEvent);
+                RecordId generatedRecordId = deadlineGeneratedEventPublisher.publish(generatedEvent);
+                log.info("event=AI_DEADLINE_GENERATED_ENQUEUED sourceRecordId={} generatedRecordId={} deliveryId={} aiMessageId={}",
+                        record.getId(),
+                        generatedRecordId,
+                        generatedEvent.getDeliveryId(),
+                        generatedEvent.getAiMessageId()
+                );
 
                 stringRedisTemplate.opsForStream().acknowledge(
                         DeadlineStreamConstants.DEADLINE_REQUESTED_STREAM,
@@ -117,10 +136,15 @@ public class DeadlineNotificationRequestedStreamConsumer {
                         record.getId()
                 );
 
-                log.info("AI 이벤트 ACK 완료: recordId={}", record.getId());
+                log.info("event=AI_STREAM_ACK_COMPLETED recordId={}", record.getId());
+                log.info("event=AI_STREAM_ACKED stream={} group={} recordId={}",
+                        DeadlineStreamConstants.DEADLINE_REQUESTED_STREAM,
+                        DeadlineStreamConstants.AI_SERVICE_GROUP,
+                        record.getId()
+                );
 
             } catch (Exception e) {
-                log.error("AI Stream 이벤트 처리 실패: recordId={}", record.getId(), e);
+                log.error("event=AI_STREAM_PROCESSING_FAILED recordId={}", record.getId(), e);
             }
         }
     }
