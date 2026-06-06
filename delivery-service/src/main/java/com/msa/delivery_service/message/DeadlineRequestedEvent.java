@@ -2,8 +2,10 @@ package com.msa.delivery_service.message;
 
 import com.msa.delivery_service.entity.Delivery;
 import com.msa.delivery_service.dto.DeliveryRequest;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -12,6 +14,8 @@ import java.util.UUID;
 
 @Getter
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class DeadlineRequestedEvent {
 
     private UUID eventId;
@@ -69,6 +73,8 @@ public class DeadlineRequestedEvent {
 
     @Getter
     @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class RouteInfo {
 
         private UUID hubRouteId;

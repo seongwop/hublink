@@ -91,5 +91,5 @@ Kafka lag, Redis pending, JVM heap, p95/p99 기반 병목 확인
 ## 문서
 
 - [GCP 인프라 구성](docs/gcp-infra.md)
-- [배송 도메인 시나리오 테스트 계획](docs/scenario-test-plan.md)
-- [배송 도메인 성능 테스트 계획](docs/performance-test-plan.md)
+- [배송 도메인 시나리오 테스트 계획](docs/scenario/scenario-test-plan.md)
+- [배송 도메인 성능 테스트 계획](docs/performance/performance-test-plan.md)

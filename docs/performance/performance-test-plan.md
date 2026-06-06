@@ -6,7 +6,7 @@
 
 | 문서 | 내용 |
 | --- | --- |
-| [scenario-test-plan.md](scenario-test-plan.md) | 배송 도메인 기능 시나리오와 장애 유도 |
+| [scenario-test-plan.md](../scenario/scenario-test-plan.md) | 배송 도메인 기능 시나리오와 장애 유도 |
 
 ## 테스트 목표
 
@@ -614,7 +614,7 @@ order by count(*) desc;
 
 ## 추천 진행 순서
 
-1. [scenario-test-plan.md](scenario-test-plan.md)의 배송 생성 성공 시나리오 통과 확인
+1. [scenario-test-plan.md](../scenario/scenario-test-plan.md)의 배송 생성 성공 시나리오 통과 확인
 2. Gateway 진입 구간 baseline
 3. Gateway 진입 구간 stress
 4. 배송 Kafka 유입량 baseline
