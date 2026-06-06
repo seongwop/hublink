@@ -6,13 +6,13 @@
 
 AI 서비스는 생성 API가 아니라 Redis Stream 이벤트를 consume해서 동작한다.
 
-따라서 AI 시한 생성 요청 이벤트는 `delivery-service`의 내부 테스트 API를 통해 `deadline:requested:stream`에 주입하고, ai-service가 해당 이벤트를 consume해서 AI 시한 생성과 결과 이벤트 발행을 수행하는지 검증한다.
+따라서 AI 시한 생성 요청 이벤트는 `delivery-service`의 테스트 전용 API를 통해 `deadline:requested:stream`에 주입하고, ai-service가 해당 이벤트를 consume해서 AI 시한 생성과 결과 이벤트 발행을 수행하는지 검증한다.
 
 또한 AI 서비스는 별도 멱등성키 기반 중복 방지 정책을 적용하지 않으므로, 동일 이벤트 중복 처리 방지 테스트는 본 시나리오에서 제외한다.
 
 ## 테스트 목표
 
-* delivery-service 내부 테스트 API로 `DeadlineRequestedEvent`를 Redis Stream에 주입할 수 있는지 확인
+* delivery-service 테스트 전용 API로 `DeadlineRequestedEvent`를 Redis Stream에 주입할 수 있는지 확인
 * `deadline:requested:stream`에 AI 요청 이벤트가 생성되는지 확인
 * ai-service가 `deadline:requested:stream` 이벤트를 consume하는지 확인
 * AI가 최종 발송 시한 `finalDepartureDeadline`을 생성하는지 확인
@@ -29,7 +29,7 @@ AI 서비스는 생성 API가 아니라 Redis Stream 이벤트를 consume해서 
 AI 시한 생성 요청 흐름:
 
 ```text
-delivery-service 내부 테스트 API
+delivery-service 테스트 전용 API
 -> deadline:requested:stream
 -> ai-service consume
 -> validation
@@ -141,7 +141,7 @@ AI 서비스가 생성 후 발행하는 결과 이벤트다.
 
 ## 사전 준비
 
-AI 시나리오 테스트는 배송 생성 이후 발행되는 `DeadlineRequestedEvent`를 delivery-service 내부 테스트 API로 직접 주입하여 진행한다.
+AI 시나리오 테스트는 배송 생성 이후 발행되는 `DeadlineRequestedEvent`를 delivery-service 테스트 전용 API로 직접 주입하여 진행한다.
 
 따라서 배송 시나리오처럼 주문 요청 body나 seed SQL을 필수로 사용하지 않는다.
 
@@ -171,7 +171,7 @@ db/seed/ai/events/03-ai-generated-event.json
 테스트 전용 API:
 
 ```http
-POST /internal/deliveries/deadline-requested
+POST /api/v1/deliveries/test/deadline-requested
 ```
 
 AI 이후 후속 흐름 테스트용 API:
@@ -184,7 +184,7 @@ POST /api/v1/ai/test/deadline-generated
 
 1. Redis Stream 상태 확인
 2. 필요한 경우 테스트 전 requested/generated stream 초기화
-3. Swagger 또는 curl로 delivery-service 내부 테스트 API 호출
+3. Swagger 또는 curl로 delivery-service 테스트 전용 API 호출
 4. 요청 body는 시나리오에 맞는 JSON 파일 사용
 5. `deadline:requested:stream`에 이벤트 생성 여부 확인
 6. ai-service 처리 로그 확인
@@ -203,14 +203,14 @@ redis-cli -h 10.10.0.40 -p 6379 DEL deadline:generated:stream
 정상 요청:
 
 ```http
-POST /internal/deliveries/deadline-requested
+POST /api/v1/deliveries/test/deadline-requested
 Body: db/seed/ai/events/01-ai-success-event.json
 ```
 
 실패 요청:
 
 ```http
-POST /internal/deliveries/deadline-requested
+POST /api/v1/deliveries/test/deadline-requested
 Body: db/seed/ai/events/02-ai-validation-fail-event.json
 ```
 
@@ -273,12 +273,12 @@ validation 통과
 
 ### 목적
 
-delivery-service 내부 테스트 API를 호출했을 때 `deadline:requested:stream`에 `DeadlineRequestedEvent`가 정상 생성되는지 확인한다.
+delivery-service 테스트 전용 API를 호출했을 때 `deadline:requested:stream`에 `DeadlineRequestedEvent`가 정상 생성되는지 확인한다.
 
 ### 요청
 
 ```http
-POST /internal/deliveries/deadline-requested
+POST /api/v1/deliveries/test/deadline-requested
 ```
 
 ### Body
@@ -331,7 +331,7 @@ POST /internal/deliveries/deadline-requested
 ### 기대 흐름
 
 ```text
-POST /internal/deliveries/deadline-requested
+POST /api/v1/deliveries/test/deadline-requested
 -> deadline:requested:stream XADD
 ```
 
@@ -353,12 +353,12 @@ event=DELIVERY_TEST_DEADLINE_REQUESTED_EVENT_PUBLISHED
 ```text
 deadline:requested:stream에 요청 이벤트가 생성된다.
 payload에 DeadlineRequestedEvent 내용이 포함된다.
-delivery-service 내부 테스트 API는 정상 응답을 반환한다.
+delivery-service 테스트 전용 API는 정상 응답을 반환한다.
 ```
 
 ### 문제 추적
 
-* API 응답 실패: DeliveryInternalController, DeliveryTestService 확인
+* API 응답 실패: DeliveryTestController, DeliveryTestService 확인
 * Redis 메시지 없음: Redis 연결 설정, stream key, XADD 로직 확인
 * payload 누락: payload 필드명 및 직렬화 로직 확인
 * 5xx 발생: Redis 연결 장애 또는 직렬화 오류 확인
@@ -462,7 +462,7 @@ pending entry가 누적되지 않는다.
 
 ### 진행
 
-1. 실패를 유도할 수 있는 body로 delivery-service 내부 테스트 API 호출
+1. 실패를 유도할 수 있는 body로 delivery-service 테스트 전용 API 호출
 2. ai-service 로그 확인
 3. DB에 저장되지 않았는지 확인
 4. `deadline:generated:stream`에 결과 이벤트가 발행되지 않았는지 확인
@@ -504,7 +504,7 @@ pending entry가 누적되지 않는다.
 ### 기대 흐름
 
 ```text
-POST /internal/deliveries/deadline-requested
+POST /api/v1/deliveries/test/deadline-requested
 -> deadline:requested:stream XADD
 -> ai-service consume
 -> validation 실패
@@ -540,7 +540,7 @@ redis-cli -h 10.10.0.40 -p 6379 XPENDING deadline:requested:stream ai-service-gr
 ### 기대 결과
 
 ```text
-delivery-service 내부 테스트 API는 Redis Stream에 잘못된 이벤트를 주입한다.
+delivery-service 테스트 전용 API는 Redis Stream에 잘못된 이벤트를 주입한다.
 ai-service는 이벤트를 consume한다.
 Bean Validation에서 필수값 누락을 감지한다.
 p_ai_message 테이블에는 저장되지 않는다.
@@ -577,7 +577,7 @@ AI 요청 이벤트 정상 처리 후 ai-service가 `DeadlineGeneratedEvent`를 
 
 ### 진행
 
-1. 정상 요청 body로 delivery-service 내부 테스트 API 호출
+1. 정상 요청 body로 delivery-service 테스트 전용 API 호출
 2. ai-service가 requested stream 이벤트를 consume하는지 확인
 3. AI 메시지가 DB에 저장되는지 확인
 4. `deadline:generated:stream`에 `DeadlineGeneratedEvent`가 발행되는지 확인
@@ -586,7 +586,7 @@ AI 요청 이벤트 정상 처리 후 ai-service가 `DeadlineGeneratedEvent`를 
 ### 요청
 
 ```http
-POST /internal/deliveries/deadline-requested
+POST /api/v1/deliveries/test/deadline-requested
 Body: db/seed/ai/events/01-ai-success-event.json
 ```
 
@@ -623,7 +623,6 @@ generated 이벤트에 finalDepartureDeadline과 message가 포함된다.
 * deliveryId 불일치: 이벤트 매핑 로직 확인
 * finalDepartureDeadline 없음: AI 응답 parsing 또는 mock 응답 생성 로직 확인
 * generated 이벤트는 발행됐지만 후속 서비스 미처리: Slack/Delivery consumer group 확인
-
 
 ## 결과 기록 양식
 
