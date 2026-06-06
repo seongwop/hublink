@@ -18,21 +18,10 @@ public class AiTestController {
     private final AiTestService aiTestService;
 
     @Operation(
-            summary = "AI 시한 생성 요청 이벤트 발행",
-            description = "DeadlineNotificationRequestedEvent를 Redis Streams에 발행하여 AI 비동기 처리 흐름을 테스트합니다."
-    )
-    @PostMapping("/events/deadline-requested")
-    public AiTestStreamPublishResponse publishDeadlineRequestedEvent(
-            @RequestBody DeadlineNotificationRequestedEvent event
-    ) {
-        return aiTestService.publishDeadlineRequestedEvent(event);
-    }
-
-    @Operation(
             summary = "AI 시한 생성 완료 이벤트 발행",
             description = "DeadlineGeneratedEvent를 deadline:generated:stream에 직접 발행하여 AI → Slack/Delivery 흐름을 테스트합니다."
     )
-    @PostMapping("/events/deadline-generated")
+    @PostMapping("/deadline-generated")
     public AiTestStreamPublishResponse publishDeadlineGeneratedEvent(
             @RequestBody DeadlineGeneratedEvent event
     ) {
