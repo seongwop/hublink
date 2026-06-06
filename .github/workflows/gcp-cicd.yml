@@ -1,9 +1,9 @@
 name: GCP CI/CD
 
 on:
-  # Actions 수동 전체 배포
+  # 수동 전체 배포
   workflow_dispatch:
-  # develop-infra 배포 관련 변경 감지
+  # develop 배포 관련 변경 감지
   push:
     branches:
       - develop
@@ -34,8 +34,7 @@ on:
       - 'user-service/**'
 
 concurrency:
-  # 동일 브랜치 중복 배포 취소
-  # 오래된 배포 실행 방지
+  # 같은 브랜치 중복 배포 취소
   group: gcp-cicd-${{ github.ref }}
   cancel-in-progress: true
 
@@ -47,7 +46,6 @@ permissions:
 
 env:
   # Terraform 리소스 기준 고정 배포 정보
-  # 민감값 GitHub Secrets 관리
   GCP_REGION: asia-northeast3
   GCP_ZONE: asia-northeast3-a
   GCP_ARTIFACT_REPOSITORY: hublink
@@ -62,9 +60,163 @@ env:
   DATA_VM_IP: 10.10.0.40
 
 jobs:
-  build-and-push:
-    name: Build and push images
+  detect-changes:
+    name: Detect changed services
     runs-on: ubuntu-latest
+    outputs:
+      services_json: ${{ steps.detect.outputs.services_json }}
+      deploy_platform: ${{ steps.detect.outputs.deploy_platform }}
+      deploy_domain_a: ${{ steps.detect.outputs.deploy_domain_a }}
+      deploy_domain_b: ${{ steps.detect.outputs.deploy_domain_b }}
+      deploy_data_monitor: ${{ steps.detect.outputs.deploy_data_monitor }}
+      mirror_promtail: ${{ steps.detect.outputs.mirror_promtail }}
+      should_deploy: ${{ steps.detect.outputs.should_deploy }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed files
+        id: files
+        run: |
+          # 수동 실행은 전체 배포 대상으로 처리
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "mode=all" >> "${GITHUB_OUTPUT}"
+            git ls-files > changed-files.txt
+            exit 0
+          fi
+
+          # push 기준 변경 파일 목록 생성
+          before="${{ github.event.before }}"
+          if [ -z "${before}" ] || [ "${before}" = "0000000000000000000000000000000000000000" ]; then
+            before="$(git rev-parse HEAD^)"
+          fi
+
+          echo "mode=changed" >> "${GITHUB_OUTPUT}"
+          git diff --name-only "${before}" "${GITHUB_SHA}" > changed-files.txt
+
+      - name: Build deployment matrix
+        id: detect
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          mode = "${{ steps.files.outputs.mode }}"
+          changed_files = [
+              line.strip().replace("\\", "/")
+              for line in Path("changed-files.txt").read_text().splitlines()
+              if line.strip()
+          ]
+
+          service_to_vm = {
+              "eureka-server": "platform",
+              "config-server": "platform",
+              "api-gateway": "platform",
+              "user-service": "domain_a",
+              "company-service": "domain_a",
+              "hub-service": "domain_a",
+              "product-service": "domain_a",
+              "order-service": "domain_b",
+              "stock-service": "domain_b",
+              "delivery-service": "domain_b",
+              "slack-service": "domain_b",
+              "ai-service": "domain_b",
+          }
+
+          all_services = list(service_to_vm.keys())
+          services = set()
+          deploy = {
+              "platform": False,
+              "domain_a": False,
+              "domain_b": False,
+              "data_monitor": False,
+          }
+          mirror_promtail = False
+
+          def deploy_service_vm(service):
+              vm = service_to_vm[service]
+              deploy[vm] = True
+
+          def deploy_all_app_vms():
+              deploy["platform"] = True
+              deploy["domain_a"] = True
+              deploy["domain_b"] = True
+
+          if mode == "all":
+              services.update(all_services)
+              deploy_all_app_vms()
+              deploy["data_monitor"] = True
+              mirror_promtail = True
+          else:
+              for file_path in changed_files:
+                  for service in all_services:
+                      if file_path == service or file_path.startswith(f"{service}/"):
+                          services.add(service)
+                          deploy_service_vm(service)
+
+                  if (
+                      file_path in {"Dockerfile", "build.gradle", "settings.gradle", "gradlew"}
+                      or file_path.startswith("gradle/")
+                      or file_path.startswith("core-common/")
+                  ):
+                      services.update(all_services)
+                      deploy_all_app_vms()
+
+                  if file_path.startswith("config-repo/"):
+                      deploy_all_app_vms()
+
+                  if file_path.startswith("db/"):
+                      deploy["data_monitor"] = True
+
+                  if file_path.startswith("monitoring/"):
+                      deploy_all_app_vms()
+                      deploy["data_monitor"] = True
+                      mirror_promtail = True
+
+                  if file_path == "docker-compose.platform.yml":
+                      deploy["platform"] = True
+
+                  if file_path == "docker-compose.domain-a.yml":
+                      deploy["domain_a"] = True
+
+                  if file_path == "docker-compose.domain-b.yml":
+                      deploy["domain_b"] = True
+
+                  if file_path == "docker-compose.data-monitor.yml":
+                      deploy["data_monitor"] = True
+                      mirror_promtail = True
+
+                  if file_path.startswith("scripts/gcp/") or file_path == ".github/workflows/gcp-cicd.yml":
+                      deploy_all_app_vms()
+                      deploy["data_monitor"] = True
+
+          services_json = json.dumps([service for service in all_services if service in services])
+          should_deploy = any(deploy.values())
+
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"services_json={services_json}\n")
+              output.write(f"deploy_platform={str(deploy['platform']).lower()}\n")
+              output.write(f"deploy_domain_a={str(deploy['domain_a']).lower()}\n")
+              output.write(f"deploy_domain_b={str(deploy['domain_b']).lower()}\n")
+              output.write(f"deploy_data_monitor={str(deploy['data_monitor']).lower()}\n")
+              output.write(f"mirror_promtail={str(mirror_promtail).lower()}\n")
+              output.write(f"should_deploy={str(should_deploy).lower()}\n")
+
+          print("changed_files=", changed_files)
+          print("services_json=", services_json)
+          print("deploy=", deploy)
+          print("mirror_promtail=", mirror_promtail)
+          PY
+
+  build-and-push:
+    name: Build and push images (${{ matrix.service }})
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.services_json != '[]'
     env:
       # GitHub Secrets 기준 Registry 주소
       GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
@@ -72,21 +224,9 @@ jobs:
 
     strategy:
       fail-fast: false
-      # SERVICE_NAME 기준 서비스별 이미지 빌드
+      # 변경된 서비스만 이미지 빌드
       matrix:
-        service:
-          - eureka-server
-          - config-server
-          - api-gateway
-          - user-service
-          - company-service
-          - hub-service
-          - product-service
-          - order-service
-          - stock-service
-          - delivery-service
-          - slack-service
-          - ai-service
+        service: ${{ fromJson(needs.detect-changes.outputs.services_json) }}
 
     steps:
       - name: Checkout
@@ -108,7 +248,6 @@ jobs:
         run: gcloud auth configure-docker "${GCP_REGION}-docker.pkg.dev" --quiet
 
       - name: Set up Docker Buildx
-        # Docker Buildx 빌드 캐시 준비
         uses: docker/setup-buildx-action@v3
 
       - name: Build and push ${{ matrix.service }}
@@ -129,6 +268,8 @@ jobs:
   mirror-external-images:
     name: Mirror external images
     runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.mirror_promtail == 'true'
     env:
       GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
       IMAGE_REGISTRY: asia-northeast3-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/hublink
@@ -164,13 +305,18 @@ jobs:
     name: Deploy to GCP VMs
     runs-on: ubuntu-latest
     needs:
+      - detect-changes
       - build-and-push
       - mirror-external-images
+    if: >
+      always()
+      && needs.detect-changes.outputs.should_deploy == 'true'
+      && (needs.build-and-push.result == 'success' || needs.build-and-push.result == 'skipped')
+      && (needs.mirror-external-images.result == 'success' || needs.mirror-external-images.result == 'skipped')
     environment: gcp
 
     env:
       # 민감값 GitHub Secrets/Variables 주입
-      # 배포 시점 .env.gcp 생성
       GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
       GCP_VM_USER: ${{ secrets.GCP_VM_USER }}
       DB_USERNAME: ${{ secrets.DB_USERNAME }}
@@ -203,35 +349,33 @@ jobs:
 
       - name: Set deployment defaults
         run: |
-          # 공통 배포값 GITHUB_ENV 저장
           echo "IMAGE_REGISTRY=${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${GCP_ARTIFACT_REPOSITORY}" >> "${GITHUB_ENV}"
           echo "GCP_VM_USER=${GCP_VM_USER:-github-actions}" >> "${GITHUB_ENV}"
 
       - name: Create .env.gcp
         run: |
-          # runner 런타임 환경파일 생성
-          # 비밀값 repo 커밋 방지
+          # runner 임시 환경파일 생성
           DB_USERNAME="${DB_USERNAME:-hublink}"
           DB_PASSWORD="${DB_PASSWORD:?DB_PASSWORD secret is required}"
           JWT_SECRET="${JWT_SECRET:?JWT_SECRET secret is required}"
           SLACK_ENABLED="${SLACK_ENABLED:-false}"
           AI_ENABLED="${AI_ENABLED:-false}"
           KAKAO_ENABLED="${KAKAO_ENABLED:-false}"
+
           # platform 외부 IP 조회
           PLATFORM_VM_EXTERNAL_IP="$(gcloud compute instances describe "${PLATFORM_VM}" --zone "${GCP_ZONE}" --project "${GCP_PROJECT_ID}" --format='get(networkInterfaces[0].accessConfigs[0].natIP)')"
           if [ -z "${PLATFORM_VM_EXTERNAL_IP}" ]; then
             echo "platform VM external IP is required" >&2
             exit 1
           fi
-          # Swagger 브라우저 요청 URL 기본값
+
           SWAGGER_GATEWAY_URL="${SWAGGER_GATEWAY_URL:-http://${PLATFORM_VM_EXTERNAL_IP}:19091}"
-          # Swagger UI origin 기본 허용
           CORS_ALLOWED_ORIGIN="${CORS_ALLOWED_ORIGIN:-${SWAGGER_GATEWAY_URL}}"
           LOG_LEVEL_ROOT="${LOG_LEVEL_ROOT:-INFO}"
 
           cat > .env.gcp <<EOF
           IMAGE_REGISTRY=${IMAGE_REGISTRY}
-          IMAGE_TAG=${GITHUB_SHA}
+          IMAGE_TAG=latest
           HUBLINK_ENV_FILE=.env.gcp
 
           PLATFORM_VM_IP=${PLATFORM_VM_IP}
@@ -282,26 +426,28 @@ jobs:
             --filter="name~'hublink-.*-vm'" \
             --format="table(name,status,networkInterfaces[0].networkIP,networkInterfaces[0].accessConfigs[0].natIP)"
 
+      - name: Prepare deploy script
+        run: chmod +x scripts/gcp/deploy-vm.sh
+
       - name: Deploy data and monitoring
-        # 데이터와 모니터링 계층 선배포
-        run: |
-          chmod +x scripts/gcp/deploy-vm.sh
-          scripts/gcp/deploy-vm.sh "${DATA_MONITOR_VM}" docker-compose.data-monitor.yml db monitoring
+        # 데이터와 모니터링 계층 배포
+        if: needs.detect-changes.outputs.deploy_data_monitor == 'true'
+        run: scripts/gcp/deploy-vm.sh "${DATA_MONITOR_VM}" docker-compose.data-monitor.yml db monitoring
 
       - name: Deploy platform services
-        # Eureka와 Config Server 선배포
-        run: |
-          scripts/gcp/deploy-vm.sh "${PLATFORM_VM}" docker-compose.platform.yml config-repo monitoring
+        # Eureka, Config Server, Gateway 배포
+        if: needs.detect-changes.outputs.deploy_platform == 'true'
+        run: scripts/gcp/deploy-vm.sh "${PLATFORM_VM}" docker-compose.platform.yml config-repo monitoring
 
       - name: Deploy domain A services
-        # domain-a 서비스 배포
-        run: |
-          scripts/gcp/deploy-vm.sh "${DOMAIN_A_VM}" docker-compose.domain-a.yml monitoring
+        # 사용자, 업체, 허브, 상품 서비스 배포
+        if: needs.detect-changes.outputs.deploy_domain_a == 'true'
+        run: scripts/gcp/deploy-vm.sh "${DOMAIN_A_VM}" docker-compose.domain-a.yml monitoring
 
       - name: Deploy domain B services
-        # domain-b 서비스 배포
-        run: |
-          scripts/gcp/deploy-vm.sh "${DOMAIN_B_VM}" docker-compose.domain-b.yml monitoring
+        # 주문, 재고, 배송, Slack, AI 서비스 배포
+        if: needs.detect-changes.outputs.deploy_domain_b == 'true'
+        run: scripts/gcp/deploy-vm.sh "${DOMAIN_B_VM}" docker-compose.domain-b.yml monitoring
 
       - name: Show service registry hints
         run: |
