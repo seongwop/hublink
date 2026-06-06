@@ -6,7 +6,7 @@
 
 | 문서 | 내용 |
 | --- | --- |
-| [performance-test-plan.md](performance-test-plan.md) | 배송 중심 성능 테스트와 병목 관찰 |
+| [performance-test-plan.md](../performance/performance-test-plan.md) | 배송 중심 성능 테스트와 병목 관찰 |
 
 ## 테스트 목표
 
