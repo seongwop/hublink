@@ -59,7 +59,7 @@ db/seed/orders/03-delivery-fail-order.json
 
 ```json
 {
-  "username": "buyer-manager",
+  "username": "master",
   "password": "password"
 }
 ```

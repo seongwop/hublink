@@ -6,7 +6,7 @@ on:
   # k6 스크립트 변경 시 자동 동기화
   push:
     branches:
-      - develop-infra
+      - develop
     paths:
       - '.github/workflows/gcp-load-test-sync.yml'
       - 'scripts/gcp/deploy-load-test.sh'

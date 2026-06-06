@@ -10,7 +10,7 @@ variable "project_id" {
 variable "vm_start_schedule" {
   description = "VM 자동 시작 cron"
   type        = string
-  default     = "0 10 * * MON-FRI"
+  default     = "0 10 * * *"
 }
 
 # VM 자동 종료 cron

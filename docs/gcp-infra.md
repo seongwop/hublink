@@ -32,7 +32,7 @@ infra/gcp
 | hublink-domain-a-vm | `10.10.0.20` | 없음 | user, company, hub, product |
 | hublink-domain-b-vm | `10.10.0.30` | 없음 | order, stock, delivery, slack, ai |
 | hublink-data-monitor-vm | `10.10.0.40` | `34.64.89.47` | PostgreSQL, Redis, Kafka, Kafka UI, Zipkin, Prometheus, Grafana |
-| hublink-load-test-vm | `10.10.0.50` | Terraform output 확인 | k6 부하 발생 |
+| hublink-load-test-vm | `10.10.0.50` | `34.22.78.126` | k6 부하 발생 |
 
 외부 IP는 브라우저 접속이 필요한 `platform`, `data-monitor`와 부하 테스트 VM 접속용 `load-test`에만 고정 IP로 연결한다. `domain-a`, `domain-b`는 외부 IP 없이 내부 통신과 IAP SSH를 사용한다.
 
@@ -44,6 +44,14 @@ infra/gcp
 cd infra/gcp
 terraform output vm_internal_ips
 terraform output vm_external_ips
+```
+
+현재 고정 외부 IP:
+
+```text
+platform:     34.50.23.39
+data-monitor: 34.64.89.47
+load-test:    34.22.78.126
 ```
 
 ## 네트워크
@@ -123,14 +131,14 @@ VM 역할별로 Compose 파일을 분리한다.
 
 | 항목 | 값 |
 | --- | --- |
-| 시작 | 평일 10:00 |
+| 시작 | 매일 10:00 |
 | 종료 | 매일 02:00 |
 | 타임존 | `Asia/Seoul` |
 
 Terraform 변수:
 
 ```hcl
-vm_start_schedule     = "0 10 * * MON-FRI"
+vm_start_schedule     = "0 10 * * *"
 vm_stop_schedule      = "0 2 * * *"
 vm_schedule_time_zone = "Asia/Seoul"
 ```

@@ -52,12 +52,6 @@ public class DeadlineGeneratedPendingRetryConsumer {
             if (pendingMessage.getElapsedTimeSinceLastDelivery().compareTo(PENDING_MIN_IDLE_TIME) < 0) {
                 continue;
             }
-            // 재처리 횟수가 특정 횟수를 넘어가면 DLQ로 적재
-            if (pendingMessage.getTotalDeliveryCount() >= MAX_DELIVERY_COUNT) {
-                moveToDlqAndAcknowledge(streamOps, pendingMessage);
-                continue;
-            }
-
             retryPendingMessage(streamOps, pendingMessage);
         }
     }
@@ -66,7 +60,7 @@ public class DeadlineGeneratedPendingRetryConsumer {
             StreamOperations<String, Object, Object> streamOps,
             PendingMessage pendingMessage
     ) {
-        MapRecord<String, Object, Object> targetRecord = findRecord(streamOps, pendingMessage.getId());
+        MapRecord<String, Object, Object> targetRecord = claimRecord(streamOps, pendingMessage.getId());
         // PEL에는 남아있으나 메인 스트림에 없는 경우
         if (targetRecord == null) {
             acknowledge(streamOps, pendingMessage.getId());
@@ -78,7 +72,16 @@ public class DeadlineGeneratedPendingRetryConsumer {
             acknowledge(streamOps, targetRecord.getId());
             log.info("event=DELIVERY_PENDING_RETRY_COMPLETED recordId={}", targetRecord.getId());
         } catch (Exception e) {
-            log.error("event=DELIVERY_PENDING_RETRY_FAILED recordId={}", pendingMessage.getId(), e);
+            long nextDeliveryCount = pendingMessage.getTotalDeliveryCount() + 1;
+            if (nextDeliveryCount >= MAX_DELIVERY_COUNT) {
+                moveToDlqAndAcknowledge(streamOps, targetRecord, nextDeliveryCount);
+                return;
+            }
+            log.error("event=DELIVERY_PENDING_RETRY_FAILED recordId={} deliveryCount={}",
+                    pendingMessage.getId(),
+                    nextDeliveryCount,
+                    e
+            );
         }
     }
 
@@ -102,6 +105,42 @@ public class DeadlineGeneratedPendingRetryConsumer {
                 targetRecord.getId(),
                 pendingMessage.getTotalDeliveryCount()
         );
+    }
+
+    private void moveToDlqAndAcknowledge(
+            StreamOperations<String, Object, Object> streamOps,
+            MapRecord<String, Object, Object> targetRecord,
+            long deliveryCount
+    ) {
+        streamOps.add(
+                DeadlineStreamConstants.DEADLINE_GENERATED_DELIVERY_DLQ_STREAM,
+                Map.of("payload", String.valueOf(targetRecord.getValue().get("payload")))
+        );
+        acknowledge(streamOps, targetRecord.getId());
+        log.warn("event=DELIVERY_PENDING_DLQ_MOVED recordId={} deliveryCount={}",
+                targetRecord.getId(),
+                deliveryCount
+        );
+    }
+
+    private MapRecord<String, Object, Object> claimRecord(
+            StreamOperations<String, Object, Object> streamOps,
+            RecordId recordId
+    ) {
+        List<MapRecord<String, Object, Object>> claimedRecords = streamOps.claim(
+                DeadlineStreamConstants.DEADLINE_GENERATED_STREAM,
+                DeadlineStreamConstants.DELIVERY_SERVICE_GROUP,
+                DeadlineStreamConstants.DELIVERY_SERVICE_CONSUMER,
+                PENDING_MIN_IDLE_TIME,
+                recordId
+        );
+
+        if (claimedRecords == null || claimedRecords.isEmpty()) {
+            log.warn("event=DELIVERY_PENDING_CLAIM_FAILED recordId={}", recordId);
+            return null;
+        }
+
+        return claimedRecords.get(0);
     }
 
     private MapRecord<String, Object, Object> findRecord(
