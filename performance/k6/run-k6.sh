@@ -31,5 +31,10 @@ fi
 # 셸 입력 BASE_URL 우선 적용
 docker_args+=(-e "BASE_URL=${BASE_URL}")
 
+# 선택 실행 옵션 전달
+if [ -n "${STAGES:-}" ]; then
+  docker_args+=(-e "STAGES=${STAGES}")
+fi
+
 # k6 Docker 실행
 "${docker_bin[@]}" "${docker_args[@]}" grafana/k6:latest run "/scripts/${SCRIPT_NAME}" "$@"

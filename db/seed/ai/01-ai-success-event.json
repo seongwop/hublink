@@ -2,41 +2,38 @@
   "eventId": "11111111-1111-1111-1111-111111111111",
   "deliveryId": "22222222-2222-2222-2222-222222222222",
   "orderId": "33333333-3333-3333-3333-333333333333",
-
   "ordererName": "김말숙",
   "ordererEmail": "msk@seafood.world",
   "orderedAt": "2025-12-08T10:00:00",
   "requestMessage": "12월 12일 3시까지는 보내주세요!",
-
   "receiverUserId": "44444444-4444-4444-4444-444444444444",
   "receiverSlackId": "U1234567890",
-
   "products": [
     {
       "productName": "마른 오징어",
       "quantity": 50
     }
   ],
-
   "requestedArrivalAt": "2025-12-12T15:00:00",
-
   "departureHubName": "경기 북부 센터",
   "destinationAddress": "부산시 사하구 낙동대로 1번길 1 해산물월드",
-
   "deliveryManagerName": "고길동",
   "deliveryManagerEmail": "kdk@sparta.world",
-
   "routeInfo": [
     {
+      "hubRouteId": "55555555-5555-5555-5555-555555555555",
+      "sequence": 1,
+      "departureHubId": "66666666-6666-6666-6666-666666666666",
       "departureHubName": "경기 북부 센터",
+      "arrivalHubId": "77777777-7777-7777-7777-777777777777",
       "arrivalHubName": "대전광역시 센터",
+      "arrivalCompanyId": "88888888-8888-8888-8888-888888888888",
       "arrivalCompanyName": "OO업체",
       "estimatedDistanceKm": 150.5,
       "estimatedDurationMin": 120,
       "routeType": "HUB_TO_HUB"
     }
   ],
-
   "workStartTime": "09:00",
   "workEndTime": "18:00"
 }
