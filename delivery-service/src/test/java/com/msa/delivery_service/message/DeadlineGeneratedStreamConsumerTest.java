@@ -30,6 +30,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -133,7 +134,7 @@ class DeadlineGeneratedStreamConsumerTest {
         MapRecord<String, Object, Object> record = pendingRecord("1-0");
         when(stringRedisTemplate.opsForStream()).thenReturn(streamOperations);
         whenPending(pending("1-0", 1));
-        whenRange(List.of(record));
+        whenClaim(List.of(record));
 
         // when
         pendingRetryConsumer.retryPendingMessages();
@@ -153,8 +154,11 @@ class DeadlineGeneratedStreamConsumerTest {
         // given
         MapRecord<String, Object, Object> record = pendingRecord("1-0");
         when(stringRedisTemplate.opsForStream()).thenReturn(streamOperations);
-        whenPending(pending("1-0", 5));
-        whenRange(List.of(record));
+        whenPending(pending("1-0", 4));
+        whenClaim(List.of(record));
+        doThrow(new RuntimeException("retry failed"))
+                .when(retryStreamConsumer)
+                .process(record);
 
         // when
         pendingRetryConsumer.retryPendingMessages();
@@ -162,7 +166,7 @@ class DeadlineGeneratedStreamConsumerTest {
         // then
 
         // 재처리 제외 검증
-        verify(retryStreamConsumer, never()).process(any());
+        verify(retryStreamConsumer).process(record);
 
         // DLQ 전송 검증
         verify(streamOperations).add(
@@ -204,10 +208,13 @@ class DeadlineGeneratedStreamConsumerTest {
         )).thenReturn(new PendingMessages(DeadlineStreamConstants.DELIVERY_SERVICE_GROUP, List.of(pendingMessage)));
     }
 
-    private void whenRange(List<MapRecord<String, Object, Object>> records) {
-        when(streamOperations.range(
+    private void whenClaim(List<MapRecord<String, Object, Object>> records) {
+        when(streamOperations.claim(
                 eq(DeadlineStreamConstants.DEADLINE_GENERATED_STREAM),
-                any(Range.class)
+                eq(DeadlineStreamConstants.DELIVERY_SERVICE_GROUP),
+                eq(DeadlineStreamConstants.DELIVERY_SERVICE_CONSUMER),
+                eq(Duration.ofMinutes(1)),
+                any(RecordId.class)
         )).thenReturn(records);
     }
 
