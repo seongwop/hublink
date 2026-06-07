@@ -4,6 +4,7 @@ services:
   eureka-server:
     image: ${IMAGE_REGISTRY}/hublink-eureka-server:${IMAGE_TAG:-latest}
     container_name: hublink-eureka-server
+    restart: unless-stopped
     env_file:
       - ${HUBLINK_ENV_FILE:-.env.gcp}
     environment:
@@ -23,6 +24,7 @@ services:
   config-server:
     image: ${IMAGE_REGISTRY}/hublink-config-server:${IMAGE_TAG:-latest}
     container_name: hublink-config-server
+    restart: unless-stopped
     env_file:
       - ${HUBLINK_ENV_FILE:-.env.gcp}
     environment:
@@ -49,6 +51,7 @@ services:
   api-gateway:
     image: ${IMAGE_REGISTRY}/hublink-api-gateway:${IMAGE_TAG:-latest}
     container_name: hublink-api-gateway
+    restart: unless-stopped
     env_file:
       - ${HUBLINK_ENV_FILE:-.env.gcp}
     environment:
@@ -68,6 +71,7 @@ services:
   promtail:
     image: ${IMAGE_REGISTRY}/hublink-promtail:latest
     container_name: hublink-promtail-platform
+    restart: unless-stopped
     env_file:
       - ${HUBLINK_ENV_FILE:-.env.gcp}
     environment:

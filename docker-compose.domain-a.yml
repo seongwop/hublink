@@ -4,6 +4,7 @@ services:
   user-service:
     image: ${IMAGE_REGISTRY}/hublink-user-service:${IMAGE_TAG:-latest}
     container_name: hublink-user-service
+    restart: unless-stopped
     env_file:
       - ${HUBLINK_ENV_FILE:-.env.gcp}
     environment:
@@ -18,6 +19,7 @@ services:
   company-service:
     image: ${IMAGE_REGISTRY}/hublink-company-service:${IMAGE_TAG:-latest}
     container_name: hublink-company-service
+    restart: unless-stopped
     env_file:
       - ${HUBLINK_ENV_FILE:-.env.gcp}
     environment:
@@ -32,6 +34,7 @@ services:
   hub-service:
     image: ${IMAGE_REGISTRY}/hublink-hub-service:${IMAGE_TAG:-latest}
     container_name: hublink-hub-service
+    restart: unless-stopped
     env_file:
       - ${HUBLINK_ENV_FILE:-.env.gcp}
     environment:
@@ -46,6 +49,7 @@ services:
   product-service:
     image: ${IMAGE_REGISTRY}/hublink-product-service:${IMAGE_TAG:-latest}
     container_name: hublink-product-service
+    restart: unless-stopped
     env_file:
       - ${HUBLINK_ENV_FILE:-.env.gcp}
     environment:
@@ -60,6 +64,7 @@ services:
   promtail:
     image: ${IMAGE_REGISTRY}/hublink-promtail:latest
     container_name: hublink-promtail-domain-a
+    restart: unless-stopped
     env_file:
       - ${HUBLINK_ENV_FILE:-.env.gcp}
     environment:
