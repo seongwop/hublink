@@ -3,13 +3,11 @@ package com.msa.stock_service.client;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.cloud.openfeign.FeignClient;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
-@FeignClient(name = "product-service")
+@FeignClient(name = "product-service", path = "/internal/products")
 public interface ProductClient {
-    @PostMapping("/api/v1/products/byIdList")
-    List<ProductResponse>  getProductsById(@RequestBody  List<UUID> productIdList);
+    @PostMapping("/byIdList")
+    List<ProductResponse> getProductsById(@RequestBody List<UUID> productIdList);
 }

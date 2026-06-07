@@ -54,12 +54,16 @@ public class OrderEventConsumer {
         UUID orderId = UUID.fromString(key);
         log.info("event=STOCK_DECREASE_CONSUMED orderId={}", orderId);
 
+        List<StockItemCommandDto> request = List.of();
+        boolean stockDecreased = false;
+
         try {
             StockDecreaseCommandDto command = objectMapper.readValue(message, StockDecreaseCommandDto.class);
-            List<StockItemCommandDto> request = toDecreaseRequests(command);
+            request = toDecreaseRequests(command);
 
             // 기존 재고 차감 로직 그대로 호출
             List<StockHistoryResponseDto> result = stockOrchestrator.decreaseStock(request);
+            stockDecreased = true;
 
             eventPublisher.publish("stock.decrease.success", orderId, toStockResult(orderId, result));
             log.info("event=STOCK_DECREASE_COMPLETED orderId={}", orderId);
@@ -79,9 +83,18 @@ public class OrderEventConsumer {
                     toStockFailure(orderId, e.getMessage())
             );
         } catch (Exception e) {
-            // JSON 파싱 오류 등 예상 못 한 실패 → 다시 던져 Kafka가 재시도하게 한다
+            // 차감 이후 실패 보상
+            if (stockDecreased) {
+                stockService.restoreStock(request);
+                log.warn("event=STOCK_DECREASE_ROLLED_BACK orderId={}", orderId);
+            }
+
             log.error("event=STOCK_DECREASE_PROCESSING_FAILED orderId={}", orderId, e);
-            throw new RuntimeException(e);
+            eventPublisher.publish(
+                    "stock.decrease.failed",
+                    orderId,
+                    toStockFailure(orderId, e.getMessage())
+            );
         }
     }
 

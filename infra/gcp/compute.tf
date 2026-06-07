@@ -93,11 +93,6 @@ resource "google_compute_instance" "vm" {
   # 머신 타입 변경 시 stop/start 허용
   allow_stopping_for_update = true
 
-  # 부팅 스크립트 줄바꿈 보정으로 인한 기존 VM 재생성 방지
-  lifecycle {
-    ignore_changes = [metadata_startup_script]
-  }
-
   # VM 서비스 계정 권한 부여 후 VM 생성
   depends_on = [
     google_project_iam_member.artifact_registry_reader,

@@ -4,6 +4,7 @@ services:
   order-service:
     image: ${IMAGE_REGISTRY}/hublink-order-service:${IMAGE_TAG:-latest}
     container_name: hublink-order-service
+    restart: unless-stopped
     env_file:
       - ${HUBLINK_ENV_FILE:-.env.gcp}
     environment:
@@ -18,6 +19,7 @@ services:
   stock-service:
     image: ${IMAGE_REGISTRY}/hublink-stock-service:${IMAGE_TAG:-latest}
     container_name: hublink-stock-service
+    restart: unless-stopped
     env_file:
       - ${HUBLINK_ENV_FILE:-.env.gcp}
     environment:
@@ -32,6 +34,7 @@ services:
   delivery-service:
     image: ${IMAGE_REGISTRY}/hublink-delivery-service:${IMAGE_TAG:-latest}
     container_name: hublink-delivery-service
+    restart: unless-stopped
     env_file:
       - ${HUBLINK_ENV_FILE:-.env.gcp}
     environment:
@@ -46,6 +49,7 @@ services:
   slack-service:
     image: ${IMAGE_REGISTRY}/hublink-slack-service:${IMAGE_TAG:-latest}
     container_name: hublink-slack-service
+    restart: unless-stopped
     env_file:
       - ${HUBLINK_ENV_FILE:-.env.gcp}
     environment:
@@ -60,6 +64,7 @@ services:
   ai-service:
     image: ${IMAGE_REGISTRY}/hublink-ai-service:${IMAGE_TAG:-latest}
     container_name: hublink-ai-service
+    restart: unless-stopped
     env_file:
       - ${HUBLINK_ENV_FILE:-.env.gcp}
     environment:
@@ -74,6 +79,7 @@ services:
   promtail:
     image: ${IMAGE_REGISTRY}/hublink-promtail:latest
     container_name: hublink-promtail-domain-b
+    restart: unless-stopped
     env_file:
       - ${HUBLINK_ENV_FILE:-.env.gcp}
     environment:

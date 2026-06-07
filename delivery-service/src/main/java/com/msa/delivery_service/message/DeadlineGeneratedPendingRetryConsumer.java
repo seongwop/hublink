@@ -87,28 +87,6 @@ public class DeadlineGeneratedPendingRetryConsumer {
 
     private void moveToDlqAndAcknowledge(
             StreamOperations<String, Object, Object> streamOps,
-            PendingMessage pendingMessage
-    ) {
-        MapRecord<String, Object, Object> targetRecord = findRecord(streamOps, pendingMessage.getId());
-        // PEL에는 남아있으나 메인 스트림에 없는 경우
-        if (targetRecord == null) {
-            acknowledge(streamOps, pendingMessage.getId());
-            return;
-        }
-
-        streamOps.add(
-                DeadlineStreamConstants.DEADLINE_GENERATED_DELIVERY_DLQ_STREAM,
-                Map.of("payload", String.valueOf(targetRecord.getValue().get("payload")))
-        );
-        acknowledge(streamOps, targetRecord.getId());
-        log.warn("event=DELIVERY_PENDING_DLQ_MOVED recordId={} deliveryCount={}",
-                targetRecord.getId(),
-                pendingMessage.getTotalDeliveryCount()
-        );
-    }
-
-    private void moveToDlqAndAcknowledge(
-            StreamOperations<String, Object, Object> streamOps,
             MapRecord<String, Object, Object> targetRecord,
             long deliveryCount
     ) {
@@ -141,24 +119,6 @@ public class DeadlineGeneratedPendingRetryConsumer {
         }
 
         return claimedRecords.get(0);
-    }
-
-    private MapRecord<String, Object, Object> findRecord(
-            StreamOperations<String, Object, Object> streamOps,
-            RecordId recordId
-    ) {
-        // XRANGE로 메인 스트림에서 payload 조회
-        List<MapRecord<String, Object, Object>> records = streamOps.range(
-                DeadlineStreamConstants.DEADLINE_GENERATED_STREAM,
-                Range.closed(recordId.getValue(), recordId.getValue())
-        );
-
-        if (records == null || records.isEmpty()) {
-            log.warn("event=DELIVERY_PENDING_STREAM_BODY_MISSING recordId={}", recordId);
-            return null;
-        }
-
-        return records.get(0);
     }
 
     private void acknowledge(StreamOperations<String, Object, Object> streamOps, RecordId recordId) {

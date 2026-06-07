@@ -39,6 +39,60 @@ if command -v gcloud >/dev/null 2>&1; then
   gcloud auth configure-docker "${region}-docker.pkg.dev" --quiet || true
 fi
 
+cat >/usr/local/bin/hublink-compose-up <<'SCRIPT'
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROLE="$(cat /etc/hublink-role 2>/dev/null || true)"
+REMOTE_DIR="/opt/hublink"
+
+case "$ROLE" in
+  platform)
+    COMPOSE_FILE="docker-compose.platform.yml"
+    ;;
+  domain-a)
+    COMPOSE_FILE="docker-compose.domain-a.yml"
+    ;;
+  domain-b)
+    COMPOSE_FILE="docker-compose.domain-b.yml"
+    ;;
+  data-monitor)
+    COMPOSE_FILE="docker-compose.data-monitor.yml"
+    ;;
+  *)
+    exit 0
+    ;;
+esac
+
+if [ ! -f "$REMOTE_DIR/.env.gcp" ] || [ ! -f "$REMOTE_DIR/$COMPOSE_FILE" ]; then
+  exit 0
+fi
+
+cd "$REMOTE_DIR"
+docker compose --env-file .env.gcp -f "$COMPOSE_FILE" up -d
+SCRIPT
+
+chmod +x /usr/local/bin/hublink-compose-up
+
+cat >/etc/systemd/system/hublink-compose.service <<'EOF'
+[Unit]
+Description=HubLink Docker Compose startup
+After=docker.service network-online.target
+Wants=docker.service network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/hublink-compose-up
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl daemon-reload
+systemctl enable hublink-compose.service
+systemctl start hublink-compose.service || true
+
 if [ "${role}" = "load-test" ]; then
   cat >/usr/local/bin/hublink-k6-smoke <<'SCRIPT'
 #!/usr/bin/env bash

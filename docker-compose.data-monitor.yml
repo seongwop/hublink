@@ -4,6 +4,7 @@ services:
   postgres:
     image: postgres:16
     container_name: hublink-postgres
+    restart: unless-stopped
     env_file:
       - ${HUBLINK_ENV_FILE:-.env.gcp}
     environment:
@@ -25,6 +26,7 @@ services:
   redis:
     image: redis:7.2
     container_name: hublink-redis
+    restart: unless-stopped
     ports:
       - "6379:6379"
     healthcheck:
@@ -37,6 +39,7 @@ services:
   kafka:
     image: confluentinc/cp-kafka:7.6.0
     container_name: hublink-kafka
+    restart: unless-stopped
     ports:
       - "9092:9092"
     environment:
@@ -57,6 +60,7 @@ services:
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
     container_name: hublink-kafka-ui
+    restart: unless-stopped
     ports:
       - "8082:8080"
     environment:
@@ -70,6 +74,7 @@ services:
   zipkin:
     image: openzipkin/zipkin:3.6.1
     container_name: hublink-zipkin
+    restart: unless-stopped
     ports:
       - "9411:9411"
 
@@ -77,6 +82,7 @@ services:
   loki:
     image: grafana/loki:latest
     container_name: hublink-loki
+    restart: unless-stopped
     ports:
       - "3100:3100"
     volumes:
@@ -88,6 +94,7 @@ services:
   promtail:
     image: ${IMAGE_REGISTRY}/hublink-promtail:latest
     container_name: hublink-promtail-data-monitor
+    restart: unless-stopped
     env_file:
       - ${HUBLINK_ENV_FILE:-.env.gcp}
     environment:
@@ -105,6 +112,7 @@ services:
   prometheus:
     image: prom/prometheus:v3.11.3
     container_name: hublink-prometheus
+    restart: unless-stopped
     ports:
       - "9090:9090"
     volumes:
@@ -116,6 +124,7 @@ services:
   grafana:
     image: grafana/grafana:13.0.1-security-01
     container_name: hublink-grafana
+    restart: unless-stopped
     ports:
       - "3000:3000"
     volumes:

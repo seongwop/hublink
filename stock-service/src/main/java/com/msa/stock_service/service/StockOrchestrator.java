@@ -15,6 +15,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @RequiredArgsConstructor
@@ -28,6 +29,7 @@ public class StockOrchestrator {
      * @param listDto
      * @return
      */
+    @Transactional
     public List<StockHistoryResponseDto> decreaseStock(List<StockItemCommandDto> listDto) {
 
         Map<UUID, StockItemCommandDto> mapDto = new HashMap<>();
@@ -35,14 +37,13 @@ public class StockOrchestrator {
             mapDto.put(dto.getId(), dto);
         }
 
-        // 재고 감소 -> 재고 이력 작성 -> 재고 이력 리스트 반환.
-        List<StockHistory> histories = stockService.decreaseStock(listDto);
-
-        //재고 이력 리스트 안의 상품 ID를 추출하여 리스트로 변환 후,
-        List<UUID> productIdList = histories.stream().map(StockHistory::getProductId)
+        // 재고 차감 전 상품 정보 조회
+        List<UUID> productIdList = listDto.stream().map(StockItemCommandDto::getId)
             .collect(Collectors.toList());
-        //이 상품 ID 리스트를 이용하여, 상품 목록을 가져온다. (외부 서비스 호출)
-        List<ProductResponse> productList = productClient.getProductsById(productIdList);
+        List<ProductResponse> productList = getProductsById(productIdList);
+
+        // 상품 정보 조회 성공 후 재고 감소
+        List<StockHistory> histories = stockService.decreaseStock(listDto);
 
         //이 상품 목록을 Map으로 변환한다.
         Map<UUID, ProductResponse> productMap = productList.stream()
@@ -80,5 +81,19 @@ public class StockOrchestrator {
             stockHistoryResponseDtos.add(result);
         }
         return stockHistoryResponseDtos;
+    }
+
+    private List<ProductResponse> getProductsById(List<UUID> productIdList) {
+        try {
+            List<ProductResponse> products = productClient.getProductsById(productIdList);
+            if (products == null) {
+                throw new CustomException(StockError.PRODUCT_INFO_NOT_FOUND);
+            }
+            return products;
+        } catch (CustomException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new CustomException(StockError.PRODUCT_INFO_NOT_FOUND);
+        }
     }
 }
