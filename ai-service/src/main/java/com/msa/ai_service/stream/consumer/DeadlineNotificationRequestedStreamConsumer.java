@@ -14,6 +14,7 @@ import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.connection.stream.Consumer;
 import org.springframework.data.redis.connection.stream.MapRecord;
 import org.springframework.data.redis.connection.stream.ReadOffset;
@@ -34,14 +35,17 @@ public class DeadlineNotificationRequestedStreamConsumer {
     private final Validator validator;
     private final DeadlineGeneratedEventPublisher deadlineGeneratedEventPublisher;
 
-    @Scheduled(fixedDelay = 3000)
+    @Value("${ai.stream.consumer.deadline-requested.read-count:300}")
+    private int readCount;
+
+    @Scheduled(fixedDelayString = "${ai.stream.consumer.deadline-requested.fixed-delay-ms:3000}")
     public void consume() {
         var records = stringRedisTemplate.opsForStream().read(
                 Consumer.from(
                         DeadlineStreamConstants.AI_SERVICE_GROUP,
                         DeadlineStreamConstants.AI_SERVICE_CONSUMER
                 ),
-                StreamReadOptions.empty().count(100),
+                StreamReadOptions.empty().count(readCount),
                 StreamOffset.create(
                         DeadlineStreamConstants.DEADLINE_REQUESTED_STREAM,
                         ReadOffset.lastConsumed()
@@ -51,9 +55,11 @@ public class DeadlineNotificationRequestedStreamConsumer {
         if (records == null || records.isEmpty()) {
             return;
         }
-        log.info("event=AI_STREAM_BATCH_RECEIVED stream={} count={}",
+
+        log.info("event=AI_STREAM_BATCH_RECEIVED stream={} count={} readCount={}",
                 DeadlineStreamConstants.DEADLINE_REQUESTED_STREAM,
-                records.size()
+                records.size(),
+                readCount
         );
 
         for (MapRecord<String, Object, Object> record : records) {
@@ -63,12 +69,7 @@ public class DeadlineNotificationRequestedStreamConsumer {
                 if (payloadObj == null) {
                     log.warn("event=AI_STREAM_PAYLOAD_MISSING recordId={}", record.getId());
 
-                    stringRedisTemplate.opsForStream().acknowledge(
-                            DeadlineStreamConstants.DEADLINE_REQUESTED_STREAM,
-                            DeadlineStreamConstants.AI_SERVICE_GROUP,
-                            record.getId()
-                    );
-
+                    acknowledge(record.getId());
                     continue;
                 }
 
@@ -88,23 +89,19 @@ public class DeadlineNotificationRequestedStreamConsumer {
                                     .toList()
                     );
 
-                    stringRedisTemplate.opsForStream().acknowledge(
-                            DeadlineStreamConstants.DEADLINE_REQUESTED_STREAM,
-                            DeadlineStreamConstants.AI_SERVICE_GROUP,
-                            record.getId()
-                    );
-
+                    acknowledge(record.getId());
                     continue;
                 }
 
-                log.info("event=AI_STREAM_EVENT_RECEIVED eventId={} deliveryId={} orderId={}",
+                log.debug("event=AI_STREAM_EVENT_RECEIVED eventId={} deliveryId={} orderId={}",
                         event.getEventId(),
                         event.getDeliveryId(),
                         event.getOrderId()
                 );
 
                 AiDeadlineResult result = aiService.generateDeadline(event);
-                log.info("event=AI_DEADLINE_REQUEST_PROCESSED recordId={} eventId={} deliveryId={} orderId={}",
+
+                log.debug("event=AI_DEADLINE_REQUEST_PROCESSED recordId={} eventId={} deliveryId={} orderId={}",
                         record.getId(),
                         event.getEventId(),
                         event.getDeliveryId(),
@@ -123,21 +120,17 @@ public class DeadlineNotificationRequestedStreamConsumer {
                         .build();
 
                 RecordId generatedRecordId = deadlineGeneratedEventPublisher.publish(generatedEvent);
-                log.info("event=AI_DEADLINE_GENERATED_ENQUEUED sourceRecordId={} generatedRecordId={} deliveryId={} aiMessageId={}",
+
+                log.debug("event=AI_DEADLINE_GENERATED_ENQUEUED sourceRecordId={} generatedRecordId={} deliveryId={} aiMessageId={}",
                         record.getId(),
                         generatedRecordId,
                         generatedEvent.getDeliveryId(),
                         generatedEvent.getAiMessageId()
                 );
 
-                stringRedisTemplate.opsForStream().acknowledge(
-                        DeadlineStreamConstants.DEADLINE_REQUESTED_STREAM,
-                        DeadlineStreamConstants.AI_SERVICE_GROUP,
-                        record.getId()
-                );
+                acknowledge(record.getId());
 
-                log.info("event=AI_STREAM_ACK_COMPLETED recordId={}", record.getId());
-                log.info("event=AI_STREAM_ACKED stream={} group={} recordId={}",
+                log.debug("event=AI_STREAM_ACKED stream={} group={} recordId={}",
                         DeadlineStreamConstants.DEADLINE_REQUESTED_STREAM,
                         DeadlineStreamConstants.AI_SERVICE_GROUP,
                         record.getId()
@@ -147,5 +140,13 @@ public class DeadlineNotificationRequestedStreamConsumer {
                 log.error("event=AI_STREAM_PROCESSING_FAILED recordId={}", record.getId(), e);
             }
         }
+    }
+
+    private void acknowledge(RecordId recordId) {
+        stringRedisTemplate.opsForStream().acknowledge(
+                DeadlineStreamConstants.DEADLINE_REQUESTED_STREAM,
+                DeadlineStreamConstants.AI_SERVICE_GROUP,
+                recordId
+        );
     }
 }
