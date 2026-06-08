@@ -9,8 +9,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 
 public interface DeliveryRepository extends JpaRepository<Delivery, UUID> {
@@ -24,13 +24,15 @@ public interface DeliveryRepository extends JpaRepository<Delivery, UUID> {
 
     // 아직 배송 중인 업체 배송 담당자 ID 목록 조회
     @Query("""
-        select distinct d.companyDeliveryManagerId
+        select d.companyDeliveryManagerId as managerId,
+               count(d) as assignmentCount
         from Delivery d
         where d.companyDeliveryManagerId in :managerIds
             and d.deletedAt is null
             and d.status not in :finishedStatuses
+        group by d.companyDeliveryManagerId
     """)
-    Set<UUID> findWorkingManagerIds(
+    List<ManagerAssignmentCount> countActiveAssignmentsByManagerIds(
             @Param("managerIds") Collection<UUID> managerIds,
             @Param("finishedStatuses") Collection<DeliveryStatus> finishedStatuses
     );
