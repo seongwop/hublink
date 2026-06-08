@@ -39,6 +39,9 @@ ai:
         fixed-delay-ms: 3000
         read-count: 300
         concurrency: 1
+        pending-retry-enabled: false
+        pending-retry-fixed-delay-ms: 300000
+        pending-retry-read-count: 10
 
 
 eureka:
