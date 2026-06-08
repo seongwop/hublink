@@ -131,8 +131,7 @@ export const options = {
 대상 흐름:
 
 ```text
-POST /api/v1/orders
--> stock 성공 흐름
+POST /api/v1/deliveries/test/delivery-create
 -> delivery.create
 -> delivery-service consumer
 -> 배송 생성
@@ -149,11 +148,12 @@ k6 script:
 - `delivery.create` 유입량이 delivery-service 처리량을 초과하는 지점 확인
 - Kafka consumer lag가 쌓이는 조건 확인
 - delivery-service 단일 인스턴스 처리 한계 확인
+- Gateway, order-service, stock-service를 제외한 배송 Kafka consumer 병목 분리
 - Kafka 설정 개선 전후 Delivery Create TPS 비교
 
 k6 확인:
 
-- 주문 요청 TPS
+- delivery.create 이벤트 주입 TPS
 - p95/p99
 - 실패율
 - checks 성공률

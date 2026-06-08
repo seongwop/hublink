@@ -18,7 +18,7 @@ ssh_source_ranges    = ["0.0.0.0/0"]
 public_source_ranges = ["0.0.0.0/0"]
 
 # 고정 외부 IP 대상 VM
-external_ip_vm_names = ["platform", "data-monitor", "load-test"]
+external_ip_vm_names = ["platform", "data-monitor", "load-test", "domain-a", "domain-b"]
 
 # SSH 공개키 직접 등록 옵션
 # ssh_username   = "hublink"

@@ -36,6 +36,72 @@ PRODUCT_IDS=id1,id2
 PRODUCT_NAMES=name1,name2
 ```
 
+## 부하 옵션 예시
+
+`STAGES`는 `.env.k6`에 넣거나 실행 시 환경변수로 넘긴다.
+
+```bash
+# baseline
+STAGES='[{"duration":"1m","target":5},{"duration":"3m","target":5},{"duration":"1m","target":0}]' \
+SLEEP_SECONDS=1 \
+./run-k6.sh delivery-create-kafka-load.js
+
+# load
+STAGES='[{"duration":"1m","target":20},{"duration":"5m","target":20},{"duration":"2m","target":0}]' \
+SLEEP_SECONDS=1 \
+./run-k6.sh delivery-create-kafka-load.js
+
+# stress
+STAGES='[{"duration":"2m","target":50},{"duration":"5m","target":50},{"duration":"3m","target":0}]' \
+SLEEP_SECONDS=1 \
+./run-k6.sh delivery-create-kafka-load.js
+```
+
+Gateway 포함 테스트에서 429가 발생하면 배송 병목이 아니라 Gateway rate limit에 먼저 걸린 것으로 기록한다. 배송 Kafka와 DB/락 테스트는 `DELIVERY_BASE_URL`로 delivery-service를 직접 호출해 Gateway rate limit을 분리한다.
+
+## backlog 확인 기준
+
+Kafka backlog는 Kafka UI 또는 consumer group 명령으로 확인한다.
+
+```bash
+docker exec -it kafka kafka-consumer-groups.sh \
+  --bootstrap-server localhost:9092 \
+  --group delivery-service \
+  --describe
+```
+
+`delivery.create`의 `LAG`가 부하 중 증가하고 부하 종료 후 천천히 줄면 consumer backlog로 본다. 회복 시간은 부하 종료 시점부터 lag가 0 또는 기준값으로 돌아올 때까지의 시간이다.
+
+Outbox backlog는 DB에서 확인한다.
+
+```sql
+select status, count(*)
+from delivery_service.p_delivery_outboxes
+group by status;
+```
+
+`PENDING`이 부하 종료 후에도 남아 있으면 outbox backlog로 본다.
+
+## Kafka 초기화 주의
+
+Kafka UI는 보통 topic 메시지를 직접 비우는 기능보다 topic 삭제 또는 consumer offset reset 기능을 제공한다. 가장 안전한 방법은 테스트마다 새 consumer group을 쓰거나, 테스트 전후 lag 기준을 명확히 기록하는 것이다.
+
+정말 topic을 비워야 하면 테스트 환경에서만 topic 삭제 후 재생성한다.
+
+```bash
+docker exec -it kafka kafka-topics.sh \
+  --bootstrap-server localhost:9092 \
+  --delete \
+  --topic delivery.create
+
+docker exec -it kafka kafka-topics.sh \
+  --bootstrap-server localhost:9092 \
+  --create \
+  --topic delivery.create \
+  --partitions 3 \
+  --replication-factor 1
+```
+
 ## 실행 순서
 
 ### 1. 배송 생성 Kafka 유입량
@@ -44,12 +110,12 @@ PRODUCT_NAMES=name1,name2
 ./run-k6.sh delivery-create-kafka-load.js
 ```
 
-`POST /api/v1/orders`로 주문을 만들고, 이후 주문/재고 흐름에서 `delivery.create` Kafka 이벤트가 생성되도록 부하를 넣는다. 기본 k6 Docker 이미지는 Kafka producer를 직접 포함하지 않으므로 HTTP 주문 API를 배송 이벤트 유입점으로 사용한다.
+`POST /api/v1/deliveries/test/delivery-create`로 `delivery.create` Kafka 이벤트를 직접 주입한다. Gateway, order-service, stock-service를 우회하므로 배송 Kafka consumer lag와 Delivery Create TPS를 분리해서 확인할 수 있다.
 
 확인 지표:
 
 ```text
-order-service 요청 TPS
+delivery.create 이벤트 주입 TPS
 delivery.create consumer lag 최대값
 lag 회복 시간
 Delivery Create TPS
