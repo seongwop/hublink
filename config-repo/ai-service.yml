@@ -38,6 +38,7 @@ ai:
       deadline-requested:
         fixed-delay-ms: 3000
         read-count: 300
+        concurrency: 1
 
 
 eureka:
