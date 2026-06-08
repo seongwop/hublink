@@ -9,7 +9,6 @@ scrape_configs:
     static_configs:
       - targets:
           - '10.10.0.10:19091'
-          - '10.10.0.10:19092'
 
   # domain-a VM 서비스 메트릭
   - job_name: 'hublink-domain-a'
