@@ -18,4 +18,9 @@ public final class DeadlineStreamConstants {
     public static final String AI_SERVICE_CONSUMER = "ai-service";
     public static final String SLACK_SERVICE_CONSUMER = "slack-service";
     public static final String DELIVERY_SERVICE_CONSUMER = "delivery-service";
+
+
+    public static String aiServiceConsumerName(int index) {
+        return AI_SERVICE_CONSUMER + "-" + index;
+    }
 }
