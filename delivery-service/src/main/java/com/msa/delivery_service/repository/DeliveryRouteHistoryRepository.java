@@ -8,7 +8,6 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 
 public interface DeliveryRouteHistoryRepository extends JpaRepository<DeliveryRouteHistory, UUID> {
@@ -21,13 +20,15 @@ public interface DeliveryRouteHistoryRepository extends JpaRepository<DeliveryRo
 
     // 아직 배송 중인 허브 배송 담당자 ID 목록을 조회
     @Query("""
-        select distinct rh.deliveryManagerId
+        select rh.deliveryManagerId as managerId,
+               count(rh) as assignmentCount
         from DeliveryRouteHistory rh
         where rh.deliveryManagerId in :managerIds
             and rh.deletedAt is null
             and rh.status not in :finishedStatuses
+        group by rh.deliveryManagerId
     """)
-    Set<UUID> findWorkingManagerIds(
+    List<ManagerAssignmentCount> countActiveAssignmentsByManagerIds(
             @Param("managerIds") Collection<UUID> managerIds,
             @Param("finishedStatuses") Collection<DeliveryRouteStatus> finishedStatuses
     );

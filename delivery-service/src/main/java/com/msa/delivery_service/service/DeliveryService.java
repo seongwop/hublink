@@ -13,6 +13,7 @@ import com.msa.delivery_service.client.user.dto.DeliveryManagerResponse;
 import com.msa.delivery_service.client.user.dto.HubManagerResponse;
 import com.msa.delivery_service.repository.DeliveryRepository;
 import com.msa.delivery_service.repository.DeliveryRouteHistoryRepository;
+import com.msa.delivery_service.repository.ManagerAssignmentCount;
 import com.msa.delivery_service.message.DeadlineGeneratedEvent;
 import com.msa.delivery_service.dto.DeliveryDetailResponse;
 import com.msa.delivery_service.dto.DeliveryRequest;
@@ -22,13 +23,13 @@ import com.msa.delivery_service.dto.DeliveryRouteStatusUpdateRequest;
 import com.msa.delivery_service.dto.DeliveryStatusUpdateRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
@@ -62,6 +63,9 @@ public class DeliveryService {
     private final DeliveryExternalService deliveryExternalService;
     private final DeliveryCreateService deliveryCreateService;
     private final DeliveryAssignmentLockService deliveryAssignmentLockService;
+
+    @Value("${delivery.assignment.max-active-per-manager:30}")
+    private int maxActiveAssignmentsPerManager;
 
     @Transactional(readOnly = true)
     public PageRes<DeliveryResponse> getDeliveries(String role, Pageable pageable) {
@@ -350,25 +354,16 @@ public class DeliveryService {
             throw new CustomException(DeliveryErrorCode.NO_DELIVERY_MANAGER);
         }
 
-        Set<UUID> workingManagerIds = deliveryRepository.findWorkingManagerIds(
-                companyDeliveryManagers.stream()
-                        .map(DeliveryManagerResponse::getDeliveryManagerId)
-                        .toList(),
-                List.of(DeliveryStatus.DELIVERED, DeliveryStatus.CANCELLED)
+        Map<UUID, Long> assignmentCounts = toAssignmentCountMap(
+                deliveryRepository.countActiveAssignmentsByManagerIds(
+                        companyDeliveryManagers.stream()
+                                .map(DeliveryManagerResponse::getDeliveryManagerId)
+                                .toList(),
+                        List.of(DeliveryStatus.DELIVERED, DeliveryStatus.CANCELLED)
+                )
         );
 
-        List<DeliveryManagerResponse> availableManagers = companyDeliveryManagers.stream()
-                .filter(deliveryManager -> !workingManagerIds.contains(deliveryManager.getDeliveryManagerId()))
-                .toList();
-
-        if (availableManagers.isEmpty()) {
-            throw new CustomException(DeliveryErrorCode.NO_DELIVERY_MANAGER);
-        }
-
-        return Collections.min(
-                availableManagers,
-                Comparator.comparing(DeliveryManagerResponse::getDeliverySequence)
-        );
+        return selectManagerWithinCapacity(companyDeliveryManagers, assignmentCounts);
     }
 
     // 허브 간 이동 경로마다 허브 배송 담당자 배정 - <허브 ID, 배송 담당자 ID> 반환
@@ -382,23 +377,30 @@ public class DeliveryService {
         List<DeliveryManagerResponse> hubDeliveryManagers = deliveryManagers.stream()
                 .filter(deliveryManager -> HUB_DELIVERY_MANAGER_TYPE.equals(deliveryManager.getType()))
                 .toList();
-        Set<UUID> workingManagerIds = hubDeliveryManagers.isEmpty()
-                ? Set.of()
-                : deliveryRouteHistoryRepository.findWorkingManagerIds(
-                hubDeliveryManagers.stream()
-                        .map(DeliveryManagerResponse::getDeliveryManagerId)
-                        .toList(),
-                List.of(DeliveryRouteStatus.COMPLETED, DeliveryRouteStatus.SKIPPED, DeliveryRouteStatus.FAILED)
-        );
+        Map<UUID, Long> assignmentCounts = hubDeliveryManagers.isEmpty()
+                ? Map.of()
+                : toAssignmentCountMap(
+                        deliveryRouteHistoryRepository.countActiveAssignmentsByManagerIds(
+                                hubDeliveryManagers.stream()
+                                        .map(DeliveryManagerResponse::getDeliveryManagerId)
+                                        .toList(),
+                                List.of(
+                                        DeliveryRouteStatus.COMPLETED,
+                                        DeliveryRouteStatus.SKIPPED,
+                                        DeliveryRouteStatus.FAILED
+                                )
+                        )
+                );
 
         for (int i = 0; i < hubRoutes.size() - 1; i++) {
             HubRouteResponse hubRoute = hubRoutes.get(i);
             DeliveryManagerResponse hubDeliveryManager = selectHubDeliveryManager(
                     deliveryManagers,
                     hubRoute.getDepartureHubId(),
-                    workingManagerIds
+                    assignmentCounts
             );
             hubDeliveryManagerIds.put(hubRoute.getHubRouteId(), hubDeliveryManager.getDeliveryManagerId());
+            assignmentCounts.merge(hubDeliveryManager.getDeliveryManagerId(), 1L, Long::sum);
         }
 
         return hubDeliveryManagerIds;
@@ -408,7 +410,7 @@ public class DeliveryService {
     private DeliveryManagerResponse selectHubDeliveryManager(
             List<DeliveryManagerResponse> deliveryManagers,
             UUID departureHubId,
-            Set<UUID> workingManagerIds
+            Map<UUID, Long> assignmentCounts
     ) {
         List<DeliveryManagerResponse> hubDeliveryManagers = deliveryManagers.stream()
                 .filter(deliveryManager -> departureHubId.equals(deliveryManager.getHubId()))
@@ -419,18 +421,36 @@ public class DeliveryService {
             throw new CustomException(DeliveryErrorCode.NO_DELIVERY_MANAGER);
         }
 
-        List<DeliveryManagerResponse> availableManagers = hubDeliveryManagers.stream()
-                .filter(deliveryManager -> !workingManagerIds.contains(deliveryManager.getDeliveryManagerId()))
-                .toList();
+        return selectManagerWithinCapacity(hubDeliveryManagers, assignmentCounts);
+    }
 
-        if (availableManagers.isEmpty()) {
-            throw new CustomException(DeliveryErrorCode.NO_DELIVERY_MANAGER);
+    private DeliveryManagerResponse selectManagerWithinCapacity(
+            List<DeliveryManagerResponse> deliveryManagers,
+            Map<UUID, Long> assignmentCounts
+    ) {
+        return deliveryManagers.stream()
+                .filter(deliveryManager -> assignmentCount(deliveryManager, assignmentCounts)
+                        < maxActiveAssignmentsPerManager)
+                .min(Comparator
+                        .comparingLong((DeliveryManagerResponse deliveryManager) ->
+                                assignmentCount(deliveryManager, assignmentCounts))
+                        .thenComparing(DeliveryManagerResponse::getDeliverySequence))
+                .orElseThrow(() -> new CustomException(DeliveryErrorCode.NO_DELIVERY_MANAGER));
+    }
+
+    private long assignmentCount(
+            DeliveryManagerResponse deliveryManager,
+            Map<UUID, Long> assignmentCounts
+    ) {
+        return assignmentCounts.getOrDefault(deliveryManager.getDeliveryManagerId(), 0L);
+    }
+
+    private Map<UUID, Long> toAssignmentCountMap(List<ManagerAssignmentCount> assignmentCounts) {
+        Map<UUID, Long> countMap = new HashMap<>();
+        for (ManagerAssignmentCount assignmentCount : assignmentCounts) {
+            countMap.put(assignmentCount.getManagerId(), assignmentCount.getAssignmentCount());
         }
-
-        return Collections.min(
-                availableManagers,
-                Comparator.comparing(DeliveryManagerResponse::getDeliverySequence)
-        );
+        return countMap;
     }
 
     // 출발 허브와 도착 허브 기준으로 배송 경로 조회

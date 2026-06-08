@@ -31,14 +31,22 @@ public class PartialIndexInitializer {
                 """);
 
         jdbcTemplate.execute("""
-                CREATE UNIQUE INDEX IF NOT EXISTS uk_p_deliveries_active_company_delivery_manager
+                DROP INDEX IF EXISTS delivery_service.uk_p_deliveries_active_company_delivery_manager
+                """);
+
+        jdbcTemplate.execute("""
+                DROP INDEX IF EXISTS delivery_service.uk_p_delivery_route_histories_active_delivery_manager
+                """);
+
+        jdbcTemplate.execute("""
+                CREATE INDEX IF NOT EXISTS idx_p_deliveries_active_company_delivery_manager
                 ON delivery_service.p_deliveries (company_delivery_manager_id)
                 WHERE deleted_at IS NULL
                   AND status NOT IN ('DELIVERED', 'CANCELLED')
                 """);
 
         jdbcTemplate.execute("""
-                CREATE UNIQUE INDEX IF NOT EXISTS uk_p_delivery_route_histories_active_delivery_manager
+                CREATE INDEX IF NOT EXISTS idx_p_delivery_route_histories_active_delivery_manager
                 ON delivery_service.p_delivery_route_histories (delivery_manager_id)
                 WHERE deleted_at IS NULL
                   AND status NOT IN ('COMPLETED', 'SKIPPED', 'FAILED')
