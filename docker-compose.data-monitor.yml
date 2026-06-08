@@ -70,6 +70,17 @@ services:
     depends_on:
       - kafka
 
+  # Kafka consumer lag 메트릭 수집
+  kafka-exporter:
+    image: danielqsj/kafka-exporter:v1.8.0
+    container_name: hublink-kafka-exporter
+    restart: unless-stopped
+    command:
+      - --kafka.server=kafka:29092
+      - --web.listen-address=:9308
+    depends_on:
+      - kafka
+
   # 분산 추적 수집 서버
   zipkin:
     image: openzipkin/zipkin:3.6.1
@@ -118,6 +129,7 @@ services:
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
     depends_on:
+      - kafka-exporter
       - zipkin
 
   # 메트릭과 로그 통합 조회 UI

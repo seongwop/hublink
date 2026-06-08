@@ -30,3 +30,9 @@ scrape_configs:
           - '10.10.0.30:19099'
           - '10.10.0.30:19100'
           - '10.10.0.30:19101'
+
+  # Kafka consumer lag 메트릭
+  - job_name: 'hublink-kafka-exporter'
+    static_configs:
+      - targets:
+          - 'kafka-exporter:9308'
