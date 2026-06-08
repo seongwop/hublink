@@ -64,6 +64,16 @@ load-test-vm
 | data-monitor-vm | `10.10.0.40` |
 | load-test-vm | `10.10.0.50` |
 
+## 고정 외부 IP
+
+| VM | External IP |
+| --- | --- |
+| platform-vm | `34.50.23.39` |
+| domain-a-vm | `8.230.24.217` |
+| domain-b-vm | `8.230.9.99` |
+| data-monitor-vm | `34.64.89.47` |
+| load-test-vm | `34.22.78.126` |
+
 ## 관측 도구
 
 | 도구 | 주소 | 용도 |
