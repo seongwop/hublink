@@ -1,5 +1,8 @@
 server:
   port: 19099
+  tomcat:
+    mbeanregistry:
+      enabled: true
 
 spring:
   application:
@@ -9,9 +12,6 @@ spring:
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
-    hikari:
-      maximum-pool-size: 2
-      minimum-idle: 1
   data:
     redis:
       host: ${REDIS_HOST}
@@ -50,6 +50,10 @@ logging:
   level:
     root: ${LOG_LEVEL_ROOT:INFO}
 
+delivery:
+  assignment:
+    max-active-per-manager: ${DELIVERY_ASSIGNMENT_MAX_ACTIVE_PER_MANAGER:30}
+
 eureka:
   client:
     service-url:
@@ -79,6 +83,13 @@ resilience4j:
         baseConfig: default
 
 management:
+  metrics:
+    enable:
+      tomcat: true
+  prometheus:
+    metrics:
+      export:
+        enabled: true
   endpoints:
     web:
       exposure:
