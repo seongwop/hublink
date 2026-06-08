@@ -246,14 +246,14 @@ SELECT
     now(),
     'seed'
 FROM (
-    SELECT seq, 'load-seoul-hub-delivery' AS prefix, '10000000-0000-0000-0000-000000000001'::uuid AS hub_id, seq - 998 AS delivery_seq
-    FROM generate_series(1000, 2999) AS hub_delivery(seq)
+    SELECT hub_delivery.seq_num AS seq, 'load-seoul-hub-delivery' AS prefix, '10000000-0000-0000-0000-000000000001'::uuid AS hub_id, hub_delivery.seq_num - 998 AS delivery_seq
+    FROM (SELECT generate_series(1000, 2999) AS seq_num) hub_delivery
     UNION ALL
-    SELECT seq, 'load-busan-company-delivery' AS prefix, '10000000-0000-0000-0000-000000000002'::uuid AS hub_id, seq - 3998 AS delivery_seq
-    FROM generate_series(4000, 5999) AS busan_company_delivery(seq)
+    SELECT busan_company_delivery.seq_num AS seq, 'load-busan-company-delivery' AS prefix, '10000000-0000-0000-0000-000000000002'::uuid AS hub_id, busan_company_delivery.seq_num - 3998 AS delivery_seq
+    FROM (SELECT generate_series(4000, 5999) AS seq_num) busan_company_delivery
     UNION ALL
-    SELECT seq, 'load-incheon-company-delivery' AS prefix, '10000000-0000-0000-0000-000000000003'::uuid AS hub_id, seq - 6998 AS delivery_seq
-    FROM generate_series(7000, 8999) AS incheon_company_delivery(seq)
+    SELECT incheon_company_delivery.seq_num AS seq, 'load-incheon-company-delivery' AS prefix, '10000000-0000-0000-0000-000000000003'::uuid AS hub_id, incheon_company_delivery.seq_num - 6998 AS delivery_seq
+    FROM (SELECT generate_series(7000, 8999) AS seq_num) incheon_company_delivery
 ) manager_user_seed
 ON CONFLICT (user_id) DO UPDATE SET
     username = EXCLUDED.username,
@@ -284,14 +284,14 @@ SELECT
     now(),
     'seed'
 FROM (
-    SELECT seq, 'load-seoul-hub-delivery' AS prefix, '10000000-0000-0000-0000-000000000001'::uuid AS hub_id, 'HUB_DELIVERY' AS manager_type, seq - 998 AS delivery_seq
-    FROM generate_series(1000, 2999) AS hub_delivery(seq)
+    SELECT hub_delivery.seq_num AS seq, 'load-seoul-hub-delivery' AS prefix, '10000000-0000-0000-0000-000000000001'::uuid AS hub_id, 'HUB_DELIVERY' AS manager_type, hub_delivery.seq_num - 998 AS delivery_seq
+    FROM (SELECT generate_series(1000, 2999) AS seq_num) hub_delivery
     UNION ALL
-    SELECT seq, 'load-busan-company-delivery' AS prefix, '10000000-0000-0000-0000-000000000002'::uuid AS hub_id, 'COMPANY_DELIVERY' AS manager_type, seq - 3998 AS delivery_seq
-    FROM generate_series(4000, 5999) AS busan_company_delivery(seq)
+    SELECT busan_company_delivery.seq_num AS seq, 'load-busan-company-delivery' AS prefix, '10000000-0000-0000-0000-000000000002'::uuid AS hub_id, 'COMPANY_DELIVERY' AS manager_type, busan_company_delivery.seq_num - 3998 AS delivery_seq
+    FROM (SELECT generate_series(4000, 5999) AS seq_num) busan_company_delivery
     UNION ALL
-    SELECT seq, 'load-incheon-company-delivery' AS prefix, '10000000-0000-0000-0000-000000000003'::uuid AS hub_id, 'COMPANY_DELIVERY' AS manager_type, seq - 6998 AS delivery_seq
-    FROM generate_series(7000, 8999) AS incheon_company_delivery(seq)
+    SELECT incheon_company_delivery.seq_num AS seq, 'load-incheon-company-delivery' AS prefix, '10000000-0000-0000-0000-000000000003'::uuid AS hub_id, 'COMPANY_DELIVERY' AS manager_type, incheon_company_delivery.seq_num - 6998 AS delivery_seq
+    FROM (SELECT generate_series(7000, 8999) AS seq_num) incheon_company_delivery
 ) manager_seed
 ON CONFLICT (user_id) DO UPDATE SET
     hub_id = EXCLUDED.hub_id,
