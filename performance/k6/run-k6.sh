@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # 실행 대상 스크립트
-SCRIPT_NAME="${1:-gateway-smoke.js}"
+SCRIPT_NAME="${1:-delivery-create-kafka-load.js}"
 shift || true
 
 # 기본 실행 환경

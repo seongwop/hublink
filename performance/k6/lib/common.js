@@ -43,6 +43,23 @@ export function requiredEnv(name) {
   return value;
 }
 
+// 쉼표 구분 환경변수 목록
+export function envList(name, fallbackName) {
+  const raw = __ENV[name] || (fallbackName ? __ENV[fallbackName] : '');
+  return raw
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
+// VU/반복 기준 목록 순환 선택
+export function pick(values) {
+  if (!values || values.length === 0) {
+    return undefined;
+  }
+  return values[(__VU + __ITER) % values.length];
+}
+
 // 요청 간 대기 시간
 export function sleepSeconds() {
   return Number(__ENV.SLEEP_SECONDS || '1');
