@@ -104,4 +104,4 @@ resilience4j:
 
 logging:
   level:
-    root: ${LOG_LEVEL_ROOT:INFO}
+    root: ${LOG_LEVEL_ROOT:WARN}
