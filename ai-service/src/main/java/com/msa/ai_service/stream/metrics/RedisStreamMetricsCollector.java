@@ -26,6 +26,7 @@ public class RedisStreamMetricsCollector {
     private final AtomicLong requestedStreamLength = new AtomicLong();
     private final AtomicLong generatedStreamLength = new AtomicLong();
     private final AtomicLong pendingMessages = new AtomicLong();
+    private final AtomicLong groupLag = new AtomicLong(-1);
     private final AtomicLong consumerCount = new AtomicLong();
     private final AtomicLong refreshSuccess = new AtomicLong();
     private final AtomicLong lastRefreshEpochSeconds = new AtomicLong();
@@ -53,6 +54,12 @@ public class RedisStreamMetricsCollector {
 
         Gauge.builder("redis.stream.pending.messages", pendingMessages, AtomicLong::get)
                 .description("Redis Stream pending messages in a consumer group")
+                .tag("stream", DeadlineStreamConstants.DEADLINE_REQUESTED_STREAM)
+                .tag("group", DeadlineStreamConstants.AI_SERVICE_GROUP)
+                .register(meterRegistry);
+
+        Gauge.builder("redis.stream.group.lag", groupLag, AtomicLong::get)
+                .description("Redis Stream consumer group lag. -1 means Redis did not return lag")
                 .tag("stream", DeadlineStreamConstants.DEADLINE_REQUESTED_STREAM)
                 .tag("group", DeadlineStreamConstants.AI_SERVICE_GROUP)
                 .register(meterRegistry);
@@ -111,22 +118,53 @@ public class RedisStreamMetricsCollector {
                 DeadlineStreamConstants.DEADLINE_REQUESTED_STREAM,
                 DeadlineStreamConstants.AI_SERVICE_GROUP
         );
-        pendingMessages.set(pendingSummary.getTotalPendingMessages());
 
         pendingMessagesByConsumer.values().forEach(value -> value.set(0));
+
+        long totalPending = pendingSummary.getPendingMessagesPerConsumer()
+                .values()
+                .stream()
+                .mapToLong(count -> count == null ? 0L : count.longValue())
+                .sum();
+
+        pendingMessages.set(totalPending);
+
         pendingSummary.getPendingMessagesPerConsumer()
                 .forEach((consumerName, count) -> pendingMessagesByConsumer
-                        .computeIfAbsent(consumerName, this::registerConsumerPendingGauge)
-                        .set(count == null ? 0 : count));
+                        .computeIfAbsent(String.valueOf(consumerName), this::registerConsumerPendingGauge)
+                        .set(count == null ? 0 : count.longValue()));
 
         StreamInfo.XInfoGroups groups = stringRedisTemplate.opsForStream().groups(
                 DeadlineStreamConstants.DEADLINE_REQUESTED_STREAM
         );
-        consumerCount.set(groups.stream()
+
+        StreamInfo.XInfoGroup aiServiceGroup = groups.stream()
                 .filter(group -> DeadlineStreamConstants.AI_SERVICE_GROUP.equals(group.groupName()))
                 .findFirst()
-                .map(StreamInfo.XInfoGroup::consumerCount)
-                .orElse(0L));
+                .orElse(null);
+
+        if (aiServiceGroup == null) {
+            groupLag.set(-1);
+            consumerCount.set(0);
+            return;
+        }
+
+        groupLag.set(readLong(aiServiceGroup.getRaw().get("lag"), -1));
+        consumerCount.set(readLong(aiServiceGroup.consumerCount(), 0));
+    }
+
+    private long readLong(Object value, long fallback) {
+        if (value instanceof Number number) {
+            return number.longValue();
+        }
+        if (value instanceof String stringValue) {
+            try {
+                return Long.parseLong(stringValue);
+            } catch (NumberFormatException ignored) {
+                return fallback;
+            }
+        }
+        return fallback;
     }
 
     private AtomicLong registerConsumerPendingGauge(String consumerName) {
