@@ -726,7 +726,91 @@ Hikari pending connection:
 hikaricp_connections_pending
 ```
 
-Redis Stream pending과 stream length는 Prometheus에 exporter가 연결되어 있지 않다면 redis-cli를 기준으로 기록한다.
+Redis Stream pending과 stream length는 ai-service의 Micrometer Gauge로 Prometheus에 노출한다.
+Grafana 대시보드는 `AI Redis Stream Load Test`를 사용한다.
+
+주요 PromQL:
+
+```promql
+redis_stream_pending_messages{stream="deadline:requested:stream", group="ai-service-group"}
+```
+
+선택한 시간 범위의 pending 최대값:
+
+```promql
+max_over_time(redis_stream_pending_messages{stream="deadline:requested:stream", group="ai-service-group"}[$__range])
+```
+
+consumer별 pending:
+
+```promql
+redis_stream_consumer_pending_messages{stream="deadline:requested:stream", group="ai-service-group"}
+```
+
+stream length:
+
+```promql
+redis_stream_length{stream=~"deadline:requested:stream|deadline:generated:stream"}
+```
+
+지표 수집 상태:
+
+```promql
+redis_stream_metrics_refresh_success
+```
+
+`redis_stream_metrics_refresh_success`가 0이면 ai-service가 Redis Stream 상태를 읽지 못한 것이다.
+이 경우 Redis 연결, stream/group 존재 여부, ai-service 로그의 `REDIS_STREAM_METRICS_REFRESH_FAILED`를 먼저 확인한다.
+
+## Grafana 기반 Redis Stream 부하 테스트 진행 순서
+
+테스트 목적:
+
+* 부하 중 AI Consumer가 감당하지 못해 `deadline:requested:stream` / `ai-service-group` pending 메시지가 얼마나 쌓이는지 측정한다.
+* `read-count=300` 기준으로 consumer concurrency 1, 2, 3의 pending 최대값과 회복 시간을 비교한다.
+* AI 외부 API 비용을 제거하기 위해 `AI_ENABLED=false` 상태에서 Redis Stream consumer 처리량만 본다.
+
+사전 준비:
+
+1. data-monitor VM에서 Prometheus와 Grafana를 실행한다.
+2. Grafana `Hublink / AI Redis Stream Load Test` 대시보드를 연다.
+3. ai-service `/actuator/prometheus`에 `redis_stream_pending_messages`가 노출되는지 확인한다.
+4. `redis_stream_metrics_refresh_success`가 1인지 확인한다.
+5. Redis Stream 상태를 초기화하거나, 이전 테스트의 stream length/pending 값을 기준값으로 기록한다.
+
+공통 테스트 순서:
+
+1. ai-service 설정을 테스트할 값으로 배포한다.
+   * `ai.stream.consumer.deadline-requested.read-count=300`
+   * `ai.stream.consumer.deadline-requested.concurrency=1`, `2`, `3` 중 하나
+   * `ai.enabled=false`
+2. ai-service를 재시작하고 Grafana에서 `Consumer Count`가 기대한 값과 맞는지 확인한다.
+3. Grafana 시간 범위를 `Last 30 minutes` 또는 테스트 전체 시간이 들어가는 범위로 맞춘다.
+4. k6 stress 테스트를 시작한다.
+5. 부하 중 `Pending Messages`, `Pending By Consumer`, `Stream Length`를 관찰한다.
+6. k6 주입이 끝난 뒤 pending이 0 또는 기준값으로 회복되는 시각을 기록한다.
+7. `Max Pending In Range` 값을 결과표에 기록한다.
+8. 같은 부하 조건으로 concurrency만 바꿔 1, 2, 3을 반복한다.
+
+결과 기록 항목:
+
+| 항목 | 설명 |
+| --- | --- |
+| concurrency | ai-service consumer 병렬 처리 수 |
+| read-count | XREAD COUNT 설정값 |
+| k6 scenario | stress/load/spike 등 실행한 시나리오 |
+| max pending | Grafana `Max Pending In Range` 값 |
+| peak time | pending이 최대가 된 시각 |
+| recovery time | k6 종료 또는 peak 이후 pending이 기준값으로 돌아오기까지 걸린 시간 |
+| generated stream delta | 테스트 전후 `deadline:generated:stream` 증가량 |
+| error signal | k6 실패율, ai-service 에러 로그, refresh success 0 발생 여부 |
+
+해석 기준:
+
+* pending이 거의 0인데 stream length만 크면 ACK 전 병목이 아니라 stream entry 보존 효과일 수 있다.
+* pending이 계속 증가하면 consumer가 읽은 뒤 ACK 전 처리 시간이 밀리거나 예외로 ACK가 누락되는 상황이다.
+* consumer별 pending이 한쪽에 몰리면 concurrency는 늘었지만 처리 분산이 기대만큼 되지 않는 것이다.
+* `redis_stream_metrics_refresh_success`가 0인 구간은 pending 최대값 판단에서 제외하거나 Redis CLI로 교차 확인한다.
 
 ## Redis 병목 확인 명령
 

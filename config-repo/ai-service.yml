@@ -31,6 +31,8 @@ ai:
   api-url: ${AI_API_URL:https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent}
   api-key: ${AI_API_KEY:}
   stream:
+    metrics:
+      refresh-fixed-delay-ms: 10000
     consumer:
       deadline-requested:
         fixed-delay-ms: 3000
@@ -81,5 +83,4 @@ swagger:
 logging:
   level:
     root: ${LOG_LEVEL_ROOT:INFO}
-
 
