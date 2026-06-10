@@ -15,7 +15,7 @@ Terraform
   -> Artifact Registry
   -> Service Account
   -> Workload Identity Federation
-  -> VM start/stop schedule
+  -> VM start/stop schedule policy
 ```
 
 Terraform 코드 위치:
@@ -120,7 +120,7 @@ VM 역할별로 Compose 파일을 분리한다.
 | `iam.tf` | VM 실행용 Service Account와 권한 |
 | `artifact-registry.tf` | Docker 이미지 저장소 |
 | `workload-identity.tf` | GitHub Actions OIDC 인증 |
-| `schedule.tf` | VM 자동 시작/종료 스케줄 |
+| `schedule.tf` | VM 자동 시작/종료 스케줄 정책 |
 | `variables.tf` | 입력 변수 선언 |
 | `outputs.tf` | 배포 후 확인할 주요 값 |
 | `terraform.tfvars` | 실제 프로젝트별 입력값 |
@@ -129,10 +129,13 @@ VM 역할별로 Compose 파일을 분리한다.
 
 ## VM 자동 시작과 종료
 
-비용 절감을 위해 VM 스케줄을 적용한다.
+VM 스케줄 정책 리소스는 유지하되, 실제 VM 연결 여부는 `vm_schedule_enabled`로 제어한다.
+
+부하 테스트나 Redis/Kafka pending 확인 중에는 재시작으로 인한 상태 복구 로그와 테스트 데이터 유실을 줄이기 위해 기본값을 `false`로 둔다.
 
 | 항목 | 값 |
 | --- | --- |
+| 사용 여부 | 기본 `false` |
 | 시작 | 매일 10:00 |
 | 종료 | 매일 02:00 |
 | 타임존 | `Asia/Seoul` |
@@ -140,9 +143,16 @@ VM 역할별로 Compose 파일을 분리한다.
 Terraform 변수:
 
 ```hcl
+vm_schedule_enabled   = false
 vm_start_schedule     = "0 10 * * *"
 vm_stop_schedule      = "0 2 * * *"
 vm_schedule_time_zone = "Asia/Seoul"
+```
+
+스케줄을 다시 사용할 때:
+
+```hcl
+vm_schedule_enabled = true
 ```
 
 수정 후 반영:
@@ -152,6 +162,8 @@ cd infra/gcp
 terraform plan
 terraform apply
 ```
+
+`vm_schedule_enabled = false`이면 `google_compute_resource_policy.vm_schedule` 리소스는 남아 있지만 VM의 `resource_policies`에는 연결되지 않는다.
 
 ## 운영 확인
 

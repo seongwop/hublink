@@ -6,6 +6,13 @@ variable "project_id" {
   type        = string
 }
 
+# VM 자동 시작/종료 스케줄 사용 여부
+variable "vm_schedule_enabled" {
+  description = "VM 자동 시작/종료 스케줄 사용 여부"
+  type        = bool
+  default     = false
+}
+
 # VM 자동 시작 cron
 variable "vm_start_schedule" {
   description = "VM 자동 시작 cron"
