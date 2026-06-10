@@ -6,7 +6,9 @@ import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.DependsOn;
 import org.springframework.data.domain.Range;
+import org.springframework.data.redis.RedisSystemException;
 import org.springframework.data.redis.connection.stream.Consumer;
 import org.springframework.data.redis.connection.stream.MapRecord;
 import org.springframework.data.redis.connection.stream.PendingMessage;
@@ -20,6 +22,7 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @Component
 @RequiredArgsConstructor
+@DependsOn("deadlineGeneratedStreamGroupInitializer")
 public class DeadlineGeneratedPendingRetryConsumer {
     private static final long MAX_DELIVERY_COUNT = 5L;
     private static final long PENDING_SCAN_COUNT = 100L;
@@ -27,21 +30,35 @@ public class DeadlineGeneratedPendingRetryConsumer {
 
     private final StringRedisTemplate stringRedisTemplate;
     private final DeadlineGeneratedStreamConsumer streamConsumer;
+    private final DeadlineGeneratedStreamGroupInitializer streamGroupInitializer;
 
     @Scheduled(fixedDelay = 300_000)
     public void retryPendingMessages() {
         StreamOperations<String, Object, Object> streamOps = stringRedisTemplate.opsForStream();
 
         // 현재 consumer의 PEL 조회
-        PendingMessages pendingMessages = streamOps.pending(
-                DeadlineStreamConstants.DEADLINE_GENERATED_STREAM,
-                Consumer.from(
-                        DeadlineStreamConstants.DELIVERY_SERVICE_GROUP,
-                        DeadlineStreamConstants.DELIVERY_SERVICE_CONSUMER
-                ),
-                Range.unbounded(),
-                PENDING_SCAN_COUNT
-        );
+        PendingMessages pendingMessages;
+        try {
+            pendingMessages = streamOps.pending(
+                    DeadlineStreamConstants.DEADLINE_GENERATED_STREAM,
+                    Consumer.from(
+                            DeadlineStreamConstants.DELIVERY_SERVICE_GROUP,
+                            DeadlineStreamConstants.DELIVERY_SERVICE_CONSUMER
+                    ),
+                    Range.unbounded(),
+                    PENDING_SCAN_COUNT
+            );
+        } catch (RedisSystemException e) {
+            if (isNoGroup(e)) {
+                log.warn("event=DELIVERY_PENDING_RETRY_GROUP_MISSING stream={} group={}",
+                        DeadlineStreamConstants.DEADLINE_GENERATED_STREAM,
+                        DeadlineStreamConstants.DELIVERY_SERVICE_GROUP
+                );
+                streamGroupInitializer.createConsumerGroup();
+                return;
+            }
+            throw e;
+        }
 
         if (pendingMessages.isEmpty()) {
             return;
@@ -127,5 +144,11 @@ public class DeadlineGeneratedPendingRetryConsumer {
                 DeadlineStreamConstants.DELIVERY_SERVICE_GROUP,
                 recordId
         );
+    }
+
+    private boolean isNoGroup(RedisSystemException e) {
+        Throwable cause = e.getCause();
+        return (e.getMessage() != null && e.getMessage().contains("NOGROUP"))
+                || (cause != null && cause.getMessage() != null && cause.getMessage().contains("NOGROUP"));
     }
 }
