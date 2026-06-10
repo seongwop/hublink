@@ -8,6 +8,8 @@
 
 GCP VM 5개를 기준으로 서비스를 나누어 배포한다.
 
+서버별 CPU, 메모리, 디스크, IP 세부 스펙은 [GCP 서버 스펙](docs/gcp-server-spec.md)에서 확인한다.
+
 ```text
 platform-vm
   - eureka-server
@@ -39,7 +41,7 @@ data-monitor-vm
 
 load-test-vm
   - k6
-  - 부하 테스트 스크립트
+  - load test scripts
 ```
 
 서비스 컨테이너들은 각 VM의 Docker 네트워크에 따로 올라가므로, 서비스 간 통신은 GCP 내부 IP를 기준으로 연결한다.
@@ -52,29 +54,19 @@ load-test-vm
 | domain-a-vm | 사용자, 업체, 허브, 상품 도메인 서비스 | 19093, 19095, 19096, 19097 |
 | domain-b-vm | 주문, 재고, 배송, 알림, AI 도메인 서비스 | 19094, 19098, 19099, 19100, 19101 |
 | data-monitor-vm | 데이터 저장소, 메시징, 모니터링 | 5432, 6379, 9092, 8082, 9411, 9090, 3100, 3000 |
-| load-test-vm | GCP 내부 부하 발생 | k6 실행 |
+| load-test-vm | GCP 내부 부하 발생 | 없음 |
 
-## 고정 내부 IP
+## 고정 IP
 
-| VM | Internal IP |
-| --- | --- |
-| platform-vm | `10.10.0.10` |
-| domain-a-vm | `10.10.0.20` |
-| domain-b-vm | `10.10.0.30` |
-| data-monitor-vm | `10.10.0.40` |
-| load-test-vm | `10.10.0.50` |
+| VM | Internal IP | External IP |
+| --- | --- | --- |
+| platform-vm | `10.10.0.10` | `34.50.23.39` |
+| domain-a-vm | `10.10.0.20` | `8.230.24.217` |
+| domain-b-vm | `10.10.0.30` | `8.230.9.99` |
+| data-monitor-vm | `10.10.0.40` | `34.64.89.47` |
+| load-test-vm | `10.10.0.50` | `34.22.78.126` |
 
-## 고정 외부 IP
-
-| VM | External IP |
-| --- | --- |
-| platform-vm | `34.50.23.39` |
-| domain-a-vm | `8.230.24.217` |
-| domain-b-vm | `8.230.9.99` |
-| data-monitor-vm | `34.64.89.47` |
-| load-test-vm | `34.22.78.126` |
-
-## 관측 도구
+## 모니터링 도구
 
 | 도구 | 주소 | 용도 |
 | --- | --- | --- |
@@ -84,24 +76,23 @@ load-test-vm
 | Kafka UI | `http://34.64.89.47:8082` | topic, message, consumer lag 확인 |
 | Loki | Grafana datasource | Docker 로그 검색 |
 
-## 테스트 방향
-
-이 프로젝트의 테스트 초점은 배송 도메인 흐름이다.
-
-```text
-Gateway 부하
-주문 생성 이후 배송 생성 Kafka 흐름
-배송 기사 배정과 배송 생성 처리량
-배송 -> AI -> Slack Redis Stream 흐름
-Kafka lag, Redis pending, JVM heap, p95/p99 기반 병목 확인
-```
-
-부하 테스트 스크립트는 `performance/k6`에서 관리하고, GitHub Actions의 `GCP Load Test Sync` workflow가 `load-test-vm`으로 동기화한다.
-
 ## 문서
 
+### 인프라와 배포
+
 - [GCP 인프라 구성](docs/gcp-infra.md)
+- [GCP 서버 스펙](docs/gcp-server-spec.md)
+- [GCP GitHub Actions CI/CD](docs/gcp-cicd.md)
+
+### 테스트 계획
+
 - [배송 도메인 시나리오 테스트 계획](docs/scenario/scenario-test-plan.md)
 - [배송 도메인 성능 테스트 계획](docs/performance/performance-test-plan.md)
-- [AI 도메인 시나리오 테스트 계획](docs/scenario/ai-scenario-test-plan.md)
-- [AI 도메인 성능 테스트 및 트러블슈팅 계획](docs/performance/ai-performance-test-plan.md)
+- [AI 도메인 시나리오 테스트 계획](docs/scenario/scenario-ai-test-plan.md)
+- [AI 도메인 성능 테스트 및 트러블슈팅 계획](docs/performance/performance-ai-test-plan.md)
+
+### 개발 규칙
+
+- [코드 컨벤션](docs/code-convention.md)
+- [Git 컨벤션](docs/git-convention.md)
+- [서비스 포트](docs/service-port.md)
