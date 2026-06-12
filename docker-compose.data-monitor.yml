@@ -1,4 +1,4 @@
-# 데이터 저장소와 관측 도구 묶음
+# 데이터 저장소와 메시지 브로커 묶음
 services:
   # 관계형 데이터 저장소
   postgres:
@@ -56,99 +56,6 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
 
-  # Kafka topic과 consumer group 확인 UI
-  kafka-ui:
-    image: provectuslabs/kafka-ui:latest
-    container_name: hublink-kafka-ui
-    restart: unless-stopped
-    ports:
-      - "8082:8080"
-    environment:
-      KAFKA_CLUSTERS_0_NAME: gcp
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
-      KAFKA_CLUSTERS_0_READONLY: "false"
-    depends_on:
-      - kafka
-
-  # Kafka consumer lag 메트릭 수집
-  kafka-exporter:
-    image: danielqsj/kafka-exporter:v1.8.0
-    container_name: hublink-kafka-exporter
-    restart: unless-stopped
-    command:
-      - --kafka.server=kafka:29092
-      - --web.listen-address=:9308
-    depends_on:
-      - kafka
-
-  # 분산 추적 수집 서버
-  zipkin:
-    image: openzipkin/zipkin:3.6.1
-    container_name: hublink-zipkin
-    restart: unless-stopped
-    ports:
-      - "9411:9411"
-
-  # Docker 로그 저장소
-  loki:
-    image: grafana/loki:latest
-    container_name: hublink-loki
-    restart: unless-stopped
-    ports:
-      - "3100:3100"
-    volumes:
-      - ./monitoring/loki.yml:/etc/loki/config.yml:ro
-      - loki-data:/loki
-    command: -config.file=/etc/loki/config.yml
-
-  # data-monitor VM Docker 로그 수집기
-  promtail:
-    image: ${IMAGE_REGISTRY}/hublink-promtail:latest
-    container_name: hublink-promtail-data-monitor
-    restart: unless-stopped
-    env_file:
-      - ${HUBLINK_ENV_FILE:-.env.gcp}
-    environment:
-      HUBLINK_VM_ROLE: data-monitor
-    volumes:
-      - ./monitoring/promtail.yml:/etc/promtail/config.yml:ro
-      - promtail-positions:/var/lib/promtail
-      - /var/lib/docker/containers:/var/lib/docker/containers:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    command: -config.file=/etc/promtail/config.yml -config.expand-env=true
-    depends_on:
-      - loki
-
-  # 서비스 메트릭 수집기
-  prometheus:
-    image: prom/prometheus:v3.11.3
-    container_name: hublink-prometheus
-    restart: unless-stopped
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-    depends_on:
-      - kafka-exporter
-      - zipkin
-
-  # 메트릭과 로그 통합 조회 UI
-  grafana:
-    image: grafana/grafana:13.0.1-security-01
-    container_name: hublink-grafana
-    restart: unless-stopped
-    ports:
-      - "3000:3000"
-    volumes:
-      - grafana-storage:/var/lib/grafana
-      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
-    depends_on:
-      - prometheus
-      - loki
-
 # 컨테이너 데이터 유지 볼륨
 volumes:
   postgres-data:
-  grafana-storage:
-  loki-data:
-  promtail-positions:

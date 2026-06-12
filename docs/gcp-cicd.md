@@ -57,9 +57,9 @@ GitHub 저장소에서 `Settings` -> `Secrets and variables` -> `Actions` -> `Va
 | `SLACK_ENABLED` | `false` |
 | `AI_ENABLED` | `false` |
 | `KAKAO_ENABLED` | `false` |
-| `LOG_LEVEL_ROOT` | `INFO` |
+| `LOG_LEVEL_ROOT` | `WARN` |
 
-`LOG_LEVEL_ROOT`를 등록하지 않으면 workflow에서 `INFO`로 생성한다.
+`LOG_LEVEL_ROOT`를 등록하지 않으면 workflow에서 `WARN`으로 생성한다.
 
 ## GCP 인증 리소스
 
@@ -115,12 +115,13 @@ GitHub 저장소
 
 ```text
 data-monitor-vm
+-> monitor-vm
 -> platform-vm
 -> domain-a-vm
 -> domain-b-vm
 ```
 
-DB, Redis, Kafka가 먼저 떠야 하고, 그 다음 Eureka와 Config Server가 떠야 도메인 서비스들이 설정을 읽고 Eureka에 등록된다.
+DB, Redis, Kafka가 먼저 떠야 하고, 그 다음 모니터링 계층과 Eureka/Config Server가 떠야 도메인 서비스들이 설정을 읽고 Eureka에 등록된다.
 
 ## 확인 주소
 
@@ -133,8 +134,8 @@ gcloud compute instances list --project hublink-498115
 ```text
 Eureka:     http://platform-vm-외부IP:19090
 Gateway:    http://platform-vm-외부IP:19091
-Grafana:    http://data-monitor-vm-외부IP:3000
-Prometheus: http://data-monitor-vm-외부IP:9090
-Kafka UI:   http://data-monitor-vm-외부IP:8082
-Zipkin:     http://data-monitor-vm-외부IP:9411
+Grafana:    http://monitor-vm-외부IP:3000
+Prometheus: http://monitor-vm-외부IP:9090
+Kafka UI:   http://monitor-vm-외부IP:8082
+Zipkin:     http://monitor-vm-외부IP:9411
 ```

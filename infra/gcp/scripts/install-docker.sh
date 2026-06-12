@@ -59,6 +59,9 @@ case "$ROLE" in
   data-monitor)
     COMPOSE_FILE="docker-compose.data-monitor.yml"
     ;;
+  monitor)
+    COMPOSE_FILE="docker-compose.monitor.yml"
+    ;;
   *)
     exit 0
     ;;

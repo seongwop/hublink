@@ -26,7 +26,8 @@
 | `hublink-platform-vm` | `e2-standard-2` | 2 | 8 GB | 30 GB | `10.10.0.10` | `34.50.23.39` | Eureka, Config Server, API Gateway |
 | `hublink-domain-a-vm` | `e2-standard-2` | 2 | 8 GB | 30 GB | `10.10.0.20` | `8.230.24.217` | user, company, hub, product |
 | `hublink-domain-b-vm` | `e2-standard-2` | 2 | 8 GB | 30 GB | `10.10.0.30` | `8.230.9.99` | order, stock, delivery, slack, ai |
-| `hublink-data-monitor-vm` | `e2-standard-2` | 2 | 8 GB | 50 GB | `10.10.0.40` | `34.64.89.47` | PostgreSQL, Redis, Kafka, Kafka UI, Zipkin, Prometheus, Loki, Grafana |
+| `hublink-data-monitor-vm` | `e2-standard-2` | 2 | 8 GB | 50 GB | `10.10.0.40` | `34.64.89.47` | PostgreSQL, Redis, Kafka |
+| `hublink-monitor-vm` | `e2-standard-2` | 2 | 8 GB | 50 GB | `10.10.0.60` | `34.50.1.195` | Kafka UI, Zipkin, Prometheus, Loki, Grafana |
 | `hublink-load-test-vm` | `e2-medium` | 2 | 4 GB | 20 GB | `10.10.0.50` | `34.22.78.126` | k6 부하 발생 |
 
 메모리와 vCPU는 GCP E2 machine type 기준이다.
@@ -67,6 +68,11 @@
 | PostgreSQL | 5432 | 서비스 DB |
 | Redis | 6379 | Redis Stream, cache, lock |
 | Kafka | 9092 | 도메인 이벤트 |
+
+### monitor
+
+| 서비스 | 포트 | 용도 |
+| --- | ---: | --- |
 | Kafka UI | 8082 | Kafka topic, lag 확인 |
 | Zipkin | 9411 | 분산 추적 |
 | Prometheus | 9090 | 메트릭 수집 |
@@ -87,7 +93,8 @@
 | platform | 모든 요청의 진입점과 서비스 디스커버리를 담당하므로 기본 서비스 VM과 같은 `e2-standard-2` 사용 |
 | domain-a | 4개 도메인 서비스를 함께 실행하므로 `e2-standard-2` 사용 |
 | domain-b | 배송, 주문, 재고, AI, Slack 등 부하 테스트 대상 서비스가 함께 실행되므로 `e2-standard-2` 사용 |
-| data-monitor | DB, Kafka, Redis, Prometheus, Grafana가 함께 실행되므로 디스크를 50 GB로 확장 |
+| data-monitor | 부하 테스트 대상 데이터 경로인 DB, Redis, Kafka만 실행하도록 유지 |
+| monitor | Prometheus, Grafana, Loki, Zipkin, Kafka UI를 분리해 data VM 자원 경합 완화 |
 | load-test | k6 부하 발생 전용 VM이므로 `e2-medium`과 20 GB 디스크 사용 |
 
 ## 스케줄 상태

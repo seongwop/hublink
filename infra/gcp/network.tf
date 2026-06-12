@@ -8,7 +8,7 @@ resource "google_compute_network" "main" {
   depends_on = [google_project_service.required]
 }
 
-# VM 4대 배치용 단일 서브넷
+# HubLink VM 배치용 단일 서브넷
 resource "google_compute_subnetwork" "main" {
   name                     = "${var.name_prefix}-subnet"
   ip_cidr_range            = var.network_cidr

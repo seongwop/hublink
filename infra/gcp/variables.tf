@@ -108,7 +108,7 @@ variable "public_source_ranges" {
 variable "external_ip_vm_names" {
   description = "고정 외부 IP를 연결할 VM 이름 목록"
   type        = set(string)
-  default     = ["platform", "data-monitor", "load-test"]
+  default     = ["platform", "data-monitor", "monitor", "load-test"]
 }
 
 # Docker 이미지 저장소 ID
@@ -163,6 +163,13 @@ variable "vm_specs" {
       machine_type = "e2-standard-2"
       disk_size_gb = 50
       internal_ip  = "10.10.0.40"
+      tags         = ["hublink", "hublink-ssh", "hublink-data"]
+    }
+    monitor = {
+      role         = "monitor"
+      machine_type = "e2-standard-2"
+      disk_size_gb = 50
+      internal_ip  = "10.10.0.60"
       tags         = ["hublink", "hublink-ssh", "hublink-monitor"]
     }
     load-test = {

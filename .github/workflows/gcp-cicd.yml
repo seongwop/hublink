@@ -54,10 +54,12 @@ env:
   DOMAIN_A_VM: hublink-domain-a-vm
   DOMAIN_B_VM: hublink-domain-b-vm
   DATA_MONITOR_VM: hublink-data-monitor-vm
+  MONITOR_VM: hublink-monitor-vm
   PLATFORM_VM_IP: 10.10.0.10
   DOMAIN_A_VM_IP: 10.10.0.20
   DOMAIN_B_VM_IP: 10.10.0.30
   DATA_VM_IP: 10.10.0.40
+  MONITOR_VM_IP: 10.10.0.60
 
 jobs:
   detect-changes:
@@ -69,6 +71,7 @@ jobs:
       deploy_domain_a: ${{ steps.detect.outputs.deploy_domain_a }}
       deploy_domain_b: ${{ steps.detect.outputs.deploy_domain_b }}
       deploy_data_monitor: ${{ steps.detect.outputs.deploy_data_monitor }}
+      deploy_monitor: ${{ steps.detect.outputs.deploy_monitor }}
       mirror_promtail: ${{ steps.detect.outputs.mirror_promtail }}
       should_deploy: ${{ steps.detect.outputs.should_deploy }}
 
@@ -134,6 +137,7 @@ jobs:
               "domain_a": False,
               "domain_b": False,
               "data_monitor": False,
+              "monitor": False,
           }
           mirror_promtail = False
 
@@ -150,6 +154,7 @@ jobs:
               services.update(all_services)
               deploy_all_app_vms()
               deploy["data_monitor"] = True
+              deploy["monitor"] = True
               mirror_promtail = True
           else:
               for file_path in changed_files:
@@ -174,7 +179,7 @@ jobs:
 
                   if file_path.startswith("monitoring/"):
                       deploy_all_app_vms()
-                      deploy["data_monitor"] = True
+                      deploy["monitor"] = True
                       mirror_promtail = True
 
                   if file_path == "docker-compose.platform.yml":
@@ -188,11 +193,15 @@ jobs:
 
                   if file_path == "docker-compose.data-monitor.yml":
                       deploy["data_monitor"] = True
+
+                  if file_path == "docker-compose.monitor.yml":
+                      deploy["monitor"] = True
                       mirror_promtail = True
 
                   if file_path.startswith("scripts/gcp/") or file_path == ".github/workflows/gcp-cicd.yml":
                       deploy_all_app_vms()
                       deploy["data_monitor"] = True
+                      deploy["monitor"] = True
 
           services_json = json.dumps([service for service in all_services if service in services])
           should_deploy = any(deploy.values())
@@ -203,6 +212,7 @@ jobs:
               output.write(f"deploy_domain_a={str(deploy['domain_a']).lower()}\n")
               output.write(f"deploy_domain_b={str(deploy['domain_b']).lower()}\n")
               output.write(f"deploy_data_monitor={str(deploy['data_monitor']).lower()}\n")
+              output.write(f"deploy_monitor={str(deploy['monitor']).lower()}\n")
               output.write(f"mirror_promtail={str(mirror_promtail).lower()}\n")
               output.write(f"should_deploy={str(should_deploy).lower()}\n")
 
@@ -371,7 +381,7 @@ jobs:
 
           SWAGGER_GATEWAY_URL="${SWAGGER_GATEWAY_URL:-http://${PLATFORM_VM_EXTERNAL_IP}:19091}"
           CORS_ALLOWED_ORIGIN="${CORS_ALLOWED_ORIGIN:-${SWAGGER_GATEWAY_URL}}"
-          LOG_LEVEL_ROOT="${LOG_LEVEL_ROOT:-INFO}"
+          LOG_LEVEL_ROOT="${LOG_LEVEL_ROOT:-WARN}"
 
           cat > .env.gcp <<EOF
           IMAGE_REGISTRY=${IMAGE_REGISTRY}
@@ -382,6 +392,7 @@ jobs:
           DOMAIN_A_VM_IP=${DOMAIN_A_VM_IP}
           DOMAIN_B_VM_IP=${DOMAIN_B_VM_IP}
           DATA_VM_IP=${DATA_VM_IP}
+          MONITOR_VM_IP=${MONITOR_VM_IP}
 
           DB_URL=jdbc:postgresql://${DATA_VM_IP}:5432/hublink
           DB_USERNAME=${DB_USERNAME}
@@ -397,7 +408,7 @@ jobs:
           CONFIG_SERVER_URL=http://${PLATFORM_VM_IP}:19092
 
           SWAGGER_GATEWAY_URL=${SWAGGER_GATEWAY_URL}
-          ZIPKIN_URL=http://${DATA_VM_IP}:9411/api/v2/spans
+          ZIPKIN_URL=http://${MONITOR_VM_IP}:9411/api/v2/spans
 
           SLACK_ENABLED=${SLACK_ENABLED}
           SLACK_BOT_TOKEN=${SLACK_BOT_TOKEN}
@@ -429,10 +440,15 @@ jobs:
       - name: Prepare deploy script
         run: chmod +x scripts/gcp/deploy-vm.sh
 
-      - name: Deploy data and monitoring
-        # 데이터와 모니터링 계층 배포
+      - name: Deploy data services
+        # 데이터 저장소와 메시지 브로커 배포
         if: needs.detect-changes.outputs.deploy_data_monitor == 'true'
-        run: scripts/gcp/deploy-vm.sh "${DATA_MONITOR_VM}" docker-compose.data-monitor.yml db monitoring
+        run: scripts/gcp/deploy-vm.sh "${DATA_MONITOR_VM}" docker-compose.data-monitor.yml db
+
+      - name: Deploy monitoring services
+        # 모니터링 계층 배포
+        if: needs.detect-changes.outputs.deploy_monitor == 'true'
+        run: scripts/gcp/deploy-vm.sh "${MONITOR_VM}" docker-compose.monitor.yml monitoring
 
       - name: Deploy platform services
         # Eureka, Config Server, Gateway 배포
@@ -453,5 +469,5 @@ jobs:
         run: |
           echo "Eureka: http://<platform-external-ip>:19090"
           echo "Gateway: http://<platform-external-ip>:19091"
-          echo "Grafana: http://<data-monitor-external-ip>:3000"
-          echo "Prometheus: http://<data-monitor-external-ip>:9090"
+          echo "Grafana: http://<monitor-external-ip>:3000"
+          echo "Prometheus: http://<monitor-external-ip>:9090"

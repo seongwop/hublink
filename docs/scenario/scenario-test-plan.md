@@ -23,9 +23,9 @@
 | --- | --- | --- |
 | Swagger | `http://34.50.23.39:19091/swagger-ui/index.html` | 주문 요청과 배송 API 확인 |
 | Eureka | `http://34.50.23.39:19090` | delivery, ai, slack 서비스 등록 |
-| Kafka UI | `http://34.64.89.47:8082` | delivery topic, consumer lag, DLT |
-| Grafana | `http://34.64.89.47:3000` | delivery-service CPU, heap, HTTP, JVM 지표 |
-| Zipkin | `http://34.64.89.47:9411` | 배송 생성 trace, Feign 호출 trace |
+| Kafka UI | `http://34.50.1.195:8082` | delivery topic, consumer lag, DLT |
+| Grafana | `http://34.50.1.195:3000` | delivery-service CPU, heap, HTTP, JVM 지표 |
+| Zipkin | `http://34.50.1.195:9411` | 배송 생성 trace, Feign 호출 trace |
 | PostgreSQL | `hublink` database | delivery, delivery manager, route row |
 | Redis | Redis Stream | AI/Slack 이벤트, pending entry |
 
