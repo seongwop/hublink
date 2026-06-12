@@ -1,6 +1,6 @@
 # GCP 인프라 구성 문서
 
-이 문서는 HubLink 프로젝트를 GCP Compute Engine VM 5대로 실행하기 위한 인프라 구성을 정리한다.
+이 문서는 HubLink 프로젝트를 GCP Compute Engine VM 6대로 실행하기 위한 인프라 구성을 정리한다.
 
 ## 구성 요약
 
@@ -31,10 +31,11 @@ infra/gcp
 | hublink-platform-vm | `10.10.0.10` | `34.50.23.39` | Eureka, Config Server, API Gateway |
 | hublink-domain-a-vm | `10.10.0.20` | `8.230.24.217` | user, company, hub, product |
 | hublink-domain-b-vm | `10.10.0.30` | `8.230.9.99` | order, stock, delivery, slack, ai |
-| hublink-data-monitor-vm | `10.10.0.40` | `34.64.89.47` | PostgreSQL, Redis, Kafka, Kafka UI, Zipkin, Prometheus, Grafana |
+| hublink-data-vm | `10.10.0.40` | `34.64.89.47` | PostgreSQL, Redis, Kafka |
+| hublink-monitoring-vm | `10.10.0.60` | `34.50.1.195` | Kafka UI, Zipkin, Prometheus, Loki, Grafana |
 | hublink-load-test-vm | `10.10.0.50` | `34.22.78.126` | k6 부하 발생 |
 
-외부 IP는 `platform`, `data-monitor`, `load-test`, `domain-a`, `domain-b`에 고정 IP로 연결한다. 서비스 간 통신과 부하 테스트 트래픽은 외부 IP가 아니라 내부 IP를 기준으로 유지한다.
+외부 IP는 `platform`, `data`, `monitoring`, `load-test`, `domain-a`, `domain-b`에 고정 IP로 연결한다. 서비스 간 통신과 부하 테스트 트래픽은 외부 IP가 아니라 내부 IP를 기준으로 유지한다.
 
 `load-test`는 외부 IP로 접속하더라도 실제 부하는 `platform` 내부 IP인 `10.10.0.10:19091`로 전송한다.
 
@@ -52,7 +53,8 @@ terraform output vm_external_ips
 platform:     34.50.23.39
 domain-a:     8.230.24.217
 domain-b:     8.230.9.99
-data-monitor: 34.64.89.47
+data:         34.64.89.47
+monitoring:  34.50.1.195
 load-test:    34.22.78.126
 ```
 
@@ -74,7 +76,7 @@ Config Server: http://10.10.0.10:19092
 PostgreSQL:    10.10.0.40:5432
 Redis:         10.10.0.40:6379
 Kafka:         10.10.0.40:9092
-Zipkin:        http://10.10.0.40:9411/api/v2/spans
+Zipkin:        http://10.10.0.60:9411/api/v2/spans
 Load Test:     10.10.0.50
 ```
 
@@ -84,10 +86,10 @@ Load Test:     10.10.0.50
 | --- | --- |
 | Swagger/API Gateway | `http://34.50.23.39:19091/swagger-ui/index.html` |
 | Eureka Dashboard | `http://34.50.23.39:19090` |
-| Kafka UI | `http://34.64.89.47:8082` |
-| Grafana | `http://34.64.89.47:3000` |
-| Prometheus | `http://34.64.89.47:9090` |
-| Zipkin | `http://34.64.89.47:9411` |
+| Kafka UI | `http://34.50.1.195:8082` |
+| Grafana | `http://34.50.1.195:3000` |
+| Prometheus | `http://34.50.1.195:9090` |
+| Zipkin | `http://34.50.1.195:9411` |
 
 Swagger에서 직접 요청을 보내려면 배포 환경의 `SWAGGER_GATEWAY_URL`, `CORS_ALLOWED_ORIGIN`이 `platform` 외부 IP를 바라봐야 한다.
 
@@ -102,7 +104,8 @@ VM 역할별로 Compose 파일을 분리한다.
 
 | 파일 | 실행 VM | 포함 항목 |
 | --- | --- | --- |
-| `docker-compose.data-monitor.yml` | data-monitor | PostgreSQL, Redis, Kafka, Kafka UI, Zipkin, Prometheus, Grafana |
+| `docker-compose.data.yml` | data | PostgreSQL, Redis, Kafka |
+| `docker-compose.monitoring.yml` | monitoring | Kafka UI, Zipkin, Prometheus, Loki, Grafana |
 | `docker-compose.platform.yml` | platform | Eureka, Config Server, API Gateway |
 | `docker-compose.domain-a.yml` | domain-a | user, company, hub, product |
 | `docker-compose.domain-b.yml` | domain-b | order, stock, delivery, slack, ai |
@@ -201,7 +204,7 @@ http://34.50.23.39:19090
 메시지 흐름 확인:
 
 ```text
-http://34.64.89.47:8082
+http://34.50.1.195:8082
 ```
 
 부하 테스트 VM 접속:
@@ -221,8 +224,8 @@ hublink-k6-smoke http://10.10.0.10:19091/actuator/health
 모니터링 확인:
 
 ```text
-http://34.64.89.47:3000
-http://34.64.89.47:9090
+http://34.50.1.195:3000
+http://34.50.1.195:9090
 ```
 
 ## CI/CD

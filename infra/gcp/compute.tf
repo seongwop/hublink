@@ -6,11 +6,21 @@ data "google_compute_image" "boot" {
   project = var.boot_image_project
 }
 
+locals {
+  address_name_suffix = {
+    for name, spec in var.vm_specs :
+    name => lookup({
+      data       = "data-monitor"
+      monitoring = "monitor"
+    }, name, name)
+  }
+}
+
 # VM별 고정 내부 IP 예약
 resource "google_compute_address" "internal" {
   for_each = var.vm_specs
 
-  name         = "${var.name_prefix}-${each.key}-internal-ip"
+  name         = "${var.name_prefix}-${local.address_name_suffix[each.key]}-internal-ip"
   address_type = "INTERNAL"
   address      = each.value.internal_ip
   region       = var.region
@@ -24,7 +34,7 @@ resource "google_compute_address" "external" {
     if contains(var.external_ip_vm_names, name)
   }
 
-  name         = "${var.name_prefix}-${each.key}-external-ip"
+  name         = "${var.name_prefix}-${local.address_name_suffix[each.key]}-external-ip"
   address_type = "EXTERNAL"
   region       = var.region
 }
@@ -92,6 +102,14 @@ resource "google_compute_instance" "vm" {
 
   # 머신 타입 변경 시 stop/start 허용
   allow_stopping_for_update = true
+
+  # 기존 VM 보존
+  lifecycle {
+    ignore_changes = [
+      metadata_startup_script,
+      boot_disk[0].initialize_params[0].image,
+    ]
+  }
 
   # VM 서비스 계정 권한 부여 후 VM 생성
   depends_on = [

@@ -8,7 +8,7 @@ resource "google_compute_network" "main" {
   depends_on = [google_project_service.required]
 }
 
-# VM 4대 배치용 단일 서브넷
+# HubLink VM 배치용 단일 서브넷
 resource "google_compute_subnetwork" "main" {
   name                     = "${var.name_prefix}-subnet"
   ip_cidr_range            = var.network_cidr
@@ -82,11 +82,11 @@ resource "google_compute_firewall" "platform_public" {
 
 # 모니터링 VM 공개 확인 포트
 resource "google_compute_firewall" "monitor_public" {
-  name    = "${var.name_prefix}-allow-monitor-public"
+  name    = "${var.name_prefix}-allow-monitoring-public"
   network = google_compute_network.main.name
 
   source_ranges = var.public_source_ranges
-  target_tags   = ["hublink-monitor"]
+  target_tags   = ["hublink-monitoring"]
 
   allow {
     protocol = "tcp"

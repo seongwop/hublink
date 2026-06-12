@@ -132,8 +132,8 @@ AI 서비스가 생성 후 발행하는 결과 이벤트다.
 | ------------ | ------------------------------------------------ | ----------------------------------------- |
 | Swagger      | `http://34.50.23.39:19091/swagger-ui/index.html` | 테스트 전용 API 호출                             |
 | Eureka       | `http://34.50.23.39:19090`                       | ai-service, delivery-service 등록 여부        |
-| Grafana      | `http://34.64.89.47:3000`                        | ai-service CPU, heap, HTTP, JVM 지표        |
-| Zipkin       | `http://34.64.89.47:9411`                        | AI 처리 trace                               |
+| Grafana      | `http://34.50.1.195:3000`                        | ai-service CPU, heap, HTTP, JVM 지표        |
+| Zipkin       | `http://34.50.1.195:9411`                        | AI 처리 trace                               |
 | PostgreSQL   | `hublink` database                               | AI 메시지 저장 결과                              |
 | Redis        | Redis Stream                                     | requested/generated stream, pending entry |
 | service logs | `domain-b-vm`                                    | ai-service consume, 처리 성공/실패 로그           |
