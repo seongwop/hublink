@@ -41,6 +41,7 @@ target/
 crash.log
 crash.*.log
 *.tfplan
+tfplan-*
 *-key.json
 *service-account*.json
 gcp-sa-key.json
