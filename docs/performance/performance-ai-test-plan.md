@@ -112,7 +112,7 @@ ai-service 로그의 ACK 완료 여부
 | ------------ | ------------------------------------- | --------------------------------------------------------- |
 | Grafana      | `http://34.50.1.195:3000`             | ai-service CPU, memory, JVM, DB, Redis 지표                 |
 | Prometheus   | `http://34.50.1.195:9090`             | raw metric query                                          |
-| Redis        | data-monitor-vm                       | stream length, lag, pending entry, consumer group, ACK 상태 |
+| Redis        | data-vm                               | stream length, lag, pending entry, consumer group, ACK 상태 |
 | Zipkin       | `http://34.50.1.195:9411`             | ai-service 처리 trace                                       |
 | PostgreSQL   | hublink database                      | AI 메시지 처리량, 처리 상태, DB connection                          |
 | k6           | load-test-vm                          | 이벤트 주입 요청 수, TPS, p95, p99, 실패율                           |

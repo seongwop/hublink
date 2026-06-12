@@ -114,8 +114,8 @@ GitHub 저장소
 ## 배포 순서
 
 ```text
-data-monitor-vm
--> monitor-vm
+data-vm
+-> monitoring-vm
 -> platform-vm
 -> domain-a-vm
 -> domain-b-vm
@@ -134,8 +134,8 @@ gcloud compute instances list --project hublink-498115
 ```text
 Eureka:     http://platform-vm-외부IP:19090
 Gateway:    http://platform-vm-외부IP:19091
-Grafana:    http://monitor-vm-외부IP:3000
-Prometheus: http://monitor-vm-외부IP:9090
-Kafka UI:   http://monitor-vm-외부IP:8082
-Zipkin:     http://monitor-vm-외부IP:9411
+Grafana:    http://monitoring-vm-외부IP:3000
+Prometheus: http://monitoring-vm-외부IP:9090
+Kafka UI:   http://monitoring-vm-외부IP:8082
+Zipkin:     http://monitoring-vm-외부IP:9411
 ```

@@ -41,15 +41,15 @@ services:
       - loki-data:/loki
     command: -config.file=/etc/loki/config.yml
 
-  # monitor VM Docker 로그 수집기
+  # monitoring VM Docker 로그 수집기
   promtail:
     image: ${IMAGE_REGISTRY}/hublink-promtail:latest
-    container_name: hublink-promtail-monitor
+    container_name: hublink-promtail-monitoring
     restart: unless-stopped
     env_file:
       - ${HUBLINK_ENV_FILE:-.env.gcp}
     environment:
-      HUBLINK_VM_ROLE: monitor
+      HUBLINK_VM_ROLE: monitoring
     volumes:
       - ./monitoring/promtail.yml:/etc/promtail/config.yml:ro
       - promtail-positions:/var/lib/promtail

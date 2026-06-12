@@ -9,7 +9,7 @@ positions:
 
 # Loki push 대상
 clients:
-  - url: http://${MONITOR_VM_IP}:3100/loki/api/v1/push
+  - url: http://${MONITORING_VM_IP}:3100/loki/api/v1/push
 
 # Docker 컨테이너 로그 수집
 scrape_configs:

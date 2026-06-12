@@ -53,13 +53,13 @@ env:
   PLATFORM_VM: hublink-platform-vm
   DOMAIN_A_VM: hublink-domain-a-vm
   DOMAIN_B_VM: hublink-domain-b-vm
-  DATA_MONITOR_VM: hublink-data-monitor-vm
-  MONITOR_VM: hublink-monitor-vm
+  DATA_VM: hublink-data-vm
+  MONITORING_VM: hublink-monitoring-vm
   PLATFORM_VM_IP: 10.10.0.10
   DOMAIN_A_VM_IP: 10.10.0.20
   DOMAIN_B_VM_IP: 10.10.0.30
   DATA_VM_IP: 10.10.0.40
-  MONITOR_VM_IP: 10.10.0.60
+  MONITORING_VM_IP: 10.10.0.60
 
 jobs:
   detect-changes:
@@ -70,8 +70,8 @@ jobs:
       deploy_platform: ${{ steps.detect.outputs.deploy_platform }}
       deploy_domain_a: ${{ steps.detect.outputs.deploy_domain_a }}
       deploy_domain_b: ${{ steps.detect.outputs.deploy_domain_b }}
-      deploy_data_monitor: ${{ steps.detect.outputs.deploy_data_monitor }}
-      deploy_monitor: ${{ steps.detect.outputs.deploy_monitor }}
+      deploy_data: ${{ steps.detect.outputs.deploy_data }}
+      deploy_monitoring: ${{ steps.detect.outputs.deploy_monitoring }}
       mirror_promtail: ${{ steps.detect.outputs.mirror_promtail }}
       should_deploy: ${{ steps.detect.outputs.should_deploy }}
 
@@ -136,8 +136,8 @@ jobs:
               "platform": False,
               "domain_a": False,
               "domain_b": False,
-              "data_monitor": False,
-              "monitor": False,
+              "data": False,
+              "monitoring": False,
           }
           mirror_promtail = False
 
@@ -153,8 +153,8 @@ jobs:
           if mode == "all":
               services.update(all_services)
               deploy_all_app_vms()
-              deploy["data_monitor"] = True
-              deploy["monitor"] = True
+              deploy["data"] = True
+              deploy["monitoring"] = True
               mirror_promtail = True
           else:
               for file_path in changed_files:
@@ -175,11 +175,11 @@ jobs:
                       deploy_all_app_vms()
 
                   if file_path.startswith("db/"):
-                      deploy["data_monitor"] = True
+                      deploy["data"] = True
 
                   if file_path.startswith("monitoring/"):
                       deploy_all_app_vms()
-                      deploy["monitor"] = True
+                      deploy["monitoring"] = True
                       mirror_promtail = True
 
                   if file_path == "docker-compose.platform.yml":
@@ -191,17 +191,17 @@ jobs:
                   if file_path == "docker-compose.domain-b.yml":
                       deploy["domain_b"] = True
 
-                  if file_path == "docker-compose.data-monitor.yml":
-                      deploy["data_monitor"] = True
+                  if file_path == "docker-compose.data.yml":
+                      deploy["data"] = True
 
-                  if file_path == "docker-compose.monitor.yml":
-                      deploy["monitor"] = True
+                  if file_path == "docker-compose.monitoring.yml":
+                      deploy["monitoring"] = True
                       mirror_promtail = True
 
                   if file_path.startswith("scripts/gcp/") or file_path == ".github/workflows/gcp-cicd.yml":
                       deploy_all_app_vms()
-                      deploy["data_monitor"] = True
-                      deploy["monitor"] = True
+                      deploy["data"] = True
+                      deploy["monitoring"] = True
 
           services_json = json.dumps([service for service in all_services if service in services])
           should_deploy = any(deploy.values())
@@ -211,8 +211,8 @@ jobs:
               output.write(f"deploy_platform={str(deploy['platform']).lower()}\n")
               output.write(f"deploy_domain_a={str(deploy['domain_a']).lower()}\n")
               output.write(f"deploy_domain_b={str(deploy['domain_b']).lower()}\n")
-              output.write(f"deploy_data_monitor={str(deploy['data_monitor']).lower()}\n")
-              output.write(f"deploy_monitor={str(deploy['monitor']).lower()}\n")
+              output.write(f"deploy_data={str(deploy['data']).lower()}\n")
+              output.write(f"deploy_monitoring={str(deploy['monitoring']).lower()}\n")
               output.write(f"mirror_promtail={str(mirror_promtail).lower()}\n")
               output.write(f"should_deploy={str(should_deploy).lower()}\n")
 
@@ -392,7 +392,7 @@ jobs:
           DOMAIN_A_VM_IP=${DOMAIN_A_VM_IP}
           DOMAIN_B_VM_IP=${DOMAIN_B_VM_IP}
           DATA_VM_IP=${DATA_VM_IP}
-          MONITOR_VM_IP=${MONITOR_VM_IP}
+          MONITORING_VM_IP=${MONITORING_VM_IP}
 
           DB_URL=jdbc:postgresql://${DATA_VM_IP}:5432/hublink
           DB_USERNAME=${DB_USERNAME}
@@ -408,7 +408,7 @@ jobs:
           CONFIG_SERVER_URL=http://${PLATFORM_VM_IP}:19092
 
           SWAGGER_GATEWAY_URL=${SWAGGER_GATEWAY_URL}
-          ZIPKIN_URL=http://${MONITOR_VM_IP}:9411/api/v2/spans
+          ZIPKIN_URL=http://${MONITORING_VM_IP}:9411/api/v2/spans
 
           SLACK_ENABLED=${SLACK_ENABLED}
           SLACK_BOT_TOKEN=${SLACK_BOT_TOKEN}
@@ -442,13 +442,13 @@ jobs:
 
       - name: Deploy data services
         # 데이터 저장소와 메시지 브로커 배포
-        if: needs.detect-changes.outputs.deploy_data_monitor == 'true'
-        run: scripts/gcp/deploy-vm.sh "${DATA_MONITOR_VM}" docker-compose.data-monitor.yml db
+        if: needs.detect-changes.outputs.deploy_data == 'true'
+        run: scripts/gcp/deploy-vm.sh "${DATA_VM}" docker-compose.data.yml db
 
       - name: Deploy monitoring services
         # 모니터링 계층 배포
-        if: needs.detect-changes.outputs.deploy_monitor == 'true'
-        run: scripts/gcp/deploy-vm.sh "${MONITOR_VM}" docker-compose.monitor.yml monitoring
+        if: needs.detect-changes.outputs.deploy_monitoring == 'true'
+        run: scripts/gcp/deploy-vm.sh "${MONITORING_VM}" docker-compose.monitoring.yml monitoring
 
       - name: Deploy platform services
         # Eureka, Config Server, Gateway 배포
@@ -469,5 +469,5 @@ jobs:
         run: |
           echo "Eureka: http://<platform-external-ip>:19090"
           echo "Gateway: http://<platform-external-ip>:19091"
-          echo "Grafana: http://<monitor-external-ip>:3000"
-          echo "Prometheus: http://<monitor-external-ip>:9090"
+          echo "Grafana: http://<monitoring-external-ip>:3000"
+          echo "Prometheus: http://<monitoring-external-ip>:9090"

@@ -56,11 +56,11 @@ case "$ROLE" in
   domain-b)
     COMPOSE_FILE="docker-compose.domain-b.yml"
     ;;
-  data-monitor)
-    COMPOSE_FILE="docker-compose.data-monitor.yml"
+  data|data-monitor)
+    COMPOSE_FILE="docker-compose.data.yml"
     ;;
-  monitor)
-    COMPOSE_FILE="docker-compose.monitor.yml"
+  monitoring|monitor)
+    COMPOSE_FILE="docker-compose.monitoring.yml"
     ;;
   *)
     exit 0

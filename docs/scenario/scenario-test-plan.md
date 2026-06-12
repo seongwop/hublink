@@ -295,11 +295,11 @@ Redis 장애가 배송 생성 본 흐름까지 영향을 주는지, 또는 알�
 장애 유도:
 
 ```bash
-gcloud compute ssh hublink-data-monitor-vm \
+gcloud compute ssh hublink-data-vm \
   --zone asia-northeast3-a \
   --project hublink-498115 \
   --tunnel-through-iap \
-  --command "cd /opt/hublink && sudo docker compose -f docker-compose.data-monitor.yml stop redis"
+  --command "cd /opt/hublink && sudo docker compose -f docker-compose.data.yml stop redis"
 ```
 
 관찰:
@@ -313,11 +313,11 @@ gcloud compute ssh hublink-data-monitor-vm \
 복구:
 
 ```bash
-gcloud compute ssh hublink-data-monitor-vm \
+gcloud compute ssh hublink-data-vm \
   --zone asia-northeast3-a \
   --project hublink-498115 \
   --tunnel-through-iap \
-  --command "cd /opt/hublink && sudo docker compose -f docker-compose.data-monitor.yml start redis"
+  --command "cd /opt/hublink && sudo docker compose -f docker-compose.data.yml start redis"
 ```
 
 문제 추적:

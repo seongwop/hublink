@@ -31,11 +31,11 @@ infra/gcp
 | hublink-platform-vm | `10.10.0.10` | `34.50.23.39` | Eureka, Config Server, API Gateway |
 | hublink-domain-a-vm | `10.10.0.20` | `8.230.24.217` | user, company, hub, product |
 | hublink-domain-b-vm | `10.10.0.30` | `8.230.9.99` | order, stock, delivery, slack, ai |
-| hublink-data-monitor-vm | `10.10.0.40` | `34.64.89.47` | PostgreSQL, Redis, Kafka |
-| hublink-monitor-vm | `10.10.0.60` | `34.50.1.195` | Kafka UI, Zipkin, Prometheus, Loki, Grafana |
+| hublink-data-vm | `10.10.0.40` | `34.64.89.47` | PostgreSQL, Redis, Kafka |
+| hublink-monitoring-vm | `10.10.0.60` | `34.50.1.195` | Kafka UI, Zipkin, Prometheus, Loki, Grafana |
 | hublink-load-test-vm | `10.10.0.50` | `34.22.78.126` | k6 부하 발생 |
 
-외부 IP는 `platform`, `data-monitor`, `monitor`, `load-test`, `domain-a`, `domain-b`에 고정 IP로 연결한다. 서비스 간 통신과 부하 테스트 트래픽은 외부 IP가 아니라 내부 IP를 기준으로 유지한다.
+외부 IP는 `platform`, `data`, `monitoring`, `load-test`, `domain-a`, `domain-b`에 고정 IP로 연결한다. 서비스 간 통신과 부하 테스트 트래픽은 외부 IP가 아니라 내부 IP를 기준으로 유지한다.
 
 `load-test`는 외부 IP로 접속하더라도 실제 부하는 `platform` 내부 IP인 `10.10.0.10:19091`로 전송한다.
 
@@ -53,8 +53,8 @@ terraform output vm_external_ips
 platform:     34.50.23.39
 domain-a:     8.230.24.217
 domain-b:     8.230.9.99
-data-monitor: 34.64.89.47
-monitor:      34.50.1.195
+data:         34.64.89.47
+monitoring:  34.50.1.195
 load-test:    34.22.78.126
 ```
 
@@ -104,8 +104,8 @@ VM 역할별로 Compose 파일을 분리한다.
 
 | 파일 | 실행 VM | 포함 항목 |
 | --- | --- | --- |
-| `docker-compose.data-monitor.yml` | data-monitor | PostgreSQL, Redis, Kafka |
-| `docker-compose.monitor.yml` | monitor | Kafka UI, Zipkin, Prometheus, Loki, Grafana |
+| `docker-compose.data.yml` | data | PostgreSQL, Redis, Kafka |
+| `docker-compose.monitoring.yml` | monitoring | Kafka UI, Zipkin, Prometheus, Loki, Grafana |
 | `docker-compose.platform.yml` | platform | Eureka, Config Server, API Gateway |
 | `docker-compose.domain-a.yml` | domain-a | user, company, hub, product |
 | `docker-compose.domain-b.yml` | domain-b | order, stock, delivery, slack, ai |
