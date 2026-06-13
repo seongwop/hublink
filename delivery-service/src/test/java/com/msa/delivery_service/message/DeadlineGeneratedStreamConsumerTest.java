@@ -50,6 +50,9 @@ class DeadlineGeneratedStreamConsumerTest {
     @Mock
     private DeadlineGeneratedStreamConsumer retryStreamConsumer;
 
+    @Mock
+    private DeadlineGeneratedStreamGroupInitializer streamGroupInitializer;
+
     private DeadlineGeneratedStreamConsumer streamConsumer;
     private DeadlineGeneratedPendingRetryConsumer pendingRetryConsumer;
     private ObjectMapper objectMapper;
@@ -66,7 +69,8 @@ class DeadlineGeneratedStreamConsumerTest {
         );
         pendingRetryConsumer = new DeadlineGeneratedPendingRetryConsumer(
                 stringRedisTemplate,
-                retryStreamConsumer
+                retryStreamConsumer,
+                streamGroupInitializer
         );
     }
 
