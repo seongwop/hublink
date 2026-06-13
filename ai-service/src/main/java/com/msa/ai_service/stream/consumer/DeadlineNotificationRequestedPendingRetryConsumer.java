@@ -16,6 +16,7 @@ import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.connection.stream.Consumer;
 import org.springframework.data.redis.connection.stream.MapRecord;
 import org.springframework.data.redis.connection.stream.ReadOffset;
@@ -36,14 +37,33 @@ public class DeadlineNotificationRequestedPendingRetryConsumer {
     private final Validator validator;
     private final DeadlineGeneratedEventPublisher deadlineGeneratedEventPublisher;
 
-    @Scheduled(fixedDelay = 300000)
+    @Value("${ai.stream.consumer.deadline-requested.pending-retry-enabled:true}")
+    private boolean pendingRetryEnabled;
+
+    @Value("${ai.stream.consumer.deadline-requested.concurrency:1}")
+    private int concurrency;
+
+    @Value("${ai.stream.consumer.deadline-requested.pending-retry-read-count:10}")
+    private int pendingRetryReadCount;
+
+    @Scheduled(fixedDelayString = "${ai.stream.consumer.deadline-requested.pending-retry-fixed-delay-ms:300000}")
     public void retryPendingMessages() {
+        if (!pendingRetryEnabled) {
+            return;
+        }
+        for (int i = 1; i <= concurrency; i++) {
+            String consumerName = DeadlineStreamConstants.AI_SERVICE_CONSUMER + "-" + i;
+            retryPendingMessagesByConsumerName(consumerName);
+        }
+    }
+
+    private void retryPendingMessagesByConsumerName(String consumerName) {
         var records = stringRedisTemplate.opsForStream().read(
                 Consumer.from(
                         DeadlineStreamConstants.AI_SERVICE_GROUP,
-                        DeadlineStreamConstants.AI_SERVICE_CONSUMER
+                        consumerName
                 ),
-                StreamReadOptions.empty().count(10),
+                StreamReadOptions.empty().count(pendingRetryReadCount),
                 StreamOffset.create(
                         DeadlineStreamConstants.DEADLINE_REQUESTED_STREAM,
                         ReadOffset.from("0")
@@ -54,14 +74,28 @@ public class DeadlineNotificationRequestedPendingRetryConsumer {
             return;
         }
 
+        log.info("event=AI_PENDING_RETRY_BATCH_RECEIVED stream={} group={} consumerName={} count={} readCount={}",
+                DeadlineStreamConstants.DEADLINE_REQUESTED_STREAM,
+                DeadlineStreamConstants.AI_SERVICE_GROUP,
+                consumerName,
+                records.size(),
+                pendingRetryReadCount
+        );
+
         for (MapRecord<String, Object, Object> record : records) {
             try {
-                log.info("event=AI_PENDING_RETRY_STARTED recordId={}", record.getId());
+                log.info("event=AI_PENDING_RETRY_STARTED consumerName={} recordId={}",
+                        consumerName,
+                        record.getId()
+                );
 
                 Object payloadObj = record.getValue().get("payload");
 
                 if (payloadObj == null) {
-                    log.warn("event=AI_PENDING_PAYLOAD_MISSING recordId={}", record.getId());
+                    log.warn("event=AI_PENDING_PAYLOAD_MISSING consumerName={} recordId={}",
+                            consumerName,
+                            record.getId()
+                    );
                     acknowledge(record.getId());
                     continue;
                 }
@@ -75,7 +109,8 @@ public class DeadlineNotificationRequestedPendingRetryConsumer {
                         validator.validate(event);
 
                 if (!violations.isEmpty()) {
-                    log.warn("event=AI_PENDING_VALIDATION_FAILED recordId={} violations={}",
+                    log.warn("event=AI_PENDING_VALIDATION_FAILED consumerName={} recordId={} violations={}",
+                            consumerName,
                             record.getId(),
                             violations.stream()
                                     .map(ConstraintViolation::getMessage)
@@ -102,17 +137,34 @@ public class DeadlineNotificationRequestedPendingRetryConsumer {
 
                 acknowledge(record.getId());
 
-                log.info("event=AI_PENDING_ACK_COMPLETED recordId={}", record.getId());
+                log.info("event=AI_PENDING_ACK_COMPLETED consumerName={} recordId={}",
+                        consumerName,
+                        record.getId()
+                );
 
             } catch (CustomException e) {
                 if (e.getErrorCode() == AiErrorCode.AI_CIRCUIT_BREAKER_OPEN) {
-                    log.warn("event=AI_PENDING_CIRCUIT_OPEN recordId={}", record.getId(), e);
+                    log.warn("event=AI_PENDING_CIRCUIT_OPEN consumerName={} recordId={}",
+                            consumerName,
+                            record.getId(),
+                            e
+                    );
                     continue;
                 }
-                log.error("event=AI_PENDING_FINAL_FAILED recordId={}", record.getId(), e);
+
+                log.error("event=AI_PENDING_FINAL_FAILED consumerName={} recordId={}",
+                        consumerName,
+                        record.getId(),
+                        e
+                );
                 acknowledge(record.getId());
+
             } catch (Exception e) {
-                log.error("event=AI_PENDING_RETRY_FAILED recordId={}", record.getId(), e);
+                log.error("event=AI_PENDING_RETRY_FAILED consumerName={} recordId={}",
+                        consumerName,
+                        record.getId(),
+                        e
+                );
                 acknowledge(record.getId());
             }
         }

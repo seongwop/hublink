@@ -29,6 +29,13 @@ scrape_configs:
           - '10.10.0.30:19098'
           - '10.10.0.30:19099'
           - '10.10.0.30:19100'
+
+  # AI Service만 1초 수집
+  - job_name: 'hublink-ai-service'
+    scrape_interval: 1s
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets:
           - '10.10.0.30:19101'
 
   # Kafka consumer lag 메트릭
