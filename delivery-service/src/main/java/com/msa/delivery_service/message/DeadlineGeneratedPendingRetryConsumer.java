@@ -80,7 +80,11 @@ public class DeadlineGeneratedPendingRetryConsumer {
         MapRecord<String, Object, Object> targetRecord = claimRecord(streamOps, pendingMessage.getId());
         // PEL에는 남아있으나 메인 스트림에 없는 경우
         if (targetRecord == null) {
-            acknowledge(streamOps, pendingMessage.getId());
+            Long acknowledgedCount = acknowledge(streamOps, pendingMessage.getId());
+            log.debug("event=DELIVERY_PENDING_STALE_ACKED recordId={} acknowledgedCount={}",
+                    pendingMessage.getId(),
+                    acknowledgedCount
+            );
             return;
         }
 
@@ -131,15 +135,14 @@ public class DeadlineGeneratedPendingRetryConsumer {
         );
 
         if (claimedRecords == null || claimedRecords.isEmpty()) {
-            log.warn("event=DELIVERY_PENDING_CLAIM_FAILED recordId={}", recordId);
             return null;
         }
 
         return claimedRecords.get(0);
     }
 
-    private void acknowledge(StreamOperations<String, Object, Object> streamOps, RecordId recordId) {
-        streamOps.acknowledge(
+    private Long acknowledge(StreamOperations<String, Object, Object> streamOps, RecordId recordId) {
+        return streamOps.acknowledge(
                 DeadlineStreamConstants.DEADLINE_GENERATED_STREAM,
                 DeadlineStreamConstants.DELIVERY_SERVICE_GROUP,
                 recordId

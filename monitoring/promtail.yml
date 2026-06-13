@@ -20,6 +20,11 @@ scrape_configs:
 
     # Docker json 로그 파일 경로 매핑
     relabel_configs:
+      # monitoring stack 자체 로그 제외
+      - source_labels: ['__meta_docker_container_label_com_docker_compose_service']
+        regex: 'grafana|kafka-exporter|kafka-ui|loki|prometheus|promtail|zipkin'
+        action: drop
+
       - source_labels: ['__meta_docker_container_id']
         target_label: '__path__'
         replacement: '/var/lib/docker/containers/$1/$1-json.log'
