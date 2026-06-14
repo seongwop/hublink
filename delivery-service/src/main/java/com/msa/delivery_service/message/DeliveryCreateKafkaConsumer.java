@@ -11,6 +11,7 @@ import com.msa.delivery_service.service.DeliveryService;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Validator;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -33,12 +34,14 @@ public class DeliveryCreateKafkaConsumer {
     private final DeliveryOutboxService outboxService;
     private final ObjectMapper objectMapper;
     private final Validator validator;
+    private final MeterRegistry meterRegistry;
 
     // delivery.create 토픽에서 문자열 payload를 받아 배송 생성
     // String payload + ObjectMapper 방식으로 DTO 변환
     @KafkaListener(
             topics = CREATE_TOPIC,
-            groupId = "${spring.kafka.consumer.group-id:delivery-service}"
+            groupId = "${spring.kafka.consumer.group-id:delivery-service}",
+            concurrency = "${spring.kafka.listener.concurrency:3}"
     )
     public void consume(ConsumerRecord<String, String> record) {
         String payload = record.value();
@@ -88,7 +91,11 @@ public class DeliveryCreateKafkaConsumer {
 
             // 중복 배송 생성은 무시 처리
             if (e.getErrorCode() == DeliveryErrorCode.DUPLICATE_ORDER_DELIVERY) {
-                log.info("event=DELIVERY_CREATE_DUPLICATE_SKIPPED key={} offset={}",
+                meterRegistry.counter(
+                        "delivery.create.skipped.total",
+                        "reason", "duplicate_order"
+                ).increment();
+                log.warn("event=DELIVERY_CREATE_DUPLICATE_SKIPPED key={} offset={}",
                         messageKey,
                         record.offset()
                 );
