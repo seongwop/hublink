@@ -27,6 +27,11 @@ spring:
     openfeign:
       circuitbreaker:
         enabled: true
+      client:
+        config:
+          company-service:
+            connectTimeout: 1000
+            readTimeout: 2000
 
 eureka:
   client:
@@ -101,6 +106,14 @@ resilience4j:
     instances:
       company-service:
         baseConfig: default
+  timelimiter:
+    instances:
+      CompanyClientgetCompanyLocationUUID:
+        timeoutDuration: 2s
+        cancelRunningFuture: true
+      CompanyClientgetCompanyNamesList:
+        timeoutDuration: 2s
+        cancelRunningFuture: true
 
 logging:
   level:
