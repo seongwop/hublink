@@ -106,7 +106,15 @@ public class DeliveryCreateKafkaConsumer {
             if (messageKey == null) {
                 messageKey = "offset-" + record.offset();
             }
-            log.error("event=DELIVERY_CREATE_CUSTOM_EXCEPTION key={} offset={}", messageKey, record.offset(), e);
+            log.error(
+                    "event=DELIVERY_CREATE_CUSTOM_EXCEPTION key={} orderId={} offset={} errorCode={} errorMessage={}",
+                    messageKey,
+                    request == null ? null : request.getOrderId(),
+                    record.offset(),
+                    e.getErrorCode().getCode(),
+                    e.getErrorCode().getMessage(),
+                    e
+            );
 
             // orderId가 존재할 경우만 보상 트랜잭션을 위해 failed 처리
             if (request != null && request.getOrderId() != null) {
