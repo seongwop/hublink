@@ -27,6 +27,8 @@ spring:
     openfeign:
       circuitbreaker:
         enabled: true
+        group:
+          enabled: true
       client:
         config:
           company-service:
@@ -107,13 +109,17 @@ resilience4j:
       company-service:
         baseConfig: default
   timelimiter:
+    configs:
+      default:
+        timeoutDuration: 2s
+        cancelRunningFuture: true
     instances:
+      company-service:
+        baseConfig: default
       CompanyClientgetCompanyLocationUUID:
-        timeoutDuration: 2s
-        cancelRunningFuture: true
+        baseConfig: default
       CompanyClientgetCompanyNamesList:
-        timeoutDuration: 2s
-        cancelRunningFuture: true
+        baseConfig: default
 
 logging:
   level:

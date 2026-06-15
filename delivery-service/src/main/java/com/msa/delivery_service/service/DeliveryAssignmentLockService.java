@@ -3,6 +3,7 @@ package com.msa.delivery_service.service;
 import com.msa.core_common.error.exception.CustomException;
 import com.msa.delivery_service.enums.DeliveryErrorCode;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.stereotype.Service;
@@ -12,6 +13,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class DeliveryAssignmentLockService {
@@ -44,7 +46,14 @@ public class DeliveryAssignmentLockService {
 
                 // Lock을 획득하지 못할 경우 작업 실패
                 // finally에서 Lock 전부 해제
-                if (!locked) throw new CustomException(DeliveryErrorCode.DELIVERY_ASSIGNMENT_LOCK_TIMEOUT);
+                if (!locked) {
+                    log.warn("event=DELIVERY_ASSIGNMENT_LOCK_TIMEOUT keys={} failedKey={} waitSeconds={}",
+                            sortedKeys,
+                            key,
+                            WAIT_SECOND
+                    );
+                    throw new CustomException(DeliveryErrorCode.DELIVERY_ASSIGNMENT_LOCK_TIMEOUT);
+                }
 
                 acquiredLocks.add(lock);
             }
@@ -52,6 +61,11 @@ public class DeliveryAssignmentLockService {
         } catch (InterruptedException e) {
             // interrupt 상태 복구
             Thread.currentThread().interrupt();
+            log.warn("event=DELIVERY_ASSIGNMENT_LOCK_INTERRUPTED keys={} waitSeconds={}",
+                    lockKeys,
+                    WAIT_SECOND,
+                    e
+            );
             throw new CustomException(DeliveryErrorCode.DELIVERY_ASSIGNMENT_LOCK_TIMEOUT);
         } finally {
             // 역순으로 Lock 해제
