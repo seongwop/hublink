@@ -43,3 +43,9 @@ scrape_configs:
     static_configs:
       - targets:
           - 'kafka-exporter:9308'
+
+  # data VM host 메트릭
+  - job_name: 'hublink-data-node'
+    static_configs:
+      - targets:
+          - '10.10.0.40:9100'
