@@ -1,5 +1,6 @@
 package com.msa.delivery_service.global;
 
+import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import com.msa.core_common.error.ErrorResponse;
 import com.msa.core_common.error.exception.CustomException;
 import com.msa.core_common.response.GlobalResponse;
@@ -8,9 +9,11 @@ import feign.FeignException;
 import jakarta.persistence.OptimisticLockException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -46,6 +49,24 @@ public class GlobalExceptionHandler {
         GlobalResponse<?> response = GlobalResponse.failure(
                 HttpStatus.BAD_REQUEST.value(),
                 "VALIDATION_ERROR",
+                errorResponse
+        );
+
+        return ResponseEntity.badRequest().body(response);
+    }
+
+    // 요청 본문 파싱 실패 응답
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<GlobalResponse<?>> handleHttpMessageNotReadableException(HttpMessageNotReadableException e) {
+        log.warn("event=DELIVERY_REQUEST_BODY_INVALID message={}", e.getMessage());
+
+        ErrorResponse errorResponse = ErrorResponse.of(
+                "INVALID_REQUEST_BODY",
+                resolveRequestBodyErrorMessage(e)
+        );
+        GlobalResponse<?> response = GlobalResponse.failure(
+                HttpStatus.BAD_REQUEST.value(),
+                "INVALID_REQUEST_BODY",
                 errorResponse
         );
 
@@ -106,5 +127,29 @@ public class GlobalExceptionHandler {
         );
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+    }
+
+    // 요청 본문 오류 메시지 정리
+    private String resolveRequestBodyErrorMessage(HttpMessageNotReadableException e) {
+        Throwable cause = e.getCause();
+        if (cause instanceof InvalidFormatException invalidFormatException) {
+            String fieldPath = invalidFormatException.getPath().stream()
+                    .map(reference -> reference.getFieldName())
+                    .filter(fieldName -> fieldName != null && !fieldName.isBlank())
+                    .reduce((left, right) -> left + "." + right)
+                    .orElse("requestBody");
+
+            if (invalidFormatException.getTargetType() == UUID.class) {
+                return String.format("요청 본문 필드 '%s'는 UUID 형식이어야 합니다.", fieldPath);
+            }
+
+            return String.format(
+                    "요청 본문 필드 '%s'의 값 형식이 올바르지 않습니다. 기대 타입: %s",
+                    fieldPath,
+                    invalidFormatException.getTargetType().getSimpleName()
+            );
+        }
+
+        return "요청 본문 형식이 올바르지 않습니다.";
     }
 }
