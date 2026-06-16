@@ -11,6 +11,7 @@ on:
       - '.github/workflows/gcp-load-test-sync.yml'
       - 'scripts/gcp/deploy-load-test.sh'
       - 'performance/k6/**'
+      - 'db/seed/**'
 
 concurrency:
   # 같은 브랜치 동기화 중복 방지

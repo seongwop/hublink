@@ -4,6 +4,8 @@
 
 부하는 GCP `hublink-load-test-vm`에서 발생시킨다.
 
+`load-test-vm`에는 GitHub Actions 동기화로 `performance/k6`와 `db/seed`가 함께 반영된다.
+
 ```text
 load-test-vm: 10.10.0.50
 api-gateway: http://10.10.0.10:19091
