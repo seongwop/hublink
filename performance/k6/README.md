@@ -57,6 +57,40 @@ SLEEP_SECONDS=1 \
 ./run-k6.sh delivery-create-kafka-load.js
 ```
 
+## 테스트 전후 DB 자동 초기화
+
+배송 부하테스트를 같은 DB 상태에서 반복하려면 reset SQL을 실행한다.
+
+기본 reset SQL:
+
+```text
+db/seed/10-reset-delivery-loadtest.sql
+```
+
+`run-k6.sh`는 종료 후에는 기본으로 reset SQL을 실행하고, 필요하면 실행 전에도 SQL 파일을 추가로 실행할 수 있다.
+
+```bash
+STAGES='[{"duration":"1m","target":20},{"duration":"5m","target":20},{"duration":"2m","target":0}]' \
+./run-k6.sh delivery-create-logic-load.js
+```
+
+종료 후 reset을 끄고 싶으면 빈 값으로 덮어쓴다.
+
+```bash
+POST_TEST_SQL_FILE='' ./run-k6.sh delivery-create-logic-load.js
+```
+
+이전 run이 비정상 종료됐거나 reset이 실패해 시작 시점 정합성이 불안하면 그때만 `PRE_TEST_SQL_FILE`을 명시한다.
+
+```bash
+PRE_TEST_SQL_FILE=db/seed/10-reset-delivery-loadtest.sql \
+STAGES='[{"duration":"1m","target":20},{"duration":"5m","target":20},{"duration":"2m","target":0}]' \
+./run-k6.sh delivery-create-logic-load.js
+```
+
+정상 종료뿐 아니라 `Ctrl+C`로 중단한 경우에도 종료 시 reset을 시도한다.
+다만 이 기능은 `hublink-postgres` 컨테이너에 직접 `psql`을 실행하므로 공용 테스트 환경에서는 reset 대상 SQL을 명확히 확인한 뒤 사용한다.
+
 Gateway 포함 테스트에서 429가 발생하면 배송 병목이 아니라 Gateway rate limit에 먼저 걸린 것으로 기록한다. 배송 Kafka와 DB/락 테스트는 `DELIVERY_BASE_URL`로 delivery-service를 직접 호출해 Gateway rate limit을 분리한다.
 
 ## backlog 확인 기준
