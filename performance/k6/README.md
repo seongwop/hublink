@@ -79,6 +79,7 @@ db/seed/11-reset-delivery-loadtest-baseline.sql
 `11-reset-delivery-loadtest-baseline.sql`은 런타임 테이블 초기화 후 배송 로직 부하테스트에 필요한 허브, 경로, 업체, 허브 매니저, 배송 담당자 풀까지 다시 채운다.
 
 `run-k6.sh`는 종료 후에는 기본으로 baseline 복원 SQL을 실행하고, 필요하면 실행 전에도 SQL 파일을 추가로 실행할 수 있다.
+load-test-vm 기준 기본 reset DB 접속값은 `10.10.0.40:5432`, `user`, `0000`, `hublink` 이다.
 
 ```bash
 STAGES='[{"duration":"1m","target":20},{"duration":"5m","target":20},{"duration":"2m","target":0}]' \
@@ -100,7 +101,8 @@ STAGES='[{"duration":"1m","target":20},{"duration":"5m","target":20},{"duration"
 ```
 
 정상 종료뿐 아니라 `Ctrl+C`로 중단한 경우에도 종료 시 reset을 시도한다.
-다만 이 기능은 `hublink-postgres` 컨테이너에 직접 `psql`을 실행하므로 공용 테스트 환경에서는 reset 대상 SQL을 명확히 확인한 뒤 사용한다.
+로컬 Docker 환경에서는 `hublink-postgres` 컨테이너에 직접 `psql`을 실행하고, load-test-vm 에서는 `postgres:16` 클라이언트 컨테이너로 data-vm PostgreSQL에 직접 접속한다.
+공용 테스트 환경에서는 reset 대상 SQL과 접속 대상을 명확히 확인한 뒤 사용한다.
 
 Gateway 포함 테스트에서 429가 발생하면 배송 병목이 아니라 Gateway rate limit에 먼저 걸린 것으로 기록한다. 배송 Kafka와 DB/락 테스트는 `DELIVERY_BASE_URL`로 delivery-service를 직접 호출해 Gateway rate limit을 분리한다.
 
