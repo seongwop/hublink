@@ -8,13 +8,24 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 SCRIPT_NAME="${1:-delivery-create-kafka-load.js}"
 shift || true
 
-# 기본 실행 환경
 ENV_FILE="${ENV_FILE:-.env.k6}"
+
+if [ -f "${ENV_FILE}" ]; then
+  set -a
+  # shellcheck disable=SC1090
+  . "${ENV_FILE}"
+  set +a
+fi
+
+# 기본 실행 환경
 BASE_URL="${BASE_URL:-http://10.10.0.10:19091}"
 PRE_TEST_SQL_FILE="${PRE_TEST_SQL_FILE:-}"
 POST_TEST_SQL_FILE="${POST_TEST_SQL_FILE:-db/seed/11-reset-delivery-loadtest-baseline.sql}"
 RESET_DB_CONTAINER="${RESET_DB_CONTAINER:-hublink-postgres}"
+RESET_DB_HOST="${RESET_DB_HOST:-10.10.0.40}"
+RESET_DB_PORT="${RESET_DB_PORT:-5432}"
 RESET_DB_USER="${RESET_DB_USER:-user}"
+RESET_DB_PASSWORD="${RESET_DB_PASSWORD:-0000}"
 RESET_DB_NAME="${RESET_DB_NAME:-hublink}"
 docker_bin=(docker)
 
@@ -50,8 +61,19 @@ run_sql_file() {
   fi
 
   echo "[run-k6] ${phase} SQL 실행: ${sql_path}"
-  "${docker_bin[@]}" exec -i "${RESET_DB_CONTAINER}" \
-    psql -U "${RESET_DB_USER}" -d "${RESET_DB_NAME}" < "${sql_path}"
+  if [ -n "${RESET_DB_HOST}" ]; then
+    "${docker_bin[@]}" run --rm --network host -i \
+      -e "PGPASSWORD=${RESET_DB_PASSWORD}" \
+      postgres:16 \
+      psql \
+        -h "${RESET_DB_HOST}" \
+        -p "${RESET_DB_PORT}" \
+        -U "${RESET_DB_USER}" \
+        -d "${RESET_DB_NAME}" < "${sql_path}"
+  else
+    "${docker_bin[@]}" exec -i "${RESET_DB_CONTAINER}" \
+      psql -U "${RESET_DB_USER}" -d "${RESET_DB_NAME}" < "${sql_path}"
+  fi
 }
 
 run_post_test_sql() {
@@ -109,6 +131,12 @@ pass_env_vars=(
   RECEIVER_SLACK_ID
   DEADLINE_DAYS
   PATHS
+  RESET_DB_HOST
+  RESET_DB_PORT
+  RESET_DB_USER
+  RESET_DB_PASSWORD
+  RESET_DB_NAME
+  RESET_DB_CONTAINER
 )
 
 for env_name in "${pass_env_vars[@]}"; do
