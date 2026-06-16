@@ -1,14 +1,14 @@
-# 배송 생성 로직 Run 02 50VU 결과
+# 배송 생성 로직 Run 06 50VU 누적오염 결과
 
 ### 1. 테스트 목적
 
-기본 `.env.k6` 분산 조건에서 50VU까지 올렸을 때 현재 배송 생성 로직의 실패 원인과 실제 처리량 한계를 확인했다.
+기본 `.env.k6` 분산 조건에서 이전 테스트 누적으로 active assignment가 남아 있는 상태로 50VU까지 올렸을 때 실패 원인과 처리량 한계를 확인했다.
 
 ### 2. 테스트 조건
 
 | 항목 | 값 |
 | --- | --- |
-| 테스트명 | 배송 생성 로직 Run 02 50VU |
+| 테스트명 | 배송 생성 로직 Run 06 50VU 누적오염 |
 | 대상 API | `POST /internal/deliveries` |
 | k6 script | `delivery-create-logic-load.js` |
 | 실행 명령어 | `STAGES='[{"duration":"1m","target":50},{"duration":"5m","target":50},{"duration":"2m","target":0}]' ./run-k6.sh delivery-create-logic-load.js` |

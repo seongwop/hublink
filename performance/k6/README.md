@@ -67,7 +67,16 @@ SLEEP_SECONDS=1 \
 db/seed/10-reset-delivery-loadtest.sql
 ```
 
-`run-k6.sh`는 종료 후에는 기본으로 reset SQL을 실행하고, 필요하면 실행 전에도 SQL 파일을 추가로 실행할 수 있다.
+기본 자동 복원 SQL:
+
+```text
+db/seed/11-reset-delivery-loadtest-baseline.sql
+```
+
+`10-reset-delivery-loadtest.sql`은 delivery 런타임 테이블만 비운다.
+`11-reset-delivery-loadtest-baseline.sql`은 런타임 테이블 초기화 후 배송 로직 부하테스트에 필요한 허브, 경로, 업체, 허브 매니저, 배송 담당자 풀까지 다시 채운다.
+
+`run-k6.sh`는 종료 후에는 기본으로 baseline 복원 SQL을 실행하고, 필요하면 실행 전에도 SQL 파일을 추가로 실행할 수 있다.
 
 ```bash
 STAGES='[{"duration":"1m","target":20},{"duration":"5m","target":20},{"duration":"2m","target":0}]' \
@@ -80,10 +89,10 @@ STAGES='[{"duration":"1m","target":20},{"duration":"5m","target":20},{"duration"
 POST_TEST_SQL_FILE='' ./run-k6.sh delivery-create-logic-load.js
 ```
 
-이전 run이 비정상 종료됐거나 reset이 실패해 시작 시점 정합성이 불안하면 그때만 `PRE_TEST_SQL_FILE`을 명시한다.
+이전 run이 비정상 종료됐거나 baseline 복원이 실패해 시작 시점 정합성이 불안하면 그때만 `PRE_TEST_SQL_FILE`을 명시한다.
 
 ```bash
-PRE_TEST_SQL_FILE=db/seed/10-reset-delivery-loadtest.sql \
+PRE_TEST_SQL_FILE=db/seed/11-reset-delivery-loadtest-baseline.sql \
 STAGES='[{"duration":"1m","target":20},{"duration":"5m","target":20},{"duration":"2m","target":0}]' \
 ./run-k6.sh delivery-create-logic-load.js
 ```

@@ -1,6 +1,6 @@
 # Delivery Performance Test Results
 
-이 디렉터리는 배송 도메인 부하 테스트 결과를 누적 기록한다.
+이 디렉터리는 배송 도메인 부하 테스트 결과를 환경별로 구분해 누적 기록한다.
 
 ## 문서 위치
 
@@ -8,7 +8,26 @@
 | --- | --- |
 | `docs/performance/performance-test-plan.md` | 배송 성능 테스트 계획 |
 | `performance/k6` | k6 실행 스크립트 |
-| `docs/performance/results/delivery` | 배송 성능 테스트 결과 |
+| `docs/performance/results/delivery/kafka` | Kafka 유입 / consumer / lag 테스트 결과 |
+| `docs/performance/results/delivery/logic/concentrated` | 배송 로직 테스트, 입력값 분산 전 결과 |
+| `docs/performance/results/delivery/logic/distributed/accumulated` | 배송 로직 테스트, 입력값 분산 후 / reset 도입 전 결과 |
+| `docs/performance/results/delivery/logic/distributed/reset` | 배송 로직 테스트, 입력값 분산 후 / reset 기준 결과 |
+
+## 폴더 규칙
+
+```text
+delivery/
+├─ kafka/
+└─ logic/
+   ├─ concentrated/
+   └─ distributed/
+      ├─ accumulated/
+      └─ reset/
+```
+
+- `concentrated`: 같은 `RECEIVER_COMPANY_ID` 또는 같은 목적지 허브로 요청을 몰아 lock 경합을 의도적으로 키운 결과
+- `distributed/accumulated`: `RECEIVER_COMPANY_IDS` 분산 조건이지만 테스트 종료 후 DB reset 자동화가 들어가기 전 결과
+- `distributed/reset`: `RECEIVER_COMPANY_IDS` 분산 조건 + 테스트 종료 후 reset SQL 적용 기준 결과
 
 ## 파일명 규칙
 
@@ -20,8 +39,8 @@
 
 ```text
 kafka-create-run01-20vu.md
-kafka-create-run02-30vu.md
-logic-create-run01-baseline.md
+logic-create-run01-20vu.md
+logic-create-run06-20vu.md
 ```
 
 ## 배송 Kafka 생성 테스트 판단 기준
@@ -50,7 +69,8 @@ http://34.50.1.195:3000
 조회 대상 대시보드:
 
 ```text
-delivery internal bottleneck
+Delivery Kafka Inbound Bottleneck
+Delivery Create Logic Bottleneck
 ```
 
 현재 Grafana 서버는 응답하지만 대시보드 API는 인증이 필요하다. 테스트 결과 작성 시 Grafana 로그인 세션, 계정, 또는 API 토큰이 필요하다.

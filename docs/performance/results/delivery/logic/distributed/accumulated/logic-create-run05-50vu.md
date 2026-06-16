@@ -56,8 +56,8 @@ http_req_failed
 | `delivery.create.dlq` outbox 수 | 0 |
 | Kafka lag / 회복 시간 | N/A |
 
-HTTP 성공 2749건과 DB delivery 생성 2749건, success outbox 2749건이 일치했다.
-실패 1건은 비동기 누락이 아니라 요청 단계에서 종료된 케이스로 보이며, 로그상 lock timeout 1건과 대응하는 것으로 판단했다.
+HTTP 성공 2749건과 DB delivery 생성 2749건, success outbox 2749건은 일치한다.
+실패 1건은 비동기 유실이 아니라 요청 단계 종료 케이스로 보이며, 로그상 lock timeout 1건과 대응한다.
 
 ### 5. Grafana 관찰 결과
 
@@ -75,25 +75,23 @@ HTTP 성공 2749건과 DB delivery 생성 2749건, success outbox 2749건이 일
 | hub-service `/internal/hub-routes/path` 최대 | 3.59ms |
 | `/internal/deliveries` 최대 RPS | 6.4 req/s |
 
-50VU까지 올렸지만 처리량은 30VU run의 `5.65 req/s`에서 거의 늘지 않고 `5.72 req/s`에 머물렀다.
-반면 p95는 `5.18s -> 8.56s`, Hikari pending은 `17 -> 37`로 더 악화돼, 현재 로직은 처리량을 더 늘리지 못한 채 내부 대기만 급격히 증가하는 상태로 보인다.
+50VU까지 올렸지만 처리량은 30VU run의 `5.65 req/s`에서 거의 서지 않고 `5.72 req/s` 수준에 머물렀다.
+반면 p95는 `5.18s -> 8.56s`, Hikari pending은 `17 -> 37`로 악화되어 현재 로직이 처리량을 더 올리지 못한 채 내부 대기만 급격히 증가하는 상태로 보인다.
 
 ### 6. 로그 및 원인 분석
 
-Loki 기준으로 이번 구간에는 `WARN` 1건, `ERROR` 0건이었고, 경고는 `DELIVERY_ASSIGNMENT_LOCK_TIMEOUT` 1건이었다.
-첫 경고는 `lock:delivery:company:10000000-0000-0000-0000-000000000002`와 `lock:delivery:hub:10000000-0000-0000-0000-000000000001` 조합에서 발생했다.
+Loki 기준으로 `WARN` 1건, `ERROR` 0건이었고, 경고는 `DELIVERY_ASSIGNMENT_LOCK_TIMEOUT` 1건이었다.
+해당 경고는 `lock:delivery:company:10000000-0000-0000-0000-000000000002`와 `lock:delivery:hub:10000000-0000-0000-0000-000000000001` 조합에서 확인됐다.
 
 `DELIVERY_CREATE_FAILED_ENQUEUED`, `DELIVERY_CREATE_DUPLICATE_SKIPPED`, `DELIVERY_REQUEST_BODY_INVALID`는 모두 0건이었다.
-즉 50VU에서는 lock timeout이 소량 재발하긴 했지만, 전체 성능 악화의 주원인은 lock 재시도보다 훨씬 큰 내부 대기 증가로 보는 편이 맞다.
+즉 50VU에서도 lock timeout은 일부 재현되지만, 전체 성능 악화의 주원인은 lock 자체보다 내부 대기 증가 쪽으로 보는 편이 맞다.
 
 ### 7. Zipkin 병목 분석
 
-대표 성공 trace 3개 기준 `http post /internal/deliveries` root span은 약 `237~314ms` 범위였다.
-같은 trace 안에서 가장 무거운 외부 호출은 여전히 `delivery-service -> UserClient -> /delivery-managers/search`였고, client span은 약 `65~71ms`, 대응하는 `user-service` server span은 약 `72~78ms` 수준이었다.
-`hub-service /internal/hub-routes/path`는 약 `1.5ms`, `HubClient` client span은 약 `2.6ms` 수준으로 계속 가벼웠다.
+성공 trace 표본에서는 `http post /internal/deliveries` root span이 대략 `237~314ms`, `delivery-service -> UserClient -> /delivery-managers/search` client span이 `65~71ms`, 대응하는 `user-service` server span이 `72~78ms` 수준이었다.
+`hub-service /internal/hub-routes/path`는 `1.5ms` 안팎으로 계속 가벼웠다.
 
-trace 표본의 성공 요청은 여전히 수백 ms 수준인데 전체 p95는 8초대로 늘어났다.
-즉 50VU에서 커진 tail latency는 외부 API 지연보다 delivery 내부 대기, 특히 DB connection pending과 요청 큐잉 구간의 영향이 더 지배적이다.
+즉 외부 호출 시간은 이전 run들과 큰 차이가 없고, p95 `8.56s` 급 tail latency는 delivery 내부 대기와 connection pending 확대의 영향으로 보는 해석이 더 맞다.
 
 ### 8. 결론
 
@@ -104,10 +102,10 @@ WARN delivery create logic 50VU
 - checks 성공률 99.96%
 - HTTP 실패율 0.03%
 - 백엔드 성공 2749건 / 실패 1건
-- lock timeout 1건 재발
+- lock timeout 1건
 - p95 8.56s, p99 9.00s
 - Hikari pending 최대 37
 ```
 
-이번 50VU run은 현재 배송 생성 로직의 ceiling 데이터를 보여줬다.
-30VU에서 이미 처리량이 멈췄는데 50VU에서는 지연과 pending만 더 커졌으므로, 이제는 추가 부하 실험보다 같은 분산 조건에서 delivery 내부 DB 대기와 배정 로직을 최적화한 뒤 20VU·30VU·50VU를 다시 비교하는 편이 훨씬 가치 있다.
+이번 50VU run은 현재 배송 생성 로직의 ceiling 데이터를 보여준다.
+30VU에서 이미 처리량이 멈췄고 50VU에서는 지연과 pending만 더 커졌으므로, 다음 단계는 같은 분산 조건에서 delivery 내부 로직과 DB 대기를 최적화한 뒤 20VU, 30VU, 50VU를 다시 비교하는 쪽이 적절하다.

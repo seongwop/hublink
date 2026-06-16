@@ -12,7 +12,7 @@ shift || true
 ENV_FILE="${ENV_FILE:-.env.k6}"
 BASE_URL="${BASE_URL:-http://10.10.0.10:19091}"
 PRE_TEST_SQL_FILE="${PRE_TEST_SQL_FILE:-}"
-POST_TEST_SQL_FILE="${POST_TEST_SQL_FILE:-db/seed/10-reset-delivery-loadtest.sql}"
+POST_TEST_SQL_FILE="${POST_TEST_SQL_FILE:-db/seed/11-reset-delivery-loadtest-baseline.sql}"
 RESET_DB_CONTAINER="${RESET_DB_CONTAINER:-hublink-postgres}"
 RESET_DB_USER="${RESET_DB_USER:-user}"
 RESET_DB_NAME="${RESET_DB_NAME:-hublink}"
