@@ -19,8 +19,8 @@ fi
 
 # 기본 실행 환경
 BASE_URL="${BASE_URL:-http://10.10.0.10:19091}"
-PRE_TEST_SQL_FILE="${PRE_TEST_SQL_FILE:-}"
-POST_TEST_SQL_FILE="${POST_TEST_SQL_FILE:-db/seed/11-reset-delivery-loadtest-baseline.sql}"
+PRE_TEST_SQL_FILE="${PRE_TEST_SQL_FILE:-db/seed/11-reset-delivery-loadtest-baseline.sql}"
+POST_TEST_SQL_FILE="${POST_TEST_SQL_FILE:-}"
 RESET_DB_CONTAINER="${RESET_DB_CONTAINER:-hublink-postgres}"
 RESET_DB_HOST="${RESET_DB_HOST:-10.10.0.40}"
 RESET_DB_PORT="${RESET_DB_PORT:-5432}"

@@ -1,6 +1,6 @@
 # Delivery Performance Test Results
 
-이 디렉터리는 배송 도메인 부하 테스트 결과를 환경별로 구분해 누적 기록한다.
+배송 성능 테스트 결과를 테스트 축과 데이터셋 상태 기준으로 구분해 기록한다.
 
 ## 문서 위치
 
@@ -8,26 +8,33 @@
 | --- | --- |
 | `docs/performance/performance-test-plan.md` | 배송 성능 테스트 계획 |
 | `performance/k6` | k6 실행 스크립트 |
-| `docs/performance/results/delivery/kafka` | Kafka 유입 / consumer / lag 테스트 결과 |
-| `docs/performance/results/delivery/logic/concentrated` | 배송 로직 테스트, 입력값 분산 전 결과 |
-| `docs/performance/results/delivery/logic/distributed/accumulated` | 배송 로직 테스트, 입력값 분산 후 / reset 도입 전 결과 |
-| `docs/performance/results/delivery/logic/distributed/reset` | 배송 로직 테스트, 입력값 분산 후 / reset 기준 결과 |
+| `docs/performance/results/delivery/kafka` | Kafka 주입, consumer, lag 테스트 결과 |
+| `docs/performance/results/delivery/create/before-db-reset/concentrated` | 배송 생성 로직, 입력 집중, reset 도입 전 결과 |
+| `docs/performance/results/delivery/create/before-db-reset/distributed` | 배송 생성 로직, 입력 분산, reset 도입 전 결과 |
+| `docs/performance/results/delivery/create/db-reset/concentrated` | 배송 생성 로직, 입력 집중, reset 기준 결과 |
+| `docs/performance/results/delivery/create/db-reset/distributed` | 배송 생성 로직, 입력 분산, reset 기준 결과 |
+| `docs/performance/results/delivery/create/db-reset/concentrated/no-sleep` | 배송 생성 로직, 입력 집중, reset 기준, `SLEEP_SECONDS=0` 결과 |
 
-## 폴더 규칙
+## 디렉터리 규칙
 
 ```text
 delivery/
-├─ kafka/
-└─ logic/
-   ├─ concentrated/
-   └─ distributed/
-      ├─ accumulated/
-      └─ reset/
++-- kafka/
++-- create/
+    +-- before-db-reset/
+    |   +-- concentrated/
+    |   +-- distributed/
+    +-- db-reset/
+        +-- concentrated/
+        |   +-- no-sleep/
+        +-- distributed/
 ```
 
-- `concentrated`: 같은 `RECEIVER_COMPANY_ID` 또는 같은 목적지 허브로 요청을 몰아 lock 경합을 의도적으로 키운 결과
-- `distributed/accumulated`: `RECEIVER_COMPANY_IDS` 분산 조건이지만 테스트 종료 후 DB reset 자동화가 들어가기 전 결과
-- `distributed/reset`: `RECEIVER_COMPANY_IDS` 분산 조건 + 테스트 종료 후 reset SQL 적용 기준 결과
+- `before-db-reset`: 테스트 종료 후 delivery 런타임 데이터 초기화가 자동으로 정착되기 전 결과
+- `db-reset`: `11-reset-delivery-loadtest-baseline.sql` 같은 reset 기준을 적용한 뒤의 결과
+- `concentrated`: 같은 `RECEIVER_COMPANY_ID` 또는 같은 목적지 허브로 요청을 모아 lock 경합을 유도한 결과
+- `distributed`: `RECEIVER_COMPANY_IDS`를 여러 개 사용해 입력을 분산한 결과
+- `no-sleep`: `SLEEP_SECONDS=0` 조건으로 think time 없이 밀어 넣은 결과
 
 ## 파일명 규칙
 
@@ -40,23 +47,8 @@ delivery/
 ```text
 kafka-create-run01-20vu.md
 logic-create-run01-20vu.md
-logic-create-run06-20vu.md
+logic-create-run06-50vu.md
 ```
-
-## 배송 Kafka 생성 테스트 판단 기준
-
-`delivery-create-kafka-load.js`는 `POST /api/v1/deliveries/test/delivery-create`를 호출해 `delivery.create` Kafka 이벤트를 직접 주입한다.
-
-k6 결과는 Kafka 이벤트 publish API의 응답 결과이므로, 실제 배송 생성 성공 여부는 아래 지표와 함께 판단한다.
-
-| 구분 | 확인 항목 |
-| --- | --- |
-| k6 | HTTP TPS, 실패율, checks 성공률, p95, p99 |
-| Kafka | `delivery.create` consumer lag 최대값, 최종값, 회복 시간 |
-| DB | `delivery_service.p_deliveries` 생성량, 분당 생성량 |
-| Outbox | `p_delivery_outboxes` 상태별 건수, PENDING 회복 시간 |
-| Kafka 결과 topic | `delivery.create.succeed`, `delivery.create.failed`, `delivery.create.dlq` 증가량 |
-| Grafana | delivery-service CPU/heap, Hikari active/pending, Kafka broker, DB 지표 |
 
 ## Grafana
 
@@ -72,5 +64,3 @@ http://34.50.1.195:3000
 Delivery Kafka Inbound Bottleneck
 Delivery Create Logic Bottleneck
 ```
-
-현재 Grafana 서버는 응답하지만 대시보드 API는 인증이 필요하다. 테스트 결과 작성 시 Grafana 로그인 세션, 계정, 또는 API 토큰이 필요하다.

@@ -265,3 +265,40 @@ Delivery Create TPS = ìƒì„±ëœ delivery row ìˆ˜ / test_duration_seconds
 Outbox Publish TPS = PUBLISHED outbox row ìˆ˜ / test_duration_seconds
 Redis Stream TPS = ì²˜ë¦¬ ì™„ë£Œ stream message ìˆ˜ / test_duration_seconds
 ```
+
+## Delivery Query Baseline
+
+´ë¿ë·® Äõ¸® ½ÇÇè°ú `EXPLAIN ANALYZE` ¿ëµµ¿¡¼­´Â ¾Æ·¡ SQLÀ» »ç¿ëÇÑ´Ù.
+
+```text
+db/seed/12-reset-delivery-query-baseline.sql
+db/seed/13-explain-delivery-query-baseline.sql
+```
+
+`12-reset-delivery-query-baseline.sql`Àº delivery, route history, outbox ´ë·® µ¥ÀÌÅÍ¸¦ ´Ù½Ã Ã¤¿ì´Â baseline SQLÀÌ´Ù.
+`13-explain-delivery-query-baseline.sql`Àº active assignment Áı°è, outbox polling, managerº° delivery Á¶È¸ Äõ¸®¸¦ ¹Ù·Î Á¡°ËÇÒ ¼ö ÀÖ´Â explain ¸ğÀ½ÀÌ´Ù.
+
+## Reset Policy
+
+±âº» µ¿ÀÛÀº `pre reset`¸¸ ¼öÇàÇÑ´Ù.
+Å×½ºÆ® ½ÃÀÛ Àü¿¡¸¸ baseline SQLÀ» ½ÇÇàÇÏ°í, Å×½ºÆ® Á¾·á ÈÄ¿¡´Â ÀÚµ¿ resetÀ» ÇÏÁö ¾Ê´Â´Ù.
+
+```text
+default PRE_TEST_SQL_FILE = db/seed/11-reset-delivery-loadtest-baseline.sql
+default POST_TEST_SQL_FILE = empty
+```
+
+Å×½ºÆ® ÈÄ DB ºñ±³°¡ ÇÊ¿äÇÏ¸é ±×´ë·Î ½ÇÇàÇÏ¸é µÈ´Ù.
+
+```bash
+STAGES='[{"duration":"1m","target":20},{"duration":"5m","target":20},{"duration":"2m","target":0}]' \
+./run-k6.sh delivery-create-logic-load.js
+```
+
+Å×½ºÆ® ÈÄ¿¡µµ baseline º¹¿øÀ» ¹Ù·Î ÇÏ°í ½ÍÀ» ¶§¸¸ `POST_TEST_SQL_FILE`À» ¸í½ÃÇÑ´Ù.
+
+```bash
+POST_TEST_SQL_FILE=db/seed/11-reset-delivery-loadtest-baseline.sql \
+STAGES='[{"duration":"1m","target":20},{"duration":"5m","target":20},{"duration":"2m","target":0}]' \
+./run-k6.sh delivery-create-logic-load.js
+```
