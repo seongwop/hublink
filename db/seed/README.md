@@ -10,6 +10,7 @@ This directory contains SQL seed files and sample payloads for scenario runs, lo
 - `11-reset-delivery-loadtest-baseline.sql`: restore the lock-test baseline for delivery creation
 - `12-reset-delivery-query-baseline.sql`: restore the large-row query baseline for delivery experiments
 - `13-explain-delivery-query-baseline.sql`: `EXPLAIN ANALYZE` set for delivery query experiments
+- `14-reset-delivery-perf-baseline.sql`: restore the shared performance baseline for delivery lock and query experiments
 - `orders/01-success-order.json`: normal order scenario
 - `orders/02-stock-fail-order.json`: stock shortage scenario
 - `orders/03-delivery-fail-order.json`: delivery failure and stock compensation scenario
@@ -21,6 +22,8 @@ This directory contains SQL seed files and sample payloads for scenario runs, lo
 - Large-row query, index, and outbox polling experiments:
   - `12-reset-delivery-query-baseline.sql`
   - `13-explain-delivery-query-baseline.sql`
+- Shared delivery performance baseline for load, lock contention, and query tuning comparison:
+  - `14-reset-delivery-perf-baseline.sql`
 
 ## Basic Flow
 
