@@ -677,7 +677,7 @@ INSERT INTO delivery_service.p_delivery_outboxes (
     outbox_id,
     topic,
     event_key,
-    lo_from_bytea(0, convert_to(payload, 'UTF8')),
+    payload,
     status,
     retry_count,
     published_at,
@@ -697,7 +697,7 @@ SELECT
         ELSE 'delivery.create.dlq'
     END,
     event_key,
-    payload,
+    lo_from_bytea(0, convert_to(payload, 'UTF8')),
     CASE
         WHEN seq % 20 < 15 THEN 'PUBLISHED'
         WHEN seq % 20 < 18 THEN 'FAILED'
