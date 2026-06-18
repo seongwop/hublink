@@ -677,7 +677,7 @@ INSERT INTO delivery_service.p_delivery_outboxes (
     outbox_id,
     topic,
     event_key,
-    payload,
+    lo_from_bytea(0, convert_to(payload, 'UTF8')),
     status,
     retry_count,
     published_at,
@@ -713,7 +713,7 @@ SELECT
         ELSE null
     END,
     CASE
-        WHEN seq % 20 >= 15 AND seq % 20 < 18 THEN 'seed publish failure'
+        WHEN seq % 20 >= 15 AND seq % 20 < 18 THEN lo_from_bytea(0, convert_to('seed publish failure', 'UTF8'))
         ELSE null
     END,
     created_at,
