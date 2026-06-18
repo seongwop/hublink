@@ -498,8 +498,8 @@ SELECT
     'seed',
     updated_at,
     'seed',
-    null,
-    null
+    null::timestamp,
+    null::varchar
 FROM tmp_delivery_perf_history
 UNION ALL
 SELECT
@@ -551,8 +551,8 @@ SELECT
     'seed',
     updated_at,
     'seed',
-    null,
-    null
+    null::timestamp,
+    null::varchar
 FROM tmp_delivery_perf_history;
 
 -- 현재 경로 이력 적재
@@ -629,8 +629,8 @@ SELECT
     'seed',
     updated_at,
     'seed',
-    null,
-    null
+    null::timestamp,
+    null::varchar
 FROM tmp_delivery_perf_active
 UNION ALL
 SELECT
@@ -668,8 +668,8 @@ SELECT
     'seed',
     updated_at,
     'seed',
-    null,
-    null
+    null::timestamp,
+    null::varchar
 FROM tmp_delivery_perf_active;
 
 -- Outbox 적재
