@@ -280,7 +280,7 @@ SELECT
         ELSE 'delivery.create.dlq'
     END,
     ('61000000-0000-0000-0000-' || lpad(seq::text, 12, '0'))::uuid::text,
-    '{"seed":"delivery-query-baseline","seq":' || seq || '}',
+    lo_from_bytea(0, convert_to('{"seed":"delivery-query-baseline","seq":' || seq || '}', 'UTF8')),
     CASE
         WHEN seq % 20 < 15 THEN 'PUBLISHED'
         WHEN seq % 20 < 18 THEN 'FAILED'
@@ -296,7 +296,7 @@ SELECT
         ELSE null
     END,
     CASE
-        WHEN seq % 20 < 18 AND seq % 20 >= 15 THEN 'seed publish failure'
+        WHEN seq % 20 < 18 AND seq % 20 >= 15 THEN lo_from_bytea(0, convert_to('seed publish failure', 'UTF8'))
         ELSE null
     END,
     now() - ((seq % 120) || ' days')::interval,
