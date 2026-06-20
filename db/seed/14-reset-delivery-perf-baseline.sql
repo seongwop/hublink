@@ -145,6 +145,16 @@ OR user_id IN (
     '50000000-0000-0000-0000-000000000003'::uuid,
     '50000000-0000-0000-0000-000000000004'::uuid,
     '50000000-0000-0000-0000-000000000005'::uuid
+)
+OR user_id IN (
+    SELECT user_id
+    FROM user_service.p_users
+    WHERE username LIKE 'perf-seoul-hub-delivery-%'
+       OR username LIKE 'perf-busan-company-delivery-%'
+       OR username LIKE 'perf-incheon-company-delivery-%'
+       OR email LIKE 'perf-seoul-hub-delivery-%@hublink.test'
+       OR email LIKE 'perf-busan-company-delivery-%@hublink.test'
+       OR email LIKE 'perf-incheon-company-delivery-%@hublink.test'
 );
 
 DELETE FROM user_service.p_users
@@ -162,6 +172,16 @@ OR user_id IN (
     '50000000-0000-0000-0000-000000000003'::uuid,
     '50000000-0000-0000-0000-000000000004'::uuid,
     '50000000-0000-0000-0000-000000000005'::uuid
+)
+OR username LIKE 'perf-seoul-hub-delivery-%'
+OR username LIKE 'perf-busan-company-delivery-%'
+OR username LIKE 'perf-incheon-company-delivery-%'
+OR email LIKE 'perf-seoul-hub-delivery-%@hublink.test'
+OR email LIKE 'perf-busan-company-delivery-%@hublink.test'
+OR email LIKE 'perf-incheon-company-delivery-%@hublink.test'
+OR slack_id LIKE 'perf-seoul-hub-delivery-%'
+OR slack_id LIKE 'perf-busan-company-delivery-%'
+OR slack_id LIKE 'perf-incheon-company-delivery-%'
 );
 
 -- 배송 담당자 사용자 복원
