@@ -158,31 +158,27 @@ OR user_id IN (
 );
 
 DELETE FROM user_service.p_users
-WHERE user_id IN (
+WHERE (
+    username LIKE 'perf-seoul-hub-delivery-%'
+    OR username LIKE 'perf-busan-company-delivery-%'
+    OR username LIKE 'perf-incheon-company-delivery-%'
+    OR email LIKE 'perf-seoul-hub-delivery-%@hublink.test'
+    OR email LIKE 'perf-busan-company-delivery-%@hublink.test'
+    OR email LIKE 'perf-incheon-company-delivery-%@hublink.test'
+    OR slack_id LIKE 'perf-seoul-hub-delivery-%'
+    OR slack_id LIKE 'perf-busan-company-delivery-%'
+    OR slack_id LIKE 'perf-incheon-company-delivery-%'
+)
+AND user_id NOT IN (
     SELECT ('50000000-0000-0000-0000-' || lpad(seq::text, 12, '0'))::uuid
     FROM (
-        SELECT generate_series(1000, 2999) AS seq
+        SELECT generate_series(1000, 2499) AS seq
         UNION ALL
-        SELECT generate_series(4000, 5999) AS seq
+        SELECT generate_series(4000, 4899) AS seq
         UNION ALL
-        SELECT generate_series(7000, 8999) AS seq
-    ) managed_seed
-)
-OR user_id IN (
-    '50000000-0000-0000-0000-000000000003'::uuid,
-    '50000000-0000-0000-0000-000000000004'::uuid,
-    '50000000-0000-0000-0000-000000000005'::uuid
-)
-OR username LIKE 'perf-seoul-hub-delivery-%'
-OR username LIKE 'perf-busan-company-delivery-%'
-OR username LIKE 'perf-incheon-company-delivery-%'
-OR email LIKE 'perf-seoul-hub-delivery-%@hublink.test'
-OR email LIKE 'perf-busan-company-delivery-%@hublink.test'
-OR email LIKE 'perf-incheon-company-delivery-%@hublink.test'
-OR slack_id LIKE 'perf-seoul-hub-delivery-%'
-OR slack_id LIKE 'perf-busan-company-delivery-%'
-OR slack_id LIKE 'perf-incheon-company-delivery-%'
-;
+        SELECT generate_series(7000, 7899) AS seq
+    ) target_seed
+);
 
 -- 배송 담당자 사용자 복원
 INSERT INTO user_service.p_users (
@@ -230,7 +226,21 @@ FROM (
         '10000000-0000-0000-0000-000000000003'::uuid AS hub_id,
         seq_num - 6999 AS delivery_seq
     FROM generate_series(7000, 7899) AS seq_num
-) manager_user_seed;
+) manager_user_seed
+ON CONFLICT (user_id) DO UPDATE SET
+    username = EXCLUDED.username,
+    password = EXCLUDED.password,
+    name = EXCLUDED.name,
+    email = EXCLUDED.email,
+    slack_id = EXCLUDED.slack_id,
+    role = EXCLUDED.role,
+    status = EXCLUDED.status,
+    hub_id = EXCLUDED.hub_id,
+    company_id = EXCLUDED.company_id,
+    updated_at = now(),
+    updated_by = 'seed',
+    deleted_at = null,
+    deleted_by = null;
 
 -- 배송 담당자 복원
 INSERT INTO user_service.p_delivery_managers (
