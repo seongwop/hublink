@@ -193,7 +193,7 @@ FROM (
         'Seoul Hub Delivery Manager' AS display_name,
         '10000000-0000-0000-0000-000000000001'::uuid AS hub_id,
         seq_num - 999 AS delivery_seq
-    FROM generate_series(1000, 1299) AS seq_num
+    FROM generate_series(1000, 2499) AS seq_num
     UNION ALL
     SELECT
         seq_num AS seq,
@@ -201,7 +201,7 @@ FROM (
         'Busan Company Delivery Manager' AS display_name,
         '10000000-0000-0000-0000-000000000002'::uuid AS hub_id,
         seq_num - 3999 AS delivery_seq
-    FROM generate_series(4000, 4299) AS seq_num
+    FROM generate_series(4000, 4899) AS seq_num
     UNION ALL
     SELECT
         seq_num AS seq,
@@ -209,7 +209,7 @@ FROM (
         'Incheon Company Delivery Manager' AS display_name,
         '10000000-0000-0000-0000-000000000003'::uuid AS hub_id,
         seq_num - 6999 AS delivery_seq
-    FROM generate_series(7000, 7299) AS seq_num
+    FROM generate_series(7000, 7899) AS seq_num
 ) manager_user_seed;
 
 -- 배송 담당자 복원
@@ -234,7 +234,7 @@ FROM (
         '10000000-0000-0000-0000-000000000001'::uuid AS hub_id,
         'HUB_DELIVERY' AS manager_type,
         seq_num - 999 AS delivery_seq
-    FROM generate_series(1000, 1299) AS seq_num
+    FROM generate_series(1000, 2499) AS seq_num
     UNION ALL
     SELECT
         seq_num AS seq,
@@ -242,7 +242,7 @@ FROM (
         '10000000-0000-0000-0000-000000000002'::uuid AS hub_id,
         'COMPANY_DELIVERY' AS manager_type,
         seq_num - 3999 AS delivery_seq
-    FROM generate_series(4000, 4299) AS seq_num
+    FROM generate_series(4000, 4899) AS seq_num
     UNION ALL
     SELECT
         seq_num AS seq,
@@ -250,7 +250,7 @@ FROM (
         '10000000-0000-0000-0000-000000000003'::uuid AS hub_id,
         'COMPANY_DELIVERY' AS manager_type,
         seq_num - 6999 AS delivery_seq
-    FROM generate_series(7000, 7299) AS seq_num
+    FROM generate_series(7000, 7899) AS seq_num
 ) manager_seed;
 
 -- 과거 이력 seed 생성
@@ -270,10 +270,10 @@ SELECT
         ELSE ('20000000-0000-0000-0000-' || lpad((20 + (seq % 8))::text, 12, '0'))::uuid
     END AS receiver_company_id,
     CASE
-        WHEN seq % 2 = 0 THEN ('50000000-0000-0000-0000-' || lpad((4000 + ((seq - 1) % 300))::text, 12, '0'))::uuid
-        ELSE ('50000000-0000-0000-0000-' || lpad((7000 + ((seq - 1) % 300))::text, 12, '0'))::uuid
+        WHEN seq % 2 = 0 THEN ('50000000-0000-0000-0000-' || lpad((4000 + ((seq - 1) % 900))::text, 12, '0'))::uuid
+        ELSE ('50000000-0000-0000-0000-' || lpad((7000 + ((seq - 1) % 900))::text, 12, '0'))::uuid
     END AS company_delivery_manager_id,
-    ('50000000-0000-0000-0000-' || lpad((1000 + ((seq - 1) % 300))::text, 12, '0'))::uuid AS hub_delivery_manager_id,
+    ('50000000-0000-0000-0000-' || lpad((1000 + ((seq - 1) % 1500))::text, 12, '0'))::uuid AS hub_delivery_manager_id,
     CASE
         WHEN seq % 8 < 6 THEN 'DELIVERED'
         ELSE 'CANCELLED'
@@ -311,10 +311,10 @@ SELECT
         ELSE '20000000-0000-0000-0000-000000000003'::uuid
     END AS receiver_company_id,
     CASE
-        WHEN seq <= 1800 THEN ('50000000-0000-0000-0000-' || lpad((4000 + ((seq - 1) / 6))::text, 12, '0'))::uuid
-        ELSE ('50000000-0000-0000-0000-' || lpad((7000 + ((seq - 1801) / 6))::text, 12, '0'))::uuid
+        WHEN seq <= 1800 THEN ('50000000-0000-0000-0000-' || lpad((4000 + ((seq - 1) / 2))::text, 12, '0'))::uuid
+        ELSE ('50000000-0000-0000-0000-' || lpad((7000 + ((seq - 1801) / 2))::text, 12, '0'))::uuid
     END AS company_delivery_manager_id,
-    ('50000000-0000-0000-0000-' || lpad((1000 + ((seq - 1) % 300))::text, 12, '0'))::uuid AS hub_delivery_manager_id,
+    ('50000000-0000-0000-0000-' || lpad((1000 + ((seq - 1) % 1500))::text, 12, '0'))::uuid AS hub_delivery_manager_id,
     CASE seq % 4
         WHEN 0 THEN 'PENDING'
         WHEN 1 THEN 'HUB_IN_TRANSIT'
