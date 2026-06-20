@@ -177,10 +177,12 @@ jobs:
                   if file_path.startswith("db/"):
                       deploy["data"] = True
 
-                  if file_path.startswith("monitoring/"):
+                  if file_path == "monitoring/promtail.yml":
                       deploy_all_app_vms()
                       deploy["monitoring"] = True
                       mirror_promtail = True
+                  elif file_path.startswith("monitoring/"):
+                      deploy["monitoring"] = True
 
                   if file_path == "docker-compose.platform.yml":
                       deploy["platform"] = True
