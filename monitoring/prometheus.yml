@@ -30,7 +30,7 @@ scrape_configs:
           - '10.10.0.30:19099'
           - '10.10.0.30:19100'
 
-  # AI Service만 1초 수집
+  # AI Service 1초 수집
   - job_name: 'hublink-ai-service'
     scrape_interval: 1s
     metrics_path: '/actuator/prometheus'
@@ -43,6 +43,12 @@ scrape_configs:
     static_configs:
       - targets:
           - 'kafka-exporter:9308'
+
+  # PostgreSQL 메트릭
+  - job_name: 'hublink-postgres-exporter'
+    static_configs:
+      - targets:
+          - 'postgres-exporter:9187'
 
   # data VM host 메트릭
   - job_name: 'hublink-data-node'
