@@ -83,6 +83,7 @@ class DeliveryServiceTest {
                 deliveryCreateService,
                 deliveryAssignmentLockService
         );
+        ReflectionTestUtils.setField(deliveryService, "maxActiveAssignmentsPerManager", 30);
     }
 
     @Test
@@ -126,15 +127,16 @@ class DeliveryServiceTest {
         when(hubClient.getRoutes(supplierCompanyId, receiverCompanyId)).thenReturn(List.of(firstRoute, secondRoute, lastRoute));
         when(userClient.getHubManager(firstHubId)).thenReturn(hubManager);
         when(userClient.getDeliveryManagers(anyList())).thenReturn(List.of(companyManager, firstHubManager, secondHubManager));
-        when(deliveryRepository.findWorkingManagerIds(eq(List.of(companyManagerId)), anyList())).thenReturn(Set.of());
-        when(deliveryRouteHistoryRepository.findWorkingManagerIds(eq(List.of(firstHubManagerId, secondHubManagerId)), anyList()))
-                .thenReturn(Set.of());
+        when(deliveryRepository.countActiveAssignmentsByManagerIds(eq(List.of(companyManagerId)), anyList()))
+                .thenReturn(List.of());
+        when(deliveryRouteHistoryRepository.countActiveAssignmentsByManagerIds(eq(List.of(firstHubManagerId, secondHubManagerId)), anyList()))
+                .thenReturn(List.of());
         when(deliveryAssignmentLockService.executeWithLocks(anyList(), any()))
                 .thenAnswer(invocation -> {
                     Supplier<?> supplier = invocation.getArgument(1);
                     return supplier.get();
                 });
-        when(deliveryRepository.saveAndFlush(any(Delivery.class))).thenAnswer(invocation -> {
+        when(deliveryRepository.save(any(Delivery.class))).thenAnswer(invocation -> {
             Delivery delivery = invocation.getArgument(0);
             ReflectionTestUtils.setField(delivery, "deliveryId", UUID.randomUUID());
             return delivery;
@@ -147,7 +149,7 @@ class DeliveryServiceTest {
 
         // 배송 저장 검증
         ArgumentCaptor<Delivery> deliveryCaptor = ArgumentCaptor.forClass(Delivery.class);
-        verify(deliveryRepository).saveAndFlush(deliveryCaptor.capture());
+        verify(deliveryRepository).save(deliveryCaptor.capture());
         Delivery savedDelivery = deliveryCaptor.getValue();
         assertThat(response.getOrderId()).isEqualTo(orderId);
         assertThat(savedDelivery.getDepartureHubId()).isEqualTo(firstHubId);
@@ -156,7 +158,7 @@ class DeliveryServiceTest {
 
         // 경로 저장 검증
         ArgumentCaptor<List<DeliveryRouteHistory>> routeCaptor = ArgumentCaptor.forClass(List.class);
-        verify(deliveryRouteHistoryRepository).saveAllAndFlush(routeCaptor.capture());
+        verify(deliveryRouteHistoryRepository).saveAll(routeCaptor.capture());
         assertThat(routeCaptor.getValue()).extracting(DeliveryRouteHistory::getDeliveryManagerId)
                 .containsExactly(firstHubManagerId, secondHubManagerId, companyManagerId);
         assertThat(routeCaptor.getValue()).extracting(DeliveryRouteHistory::getRouteType)

@@ -71,7 +71,7 @@ public class DeliveryCreateService {
                     hubManager.getHubManagerSlackId()
             );
             delivery.updateEstimatedArrival(calculateEstimatedArrivalAt(hubRoutes));
-            Delivery savedDelivery = deliveryRepository.saveAndFlush(delivery);
+            Delivery savedDelivery = deliveryRepository.save(delivery);
             log.info("event=DELIVERY_ENTITY_SAVED orderId={} deliveryId={} departureHubId={} destinationHubId={}",
                     request.getOrderId(),
                     savedDelivery.getDeliveryId(),
@@ -85,7 +85,7 @@ public class DeliveryCreateService {
                     hubRoutes,
                     hubDeliveryManagerIds
             );
-            deliveryRouteHistoryRepository.saveAllAndFlush(routeHistories);
+            deliveryRouteHistoryRepository.saveAll(routeHistories);
             log.info("event=DELIVERY_ROUTE_HISTORY_SAVED orderId={} deliveryId={} routeHistoryCount={}",
                     request.getOrderId(),
                     savedDelivery.getDeliveryId(),

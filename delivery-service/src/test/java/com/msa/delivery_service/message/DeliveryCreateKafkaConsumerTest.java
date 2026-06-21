@@ -6,6 +6,7 @@ import com.msa.delivery_service.dto.DeliveryResponse;
 import com.msa.delivery_service.enums.DeliveryStatus;
 import com.msa.delivery_service.service.DeliveryOutboxService;
 import com.msa.delivery_service.service.DeliveryService;
+import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -42,6 +43,9 @@ class DeliveryCreateKafkaConsumerTest {
     @Mock
     private DeliveryOutboxService outboxService;
 
+    @Mock
+    private MeterRegistry meterRegistry;
+
     private ObjectMapper objectMapper;
     private DeliveryCreateKafkaConsumer consumer;
 
@@ -53,7 +57,8 @@ class DeliveryCreateKafkaConsumerTest {
                 deliveryService,
                 outboxService,
                 objectMapper,
-                validator
+                validator,
+                meterRegistry
         );
     }
 
