@@ -32,26 +32,16 @@ public interface DeliveryAssignmentCountRepository
         insert into delivery_service.p_delivery_assignment_counts (
             manager_id,
             assignment_type,
-            active_assignment_count,
-            created_at,
-            created_by,
-            updated_at,
-            updated_by
+            active_assignment_count
         )
         values (
             :managerId,
             :assignmentType,
-            :delta,
-            now(),
-            'SYSTEM',
-            now(),
-            'SYSTEM'
+            :delta
         )
         on conflict (manager_id, assignment_type)
         do update set active_assignment_count =
-                delivery_service.p_delivery_assignment_counts.active_assignment_count + excluded.active_assignment_count,
-            updated_at = now(),
-            updated_by = 'SYSTEM'
+                delivery_service.p_delivery_assignment_counts.active_assignment_count + excluded.active_assignment_count
     """, nativeQuery = true)
     void increaseAssignmentCount(
             @Param("managerId") UUID managerId,
@@ -62,9 +52,7 @@ public interface DeliveryAssignmentCountRepository
     @Modifying
     @Query(value = """
         update delivery_service.p_delivery_assignment_counts
-        set active_assignment_count = greatest(active_assignment_count - :delta, 0),
-            updated_at = now(),
-            updated_by = 'SYSTEM'
+        set active_assignment_count = greatest(active_assignment_count - :delta, 0)
         where manager_id = :managerId
           and assignment_type = :assignmentType
     """, nativeQuery = true)
