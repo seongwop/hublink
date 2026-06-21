@@ -6,9 +6,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
@@ -18,9 +20,9 @@ import java.util.function.Supplier;
 @RequiredArgsConstructor
 public class DeliveryAssignmentLockService {
 
-    private static final long WAIT_SECOND = 3L;
-
     private final RedissonClient redissonClient;
+    @Value("${delivery.assignment.lock-wait:1s}")
+    private Duration lockWait;
 
     /*
         배송기사 배정을 위한 Lock 설정
@@ -42,15 +44,15 @@ public class DeliveryAssignmentLockService {
                 RLock lock = redissonClient.getLock(key);
 
                 // leaseTime을 주지않고 watchdog 활성화
-                boolean locked = lock.tryLock(WAIT_SECOND, TimeUnit.SECONDS);
+                boolean locked = lock.tryLock(lockWait.toMillis(), TimeUnit.MILLISECONDS);
 
                 // Lock을 획득하지 못할 경우 작업 실패
                 // finally에서 Lock 전부 해제
                 if (!locked) {
-                    log.warn("event=DELIVERY_ASSIGNMENT_LOCK_TIMEOUT keys={} failedKey={} waitSeconds={}",
+                    log.warn("event=DELIVERY_ASSIGNMENT_LOCK_TIMEOUT keys={} failedKey={} waitMillis={}",
                             sortedKeys,
                             key,
-                            WAIT_SECOND
+                            lockWait.toMillis()
                     );
                     throw new CustomException(DeliveryErrorCode.DELIVERY_ASSIGNMENT_LOCK_TIMEOUT);
                 }
@@ -61,9 +63,9 @@ public class DeliveryAssignmentLockService {
         } catch (InterruptedException e) {
             // interrupt 상태 복구
             Thread.currentThread().interrupt();
-            log.warn("event=DELIVERY_ASSIGNMENT_LOCK_INTERRUPTED keys={} waitSeconds={}",
+            log.warn("event=DELIVERY_ASSIGNMENT_LOCK_INTERRUPTED keys={} waitMillis={}",
                     lockKeys,
-                    WAIT_SECOND,
+                    lockWait.toMillis(),
                     e
             );
             throw new CustomException(DeliveryErrorCode.DELIVERY_ASSIGNMENT_LOCK_TIMEOUT);
