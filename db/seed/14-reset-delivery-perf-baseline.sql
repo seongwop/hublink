@@ -183,6 +183,9 @@ OR slack_id LIKE 'perf-seoul-hub-delivery-%'
 OR slack_id LIKE 'perf-busan-company-delivery-%'
 OR slack_id LIKE 'perf-incheon-company-delivery-%';
 
+COMMIT;
+BEGIN;
+
 -- 배송 담당자 사용자 복원
 INSERT INTO user_service.p_users (
     user_id, username, password, name, email, slack_id, role, status, hub_id, company_id,
