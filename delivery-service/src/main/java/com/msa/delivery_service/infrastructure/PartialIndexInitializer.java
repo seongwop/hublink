@@ -29,10 +29,6 @@ public class PartialIndexInitializer {
                     manager_id uuid NOT NULL,
                     assignment_type varchar(50) NOT NULL,
                     active_assignment_count bigint NOT NULL DEFAULT 0,
-                    created_at timestamp,
-                    created_by varchar(255),
-                    updated_at timestamp,
-                    updated_by varchar(255),
                     PRIMARY KEY (manager_id, assignment_type)
                 )
                 """);
