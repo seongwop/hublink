@@ -7,13 +7,13 @@ import com.msa.delivery_service.client.hub.dto.HubRouteResponse;
 import com.msa.delivery_service.entity.Delivery;
 import com.msa.delivery_service.entity.DeliveryRouteHistory;
 import com.msa.delivery_service.enums.DeliveryErrorCode;
+import com.msa.delivery_service.enums.DeliveryRouteType;
 import com.msa.delivery_service.enums.DeliveryRouteStatus;
 import com.msa.delivery_service.enums.DeliveryStatus;
 import com.msa.delivery_service.client.user.dto.DeliveryManagerResponse;
 import com.msa.delivery_service.client.user.dto.HubManagerResponse;
 import com.msa.delivery_service.repository.DeliveryRepository;
 import com.msa.delivery_service.repository.DeliveryRouteHistoryRepository;
-import com.msa.delivery_service.repository.ManagerAssignmentCount;
 import com.msa.delivery_service.message.DeadlineGeneratedEvent;
 import com.msa.delivery_service.dto.DeliveryDetailResponse;
 import com.msa.delivery_service.dto.DeliveryRequest;
@@ -31,7 +31,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -63,6 +62,7 @@ public class DeliveryService {
     private final DeliveryExternalService deliveryExternalService;
     private final DeliveryCreateService deliveryCreateService;
     private final DeliveryAssignmentLockService deliveryAssignmentLockService;
+    private final DeliveryAssignmentCountService deliveryAssignmentCountService;
 
     @Value("${delivery.assignment.max-active-per-manager:30}")
     private int maxActiveAssignmentsPerManager;
@@ -144,6 +144,7 @@ public class DeliveryService {
     ) {
         Delivery delivery = deliveryRepository.findById(deliveryId)
                 .orElseThrow(() -> new CustomException(DeliveryErrorCode.DELIVERY_NOT_FOUND));
+        boolean activeAssignmentBefore = isActiveCompanyAssignment(delivery.getStatus());
 
         // MASTER, HUB_MANAGER: 대표 배송 상태 변경 가능
         // DELIVERY_MANAGER: 업체 배송 담당자인 경우만 변경 가능
@@ -163,6 +164,10 @@ public class DeliveryService {
             delivery.updateStatus(request.getStatus());
         }
 
+        if (activeAssignmentBefore && !isActiveCompanyAssignment(delivery.getStatus())) {
+            deliveryAssignmentCountService.decreaseCompanyAssignment(delivery.getCompanyDeliveryManagerId());
+        }
+
         deliveryRepository.flush();
 
         return DeliveryResponse.from(delivery);
@@ -177,6 +182,7 @@ public class DeliveryService {
     ) {
         DeliveryRouteHistory routeHistory = deliveryRouteHistoryRepository.findById(routeHistoryId)
                 .orElseThrow(() -> new CustomException(DeliveryErrorCode.DELIVERY_ROUTE_HISTORY_NOT_FOUND));
+        boolean activeAssignmentBefore = isActiveHubAssignment(routeHistory);
 
         // MASTER, HUB_MANAGER: 경로 상태 변경 가능
         // DELIVERY_MANAGER: 본인에게 배정된 경로만 변경 가능
@@ -198,6 +204,10 @@ public class DeliveryService {
 
         if (request.getStatusMessage() != null) {
             routeHistory.updateStatusMessage(request.getStatusMessage());
+        }
+
+        if (activeAssignmentBefore && !isActiveHubAssignment(routeHistory)) {
+            deliveryAssignmentCountService.decreaseHubAssignment(routeHistory.getDeliveryManagerId());
         }
 
         deliveryRouteHistoryRepository.flush();
@@ -299,14 +309,26 @@ public class DeliveryService {
         log.warn("event=DELIVERY_COMPENSATION_STARTED orderId={}", orderId);
         deliveryRepository.findByOrderId(orderId)
                 .ifPresent(delivery -> {
+                    boolean activeDeliveryAssignment = isActiveCompanyAssignment(delivery.getStatus());
                     delivery.cancel();
                     delivery.delete("SYSTEM");
+                    if (activeDeliveryAssignment) {
+                        deliveryAssignmentCountService.decreaseCompanyAssignment(
+                                delivery.getCompanyDeliveryManagerId()
+                        );
+                    }
                     deliveryRouteHistoryRepository.findByDeliveryDeliveryIdOrderBySequenceAsc(delivery.getDeliveryId())
                         .forEach(routeHistory -> {
+                            boolean activeHubAssignment = isActiveHubAssignment(routeHistory);
                             if (routeHistory.getStatus().canChangeTo(DeliveryRouteStatus.FAILED)) {
                                 routeHistory.updateStatus(DeliveryRouteStatus.FAILED);
                             }
                             routeHistory.delete("SYSTEM");
+                            if (activeHubAssignment) {
+                                deliveryAssignmentCountService.decreaseHubAssignment(
+                                        routeHistory.getDeliveryManagerId()
+                                );
+                            }
                         });
                     deliveryRouteHistoryRepository.flush();
                     deliveryRepository.flush();
@@ -354,13 +376,10 @@ public class DeliveryService {
             throw new CustomException(DeliveryErrorCode.NO_DELIVERY_MANAGER);
         }
 
-        Map<UUID, Long> assignmentCounts = toAssignmentCountMap(
-                deliveryRepository.countActiveAssignmentsByManagerIds(
-                        companyDeliveryManagers.stream()
-                                .map(DeliveryManagerResponse::getDeliveryManagerId)
-                                .toList(),
-                        List.of(DeliveryStatus.DELIVERED, DeliveryStatus.CANCELLED)
-                )
+        Map<UUID, Long> assignmentCounts = deliveryAssignmentCountService.getCompanyAssignmentCounts(
+                companyDeliveryManagers.stream()
+                        .map(DeliveryManagerResponse::getDeliveryManagerId)
+                        .toList()
         );
 
         return selectManagerWithinCapacity(companyDeliveryManagers, assignmentCounts);
@@ -371,7 +390,7 @@ public class DeliveryService {
             List<HubRouteResponse> hubRoutes,
             List<DeliveryManagerResponse> deliveryManagers
     ) {
-        Map<UUID, UUID> hubDeliveryManagerIds = new HashMap<>();
+        Map<UUID, UUID> hubDeliveryManagerIds = new java.util.HashMap<>();
         // 각 허브에 해당 하는 담당 매니저를 따로 조회해서 발생하던 N+1 문제 방지
         // 처음부터 모든 경로의 허브 배송 담당자들을 전부 미리 조회
         List<DeliveryManagerResponse> hubDeliveryManagers = deliveryManagers.stream()
@@ -379,17 +398,10 @@ public class DeliveryService {
                 .toList();
         Map<UUID, Long> assignmentCounts = hubDeliveryManagers.isEmpty()
                 ? Map.of()
-                : toAssignmentCountMap(
-                        deliveryRouteHistoryRepository.countActiveAssignmentsByManagerIds(
-                                hubDeliveryManagers.stream()
-                                        .map(DeliveryManagerResponse::getDeliveryManagerId)
-                                        .toList(),
-                                List.of(
-                                        DeliveryRouteStatus.COMPLETED,
-                                        DeliveryRouteStatus.SKIPPED,
-                                        DeliveryRouteStatus.FAILED
-                                )
-                        )
+                : deliveryAssignmentCountService.getHubAssignmentCounts(
+                        hubDeliveryManagers.stream()
+                                .map(DeliveryManagerResponse::getDeliveryManagerId)
+                                .toList()
                 );
 
         for (int i = 0; i < hubRoutes.size() - 1; i++) {
@@ -445,12 +457,15 @@ public class DeliveryService {
         return assignmentCounts.getOrDefault(deliveryManager.getDeliveryManagerId(), 0L);
     }
 
-    private Map<UUID, Long> toAssignmentCountMap(List<ManagerAssignmentCount> assignmentCounts) {
-        Map<UUID, Long> countMap = new HashMap<>();
-        for (ManagerAssignmentCount assignmentCount : assignmentCounts) {
-            countMap.put(assignmentCount.getManagerId(), assignmentCount.getAssignmentCount());
-        }
-        return countMap;
+    private boolean isActiveCompanyAssignment(DeliveryStatus status) {
+        return status != DeliveryStatus.DELIVERED && status != DeliveryStatus.CANCELLED;
+    }
+
+    private boolean isActiveHubAssignment(DeliveryRouteHistory routeHistory) {
+        return routeHistory.getRouteType() == DeliveryRouteType.HUB_TO_HUB
+                && routeHistory.getStatus() != DeliveryRouteStatus.COMPLETED
+                && routeHistory.getStatus() != DeliveryRouteStatus.SKIPPED
+                && routeHistory.getStatus() != DeliveryRouteStatus.FAILED;
     }
 
     // 출발 허브와 도착 허브 기준으로 배송 경로 조회

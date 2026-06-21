@@ -4,6 +4,7 @@ import com.msa.delivery_service.client.DeliveryExternalService;
 import com.msa.delivery_service.client.hub.HubClient;
 import com.msa.delivery_service.client.hub.dto.HubRouteResponse;
 import com.msa.delivery_service.client.user.UserClient;
+import com.msa.delivery_service.enums.DeliveryAssignmentType;
 import com.msa.delivery_service.enums.DeliveryLocationType;
 import com.msa.delivery_service.enums.DeliveryRouteStatus;
 import com.msa.delivery_service.enums.DeliveryRouteType;
@@ -16,6 +17,7 @@ import com.msa.delivery_service.client.user.dto.HubManagerResponse;
 import com.msa.delivery_service.entity.Delivery;
 import com.msa.delivery_service.entity.DeliveryRouteHistory;
 import com.msa.delivery_service.message.RedisStreamEventPublisher;
+import com.msa.delivery_service.repository.DeliveryAssignmentCountRepository;
 import com.msa.delivery_service.repository.DeliveryRepository;
 import com.msa.delivery_service.repository.DeliveryRouteHistoryRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -65,15 +67,21 @@ class DeliveryServiceTest {
     @Mock
     private DeliveryOutboxService deliveryOutboxService;
 
+    @Mock
+    private DeliveryAssignmentCountRepository deliveryAssignmentCountRepository;
+
     private DeliveryService deliveryService;
 
     @BeforeEach
     void setUp() {
+        DeliveryAssignmentCountService deliveryAssignmentCountService =
+                new DeliveryAssignmentCountService(deliveryAssignmentCountRepository);
         DeliveryCreateService deliveryCreateService = new DeliveryCreateService(
                 deliveryRepository,
                 deliveryRouteHistoryRepository,
                 redisStreamEventPublisher,
-                deliveryOutboxService
+                deliveryOutboxService,
+                deliveryAssignmentCountService
         );
         DeliveryExternalService deliveryExternalService = new DeliveryExternalService(hubClient, userClient);
         deliveryService = new DeliveryService(
@@ -81,7 +89,8 @@ class DeliveryServiceTest {
                 deliveryRouteHistoryRepository,
                 deliveryExternalService,
                 deliveryCreateService,
-                deliveryAssignmentLockService
+                deliveryAssignmentLockService,
+                deliveryAssignmentCountService
         );
         ReflectionTestUtils.setField(deliveryService, "maxActiveAssignmentsPerManager", 30);
     }
@@ -127,9 +136,15 @@ class DeliveryServiceTest {
         when(hubClient.getRoutes(supplierCompanyId, receiverCompanyId)).thenReturn(List.of(firstRoute, secondRoute, lastRoute));
         when(userClient.getHubManager(firstHubId)).thenReturn(hubManager);
         when(userClient.getDeliveryManagers(anyList())).thenReturn(List.of(companyManager, firstHubManager, secondHubManager));
-        when(deliveryRepository.countActiveAssignmentsByManagerIds(eq(List.of(companyManagerId)), anyList()))
+        when(deliveryAssignmentCountRepository.findAssignmentCountsByManagerIds(
+                eq(List.of(companyManagerId)),
+                eq(DeliveryAssignmentType.COMPANY_DELIVERY)
+        ))
                 .thenReturn(List.of());
-        when(deliveryRouteHistoryRepository.countActiveAssignmentsByManagerIds(eq(List.of(firstHubManagerId, secondHubManagerId)), anyList()))
+        when(deliveryAssignmentCountRepository.findAssignmentCountsByManagerIds(
+                eq(List.of(firstHubManagerId, secondHubManagerId)),
+                eq(DeliveryAssignmentType.HUB_DELIVERY)
+        ))
                 .thenReturn(List.of());
         when(deliveryAssignmentLockService.executeWithLocks(anyList(), any()))
                 .thenAnswer(invocation -> {
@@ -167,6 +182,11 @@ class DeliveryServiceTest {
                         DeliveryRouteType.HUB_TO_HUB,
                         DeliveryRouteType.HUB_TO_COMPANY
                 );
+        verify(deliveryAssignmentCountRepository).increaseAssignmentCount(
+                eq(companyManagerId),
+                eq(DeliveryAssignmentType.COMPANY_DELIVERY.name()),
+                eq(1L)
+        );
     }
 
     @Test
@@ -214,6 +234,11 @@ class DeliveryServiceTest {
         // 배송 완료 상태 검증
         assertThat(response.getStatus()).isEqualTo(DeliveryStatus.DELIVERED);
         assertThat(delivery.getDeliveredAt()).isNotNull();
+        verify(deliveryAssignmentCountRepository).decreaseAssignmentCount(
+                eq(deliveryManagerId),
+                eq(DeliveryAssignmentType.COMPANY_DELIVERY.name()),
+                eq(1L)
+        );
         verify(deliveryRepository).flush();
     }
 
@@ -240,6 +265,16 @@ class DeliveryServiceTest {
         // 경로 soft delete 검증
         assertThat(routeHistory.getStatus()).isEqualTo(DeliveryRouteStatus.FAILED);
         assertThat(routeHistory.getDeletedAt()).isNotNull();
+        verify(deliveryAssignmentCountRepository).decreaseAssignmentCount(
+                eq(delivery.getCompanyDeliveryManagerId()),
+                eq(DeliveryAssignmentType.COMPANY_DELIVERY.name()),
+                eq(1L)
+        );
+        verify(deliveryAssignmentCountRepository).decreaseAssignmentCount(
+                eq(routeHistory.getDeliveryManagerId()),
+                eq(DeliveryAssignmentType.HUB_DELIVERY.name()),
+                eq(1L)
+        );
         verify(deliveryRouteHistoryRepository).flush();
         verify(deliveryRepository).flush();
     }
