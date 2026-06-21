@@ -55,6 +55,7 @@ logging:
 delivery:
   assignment:
     max-active-per-manager: ${DELIVERY_ASSIGNMENT_MAX_ACTIVE_PER_MANAGER:30}
+    lock-wait: ${DELIVERY_ASSIGNMENT_LOCK_WAIT:1s}
 
 eureka:
   client:
