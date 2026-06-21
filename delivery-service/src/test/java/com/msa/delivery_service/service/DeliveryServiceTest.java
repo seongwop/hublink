@@ -31,6 +31,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.lang.reflect.Constructor;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -182,10 +183,13 @@ class DeliveryServiceTest {
                         DeliveryRouteType.HUB_TO_HUB,
                         DeliveryRouteType.HUB_TO_COMPANY
                 );
-        verify(deliveryAssignmentCountRepository).increaseAssignmentCount(
-                eq(companyManagerId),
-                eq(DeliveryAssignmentType.COMPANY_DELIVERY.name()),
-                eq(1L)
+        verify(deliveryAssignmentCountRepository).increaseAssignmentCounts(
+                eq(Map.of(companyManagerId, 1L)),
+                eq(DeliveryAssignmentType.COMPANY_DELIVERY)
+        );
+        verify(deliveryAssignmentCountRepository).increaseAssignmentCounts(
+                eq(Map.of(firstHubManagerId, 1L, secondHubManagerId, 1L)),
+                eq(DeliveryAssignmentType.HUB_DELIVERY)
         );
     }
 

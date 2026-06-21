@@ -83,12 +83,6 @@ public class DeliveryAssignmentCountService {
             Map<UUID, Long> deltas,
             DeliveryAssignmentType assignmentType
     ) {
-        for (Map.Entry<UUID, Long> entry : deltas.entrySet()) {
-            deliveryAssignmentCountRepository.increaseAssignmentCount(
-                    entry.getKey(),
-                    assignmentType.name(),
-                    entry.getValue()
-            );
-        }
+        deliveryAssignmentCountRepository.increaseAssignmentCounts(deltas, assignmentType);
     }
 }

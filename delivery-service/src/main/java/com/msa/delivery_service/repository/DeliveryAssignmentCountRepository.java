@@ -13,7 +13,8 @@ import java.util.List;
 import java.util.UUID;
 
 public interface DeliveryAssignmentCountRepository
-        extends JpaRepository<DeliveryAssignmentCount, DeliveryAssignmentCountId> {
+        extends JpaRepository<DeliveryAssignmentCount, DeliveryAssignmentCountId>,
+        DeliveryAssignmentCountBulkRepository {
 
     @Query("""
         select dac.managerId as managerId,
@@ -25,28 +26,6 @@ public interface DeliveryAssignmentCountRepository
     List<ManagerAssignmentCount> findAssignmentCountsByManagerIds(
             @Param("managerIds") Collection<UUID> managerIds,
             @Param("assignmentType") DeliveryAssignmentType assignmentType
-    );
-
-    @Modifying
-    @Query(value = """
-        insert into delivery_service.p_delivery_assignment_counts (
-            manager_id,
-            assignment_type,
-            active_assignment_count
-        )
-        values (
-            :managerId,
-            :assignmentType,
-            :delta
-        )
-        on conflict (manager_id, assignment_type)
-        do update set active_assignment_count =
-                delivery_service.p_delivery_assignment_counts.active_assignment_count + excluded.active_assignment_count
-    """, nativeQuery = true)
-    void increaseAssignmentCount(
-            @Param("managerId") UUID managerId,
-            @Param("assignmentType") String assignmentType,
-            @Param("delta") long delta
     );
 
     @Modifying
