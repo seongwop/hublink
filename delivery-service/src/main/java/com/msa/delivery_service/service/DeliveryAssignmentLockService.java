@@ -21,7 +21,7 @@ import java.util.function.Supplier;
 public class DeliveryAssignmentLockService {
 
     private final RedissonClient redissonClient;
-    @Value("${delivery.assignment.lock-wait:1s}")
+    @Value("${delivery.assignment.lock-wait:2s}")
     private Duration lockWait;
 
     /*
