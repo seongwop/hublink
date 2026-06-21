@@ -7,8 +7,7 @@ CREATE TABLE IF NOT EXISTS delivery_service.p_delivery_assignment_counts (
     PRIMARY KEY (manager_id, assignment_type)
 );
 
--- 배송 성능 비교 baseline 초기화
-TRUNCATE TABLE
+-- delivery performance baseline reset
 TRUNCATE TABLE
     delivery_service.p_delivery_assignment_counts,
     delivery_service.p_delivery_route_histories,
@@ -161,9 +160,15 @@ OR user_id IN (
     WHERE username LIKE '%seoul-hub-delivery-%'
        OR username LIKE '%busan-company-delivery-%'
        OR username LIKE '%incheon-company-delivery-%'
+       OR username LIKE '%perf2-seoul-hub-delivery-%'
+       OR username LIKE '%perf2-busan-company-delivery-%'
+       OR username LIKE '%perf2-incheon-company-delivery-%'
        OR email LIKE '%seoul-hub-delivery-%@hublink.test'
        OR email LIKE '%busan-company-delivery-%@hublink.test'
        OR email LIKE '%incheon-company-delivery-%@hublink.test'
+       OR email LIKE '%perf2-seoul-hub-delivery-%@hublink.test'
+       OR email LIKE '%perf2-busan-company-delivery-%@hublink.test'
+       OR email LIKE '%perf2-incheon-company-delivery-%@hublink.test'
 );
 
 DELETE FROM user_service.p_users
@@ -185,12 +190,21 @@ OR user_id IN (
 OR username LIKE '%seoul-hub-delivery-%'
 OR username LIKE '%busan-company-delivery-%'
 OR username LIKE '%incheon-company-delivery-%'
+OR username LIKE '%perf2-seoul-hub-delivery-%'
+OR username LIKE '%perf2-busan-company-delivery-%'
+OR username LIKE '%perf2-incheon-company-delivery-%'
 OR email LIKE '%seoul-hub-delivery-%@hublink.test'
 OR email LIKE '%busan-company-delivery-%@hublink.test'
 OR email LIKE '%incheon-company-delivery-%@hublink.test'
+OR email LIKE '%perf2-seoul-hub-delivery-%@hublink.test'
+OR email LIKE '%perf2-busan-company-delivery-%@hublink.test'
+OR email LIKE '%perf2-incheon-company-delivery-%@hublink.test'
 OR slack_id LIKE '%seoul-hub-delivery-%'
 OR slack_id LIKE '%busan-company-delivery-%'
-OR slack_id LIKE '%incheon-company-delivery-%';
+OR slack_id LIKE '%incheon-company-delivery-%'
+OR slack_id LIKE '%perf2-seoul-hub-delivery-%'
+OR slack_id LIKE '%perf2-busan-company-delivery-%'
+OR slack_id LIKE '%perf2-incheon-company-delivery-%';
 
 COMMIT;
 BEGIN;
