@@ -149,12 +149,12 @@ OR user_id IN (
 OR user_id IN (
     SELECT user_id
     FROM user_service.p_users
-    WHERE username LIKE 'perf-seoul-hub-delivery-%'
-       OR username LIKE 'perf-busan-company-delivery-%'
-       OR username LIKE 'perf-incheon-company-delivery-%'
-       OR email LIKE 'perf-seoul-hub-delivery-%@hublink.test'
-       OR email LIKE 'perf-busan-company-delivery-%@hublink.test'
-       OR email LIKE 'perf-incheon-company-delivery-%@hublink.test'
+    WHERE username LIKE '%seoul-hub-delivery-%'
+       OR username LIKE '%busan-company-delivery-%'
+       OR username LIKE '%incheon-company-delivery-%'
+       OR email LIKE '%seoul-hub-delivery-%@hublink.test'
+       OR email LIKE '%busan-company-delivery-%@hublink.test'
+       OR email LIKE '%incheon-company-delivery-%@hublink.test'
 );
 
 DELETE FROM user_service.p_users
@@ -173,15 +173,15 @@ OR user_id IN (
     '50000000-0000-0000-0000-000000000004'::uuid,
     '50000000-0000-0000-0000-000000000005'::uuid
 )
-OR username LIKE 'perf-seoul-hub-delivery-%'
-OR username LIKE 'perf-busan-company-delivery-%'
-OR username LIKE 'perf-incheon-company-delivery-%'
-OR email LIKE 'perf-seoul-hub-delivery-%@hublink.test'
-OR email LIKE 'perf-busan-company-delivery-%@hublink.test'
-OR email LIKE 'perf-incheon-company-delivery-%@hublink.test'
-OR slack_id LIKE 'perf-seoul-hub-delivery-%'
-OR slack_id LIKE 'perf-busan-company-delivery-%'
-OR slack_id LIKE 'perf-incheon-company-delivery-%';
+OR username LIKE '%seoul-hub-delivery-%'
+OR username LIKE '%busan-company-delivery-%'
+OR username LIKE '%incheon-company-delivery-%'
+OR email LIKE '%seoul-hub-delivery-%@hublink.test'
+OR email LIKE '%busan-company-delivery-%@hublink.test'
+OR email LIKE '%incheon-company-delivery-%@hublink.test'
+OR slack_id LIKE '%seoul-hub-delivery-%'
+OR slack_id LIKE '%busan-company-delivery-%'
+OR slack_id LIKE '%incheon-company-delivery-%';
 
 COMMIT;
 BEGIN;
@@ -193,11 +193,11 @@ INSERT INTO user_service.p_users (
 )
 SELECT
     ('50000000-0000-0000-0000-' || lpad(seq::text, 12, '0'))::uuid,
-    prefix || '-' || lpad(delivery_seq::text, 3, '0'),
+    prefix || '-' || lpad(delivery_seq::text, 4, '0'),
     '$2a$10$4scVAESgtgp72lfHEWt/0.8Fr2lK5gencJxQlFnbANzhCmjfEgaMm',
-    display_name || ' ' || lpad(delivery_seq::text, 3, '0'),
-    prefix || '-' || lpad(delivery_seq::text, 3, '0') || '@hublink.test',
-    prefix || '-' || lpad(delivery_seq::text, 3, '0'),
+    display_name || ' ' || lpad(delivery_seq::text, 4, '0'),
+    prefix || '-' || lpad(delivery_seq::text, 4, '0') || '@hublink.test',
+    prefix || '-' || lpad(delivery_seq::text, 4, '0'),
     'DELIVERY_MANAGER',
     'APPROVED',
     hub_id,
@@ -211,7 +211,7 @@ SELECT
 FROM (
     SELECT
         seq_num AS seq,
-        'perf-seoul-hub-delivery' AS prefix,
+        'perf2-seoul-hub-delivery' AS prefix,
         'Seoul Hub Delivery Manager' AS display_name,
         '10000000-0000-0000-0000-000000000001'::uuid AS hub_id,
         seq_num - 999 AS delivery_seq
@@ -219,7 +219,7 @@ FROM (
     UNION ALL
     SELECT
         seq_num AS seq,
-        'perf-busan-company-delivery' AS prefix,
+        'perf2-busan-company-delivery' AS prefix,
         'Busan Company Delivery Manager' AS display_name,
         '10000000-0000-0000-0000-000000000002'::uuid AS hub_id,
         seq_num - 3999 AS delivery_seq
@@ -227,7 +227,7 @@ FROM (
     UNION ALL
     SELECT
         seq_num AS seq,
-        'perf-incheon-company-delivery' AS prefix,
+        'perf2-incheon-company-delivery' AS prefix,
         'Incheon Company Delivery Manager' AS display_name,
         '10000000-0000-0000-0000-000000000003'::uuid AS hub_id,
         seq_num - 6999 AS delivery_seq
@@ -258,7 +258,7 @@ SELECT
     hub_id,
     manager_type,
     delivery_seq,
-    prefix || '-' || lpad(delivery_seq::text, 3, '0'),
+    prefix || '-' || lpad(delivery_seq::text, 4, '0'),
     now(),
     'seed',
     now(),
@@ -266,7 +266,7 @@ SELECT
 FROM (
     SELECT
         seq_num AS seq,
-        'perf-seoul-hub-delivery' AS prefix,
+        'perf2-seoul-hub-delivery' AS prefix,
         '10000000-0000-0000-0000-000000000001'::uuid AS hub_id,
         'HUB_DELIVERY' AS manager_type,
         seq_num - 999 AS delivery_seq
@@ -274,7 +274,7 @@ FROM (
     UNION ALL
     SELECT
         seq_num AS seq,
-        'perf-busan-company-delivery' AS prefix,
+        'perf2-busan-company-delivery' AS prefix,
         '10000000-0000-0000-0000-000000000002'::uuid AS hub_id,
         'COMPANY_DELIVERY' AS manager_type,
         seq_num - 3999 AS delivery_seq
@@ -282,7 +282,7 @@ FROM (
     UNION ALL
     SELECT
         seq_num AS seq,
-        'perf-incheon-company-delivery' AS prefix,
+        'perf2-incheon-company-delivery' AS prefix,
         '10000000-0000-0000-0000-000000000003'::uuid AS hub_id,
         'COMPANY_DELIVERY' AS manager_type,
         seq_num - 6999 AS delivery_seq
