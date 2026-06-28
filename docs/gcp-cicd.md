@@ -14,9 +14,23 @@ GitHub Actions
 -> docker compose up -d
 ```
 
+## PR 검증 흐름
+
+`pr-check.yml`은 `develop` 대상 PR에서 변경된 서비스만 Gradle `bootJar`로 검증한다.
+
+```text
+Pull Request
+-> 변경 파일 감지
+-> 변경 서비스 bootJar
+-> compose 변경 시 docker compose config 검증
+```
+
+PR 검증은 GCP 인증과 VM 배포를 수행하지 않는다. 실제 이미지 push와 VM 배포는 `develop` merge 후 `gcp-cicd.yml`에서 처리한다.
+
 ## 주요 파일
 
 ```text
+.github/workflows/pr-check.yml
 .github/workflows/gcp-cicd.yml
 .github/workflows/gcp-load-test-sync.yml
 scripts/gcp/deploy-vm.sh
