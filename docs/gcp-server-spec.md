@@ -15,6 +15,7 @@
 | Boot Image Project | `debian-cloud` |
 | Disk Type | `pd-balanced` |
 | Network CIDR | `10.10.0.0/24` |
+| Private VM Egress | Cloud NAT |
 | VM User | `hublink` |
 | Provisioning | Terraform |
 | Runtime | Docker Compose |

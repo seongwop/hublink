@@ -11,6 +11,7 @@ Terraform
   -> VPC
   -> Subnet
   -> Firewall
+  -> Cloud NAT
   -> Compute Engine VM
   -> Artifact Registry
   -> Service Account
@@ -35,7 +36,7 @@ infra/gcp
 | hublink-monitoring-vm | `10.10.0.60` | `8.230.17.44` | Kafka UI, Zipkin, Prometheus, Loki, Grafana |
 | hublink-load-test-vm | `10.10.0.50` | `34.64.86.22` | k6 부하 발생 |
 
-외부 IP는 `platform`, `monitoring`, `load-test`에만 고정 IP로 연결한다. 서비스 간 통신과 부하 테스트 트래픽은 외부 IP가 아니라 내부 IP를 기준으로 유지한다.
+외부 IP는 `platform`, `monitoring`, `load-test`에만 고정 IP로 연결한다. `domain-a`, `domain-b`, `data`는 외부 IP 없이 Cloud NAT로 Docker 설치와 이미지 pull에 필요한 egress만 사용한다. 서비스 간 통신과 부하 테스트 트래픽은 외부 IP가 아니라 내부 IP를 기준으로 유지한다.
 
 `load-test`는 외부 IP로 접속하더라도 실제 부하는 `platform` 내부 IP인 `10.10.0.10:19091`로 전송한다.
 
@@ -64,6 +65,7 @@ load-test:   34.64.86.22
 | CIDR | `10.10.0.0/24` |
 | Region | `asia-northeast3` |
 | Zone | `asia-northeast3-a` |
+| NAT | `hublink-cloud-nat` |
 
 서비스 간 통신은 외부 IP가 아니라 내부 IP를 사용한다.
 
@@ -116,6 +118,7 @@ VM 역할별로 Compose 파일을 분리한다.
 | `main.tf` | Provider와 Terraform 기본 설정 |
 | `apis.tf` | 필요한 GCP API 활성화 |
 | `network.tf` | VPC, Subnet, Firewall 설정 |
+| `nat.tf` | 외부 IP 없는 VM의 인터넷 egress |
 | `compute.tf` | VM, 고정 내부 IP, 고정 외부 IP, startup script 연결 |
 | `iam.tf` | VM 실행용 Service Account와 권한 |
 | `artifact-registry.tf` | Docker 이미지 저장소 |

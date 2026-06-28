@@ -20,6 +20,9 @@ public_source_ranges = ["0.0.0.0/0"]
 # 고정 외부 IP 대상 VM
 external_ip_vm_names = ["platform", "monitoring", "load-test"]
 
+# 외부 IP 없는 VM의 Docker 설치와 이미지 pull용 egress
+cloud_nat_enabled = true
+
 # SSH 공개키 직접 등록 옵션
 # ssh_username   = "hublink"
 # ssh_public_key = "ssh-ed25519 AAAA..."

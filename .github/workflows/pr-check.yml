@@ -1,0 +1,185 @@
+name: PR Check
+
+on:
+  pull_request:
+    branches:
+      - develop
+    paths:
+      - '.github/workflows/**'
+      - 'Dockerfile'
+      - 'build.gradle'
+      - 'settings.gradle'
+      - 'gradle/**'
+      - 'gradlew'
+      - 'gradlew.bat'
+      - 'config-repo/**'
+      - 'db/**'
+      - 'monitoring/**'
+      - 'docker-compose.*.yml'
+      - 'ai-service/**'
+      - 'api-gateway/**'
+      - 'company-service/**'
+      - 'config-server/**'
+      - 'core-common/**'
+      - 'delivery-service/**'
+      - 'eureka-server/**'
+      - 'hub-service/**'
+      - 'order-service/**'
+      - 'product-service/**'
+      - 'slack-service/**'
+      - 'stock-service/**'
+      - 'user-service/**'
+
+concurrency:
+  group: pr-check-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  detect-changes:
+    name: Detect changed services
+    runs-on: ubuntu-latest
+    outputs:
+      services_json: ${{ steps.detect.outputs.services_json }}
+      compose_changed: ${{ steps.detect.outputs.compose_changed }}
+      has_java_check: ${{ steps.detect.outputs.has_java_check }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed files
+        run: |
+          git diff --name-only \
+            "${{ github.event.pull_request.base.sha }}" \
+            "${{ github.event.pull_request.head.sha }}" > changed-files.txt
+
+      - name: Build check matrix
+        id: detect
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          changed_files = [
+              line.strip().replace("\\", "/")
+              for line in Path("changed-files.txt").read_text().splitlines()
+              if line.strip()
+          ]
+
+          services = [
+              "eureka-server",
+              "config-server",
+              "api-gateway",
+              "user-service",
+              "company-service",
+              "hub-service",
+              "product-service",
+              "order-service",
+              "stock-service",
+              "delivery-service",
+              "slack-service",
+              "ai-service",
+          ]
+
+          changed_services = set()
+          compose_changed = False
+          build_all = False
+
+          for file_path in changed_files:
+              if file_path.startswith("core-common/") or file_path in {
+                  "build.gradle",
+                  "settings.gradle",
+                  "gradlew",
+                  "gradlew.bat",
+                  "Dockerfile",
+              } or file_path.startswith("gradle/"):
+                  build_all = True
+
+              if file_path.startswith("config-repo/"):
+                  build_all = True
+
+              if file_path.startswith(".github/workflows/"):
+                  build_all = True
+
+              if file_path.startswith("docker-compose.") and file_path.endswith(".yml"):
+                  compose_changed = True
+
+              for service in services:
+                  if file_path == service or file_path.startswith(f"{service}/"):
+                      changed_services.add(service)
+
+          if build_all:
+              changed_services.update(services)
+
+          services_json = json.dumps([service for service in services if service in changed_services])
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"services_json={services_json}\n")
+              output.write(f"compose_changed={str(compose_changed).lower()}\n")
+              output.write(f"has_java_check={str(bool(changed_services)).lower()}\n")
+
+          print("changed_files=", changed_files)
+          print("services_json=", services_json)
+          print("compose_changed=", compose_changed)
+          PY
+
+  java-build:
+    name: Build ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.has_java_check == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        service: ${{ fromJson(needs.detect-changes.outputs.services_json) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Prepare Gradle
+        run: chmod +x gradlew
+
+      - name: Build service
+        run: ./gradlew ":${{ matrix.service }}:clean" ":${{ matrix.service }}:bootJar" -x test --no-daemon
+
+  compose-config:
+    name: Validate compose files
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.compose_changed == 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate compose files
+        run: |
+          for compose_file in docker-compose.*.yml; do
+            docker compose --env-file .env.gcp.example -f "${compose_file}" config >/dev/null
+          done
+
+  pr-check-result:
+    name: PR check result
+    runs-on: ubuntu-latest
+    needs:
+      - detect-changes
+      - java-build
+      - compose-config
+    if: always()
+    steps:
+      - name: Check result
+        run: |
+          if [ "${{ needs.java-build.result }}" = "failure" ] || [ "${{ needs.compose-config.result }}" = "failure" ]; then
+            exit 1
+          fi
+          echo "PR checks passed or were skipped."
