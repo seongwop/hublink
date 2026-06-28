@@ -367,7 +367,7 @@ jobs:
       - name: Create .env.gcp
         run: |
           # runner 임시 환경파일 생성
-          DB_USERNAME="${DB_USERNAME:-hublink}"
+          DB_USERNAME="${DB_USERNAME:-user}"
           DB_PASSWORD="${DB_PASSWORD:?DB_PASSWORD secret is required}"
           JWT_SECRET="${JWT_SECRET:?JWT_SECRET secret is required}"
           SLACK_ENABLED="${SLACK_ENABLED:-false}"

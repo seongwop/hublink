@@ -30,10 +30,10 @@
 
 | 도구 | URL 또는 위치 | 확인 항목 |
 | --- | --- | --- |
-| Grafana | `http://34.50.1.195:3000` | CPU, memory, JVM, HTTP, DB, Kafka 지표 |
-| Prometheus | `http://34.50.1.195:9090` | raw metric query |
-| Kafka UI | `http://34.50.1.195:8082` | topic, consumer lag, DLT |
-| Zipkin | `http://34.50.1.195:9411` | delivery-service, Feign, Gateway trace |
+| Grafana | `http://8.230.17.44:3000` | CPU, memory, JVM, HTTP, DB, Kafka 지표 |
+| Prometheus | `http://8.230.17.44:9090` | raw metric query |
+| Kafka UI | `http://8.230.17.44:8082` | topic, consumer lag, DLT |
+| Zipkin | `http://8.230.17.44:9411` | delivery-service, Feign, Gateway trace |
 | PostgreSQL | `hublink` database | delivery, route history, outbox, connection, wait event, `EXPLAIN ANALYZE` |
 | Redis | `10.10.0.40:6379` | stream length, lag, pending, consumer group |
 | k6 | `hublink-load-test-vm` | TPS, p95, p99, 실패율 |

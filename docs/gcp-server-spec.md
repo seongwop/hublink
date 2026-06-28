@@ -23,12 +23,12 @@
 
 | VM | Machine Type | vCPU | Memory | Boot Disk | Internal IP | External IP | 역할 |
 | --- | --- | ---: | ---: | ---: | --- | --- | --- |
-| `hublink-platform-vm` | `e2-standard-2` | 2 | 8 GB | 30 GB | `10.10.0.10` | `34.50.23.39` | Eureka, Config Server, API Gateway |
-| `hublink-domain-a-vm` | `e2-standard-2` | 2 | 8 GB | 30 GB | `10.10.0.20` | `8.230.24.217` | user, company, hub, product |
-| `hublink-domain-b-vm` | `e2-standard-2` | 2 | 8 GB | 30 GB | `10.10.0.30` | `8.230.9.99` | order, stock, delivery, slack, ai |
-| `hublink-data-vm` | `e2-standard-2` | 2 | 8 GB | 50 GB | `10.10.0.40` | `34.64.89.47` | PostgreSQL, Redis, Kafka |
-| `hublink-monitoring-vm` | `e2-standard-2` | 2 | 8 GB | 50 GB | `10.10.0.60` | `34.50.1.195` | Kafka UI, Zipkin, Prometheus, Loki, Grafana |
-| `hublink-load-test-vm` | `e2-medium` | 2 | 4 GB | 20 GB | `10.10.0.50` | `34.22.78.126` | k6 부하 발생 |
+| `hublink-platform-vm` | `e2-standard-2` | 2 | 8 GB | 30 GB | `10.10.0.10` | `34.50.50.207` | Eureka, Config Server, API Gateway |
+| `hublink-domain-a-vm` | `e2-standard-2` | 2 | 8 GB | 30 GB | `10.10.0.20` | 없음 | user, company, hub, product |
+| `hublink-domain-b-vm` | `e2-standard-2` | 2 | 8 GB | 30 GB | `10.10.0.30` | 없음 | order, stock, delivery, slack, ai |
+| `hublink-data-vm` | `e2-standard-2` | 2 | 8 GB | 50 GB | `10.10.0.40` | 없음 | PostgreSQL, Redis, Kafka |
+| `hublink-monitoring-vm` | `e2-standard-2` | 2 | 8 GB | 50 GB | `10.10.0.60` | `8.230.17.44` | Kafka UI, Zipkin, Prometheus, Loki, Grafana |
+| `hublink-load-test-vm` | `e2-medium` | 2 | 4 GB | 20 GB | `10.10.0.50` | `34.64.86.22` | k6 부하 발생 |
 
 메모리와 vCPU는 GCP E2 machine type 기준이다.
 
@@ -99,15 +99,17 @@
 
 ## 스케줄 상태
 
-VM 자동 시작/종료 스케줄 정책은 Terraform 리소스로 유지한다.
+VM 자동 종료 스케줄 정책은 Terraform 리소스로 유지한다.
 
-현재 기본 설정은 부하 테스트 안정성을 위해 비활성화 상태다.
+현재 설정은 자동 시작 없이 매일 03:00 종료만 사용.
 
 ```hcl
-vm_schedule_enabled = false
+vm_schedule_enabled   = true
+vm_stop_schedule      = "0 3 * * *"
+vm_schedule_time_zone = "Asia/Seoul"
 ```
 
-스케줄을 다시 사용할 때는 `terraform.tfvars`에서 값을 `true`로 변경한 뒤 `terraform apply`를 실행한다.
+테스트 시작 전 VM 기동은 `scripts/gcp/start-gcp-vms.ps1`로 처리.
 
 ## 확인 명령
 
@@ -123,6 +125,6 @@ GCP에서 VM machine type과 상태를 확인한다.
 
 ```bash
 gcloud compute instances list \
-  --project hublink-498115 \
+  --project hublink-500805 \
   --zones asia-northeast3-a
 ```

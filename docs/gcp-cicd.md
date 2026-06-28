@@ -40,13 +40,13 @@ GitHub 저장소에서 `Settings` -> `Secrets and variables` -> `Actions` -> `Se
 | `GCP_SERVICE_ACCOUNT_EMAIL` | Terraform output `github_actions_service_account_email` 값 |
 | `GCP_VM_USER` | VM 접속 Linux 사용자명 |
 | `DB_USERNAME` | PostgreSQL 사용자명 |
-| `DB_PASSWORD` | PostgreSQL 비밀번호 |
+| `DB_PASSWORD` | GitHub Secret 값 |
 | `JWT_SECRET` | JWT 서명용 문자열 |
 | `SLACK_BOT_TOKEN` | Slack Bot token |
 | `AI_API_KEY` | AI API key |
 | `KAKAO_REST_API_KEY` | Kakao REST API key |
-| `CORS_ALLOWED_ORIGIN` | 허용 origin |
-| `SWAGGER_GATEWAY_URL` | Swagger Gateway URL |
+| `CORS_ALLOWED_ORIGIN` | `http://34.50.50.207:19091` |
+| `SWAGGER_GATEWAY_URL` | `http://34.50.50.207:19091` |
 
 ## 선택 GitHub Variables
 
@@ -100,7 +100,7 @@ GCP 조직 정책에서 `constraints/iam.disableServiceAccountKeyCreation`이 �
 
 ## 실행 방법
 
-`develop-infra` 브랜치에 push하면 `GCP CI/CD` workflow가 자동 실행된다.
+`develop` 브랜치에 push하면 `GCP CI/CD` workflow가 자동 실행된다.
 
 수동 실행도 가능하다.
 
@@ -128,7 +128,7 @@ DB, Redis, Kafka가 먼저 떠야 하고, 그 다음 모니터링 계층과 Eure
 외부 IP는 아래 명령으로 확인한다.
 
 ```powershell
-gcloud compute instances list --project hublink-498115
+gcloud compute instances list --project hublink-500805
 ```
 
 ```text

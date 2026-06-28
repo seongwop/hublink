@@ -34,3 +34,17 @@ ruler:
     type: local
     local:
       directory: /loki/rules
+
+# 로컬 디스크 로그 보존 기간
+limits_config:
+  retention_period: 168h
+  max_query_lookback: 168h
+
+# retention 삭제 작업 실행
+compactor:
+  working_directory: /loki/compactor
+  compaction_interval: 10m
+  retention_enabled: true
+  retention_delete_delay: 2h
+  retention_delete_worker_count: 20
+  delete_request_store: filesystem
