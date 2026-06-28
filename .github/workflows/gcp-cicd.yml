@@ -201,9 +201,12 @@ jobs:
                       mirror_promtail = True
 
                   if file_path.startswith("scripts/gcp/") or file_path == ".github/workflows/gcp-cicd.yml":
+                      services.update(all_services)
                       deploy_all_app_vms()
                       deploy["data"] = True
                       deploy["monitoring"] = True
+
+          mirror_promtail = mirror_promtail or deploy["platform"] or deploy["domain_a"] or deploy["domain_b"] or deploy["monitoring"]
 
           services_json = json.dumps([service for service in all_services if service in services])
           should_deploy = any(deploy.values())
