@@ -14,11 +14,11 @@ name_prefix = "hublink"
 github_repository = "seongwop/hublink"
 
 # SSH와 공개 서비스 포트 접근 허용 범위
-ssh_source_ranges    = ["0.0.0.0/0"]
+ssh_source_ranges    = ["35.235.240.0/20"]
 public_source_ranges = ["0.0.0.0/0"]
 
 # 고정 외부 IP 대상 VM
-external_ip_vm_names = ["platform", "data", "monitoring", "load-test", "domain-a", "domain-b"]
+external_ip_vm_names = ["platform", "monitoring", "load-test"]
 
 # SSH 공개키 직접 등록 옵션
 # ssh_username   = "hublink"
@@ -70,8 +70,7 @@ external_ip_vm_names = ["platform", "data", "monitoring", "load-test", "domain-a
 #   }
 # }
 
-# VM 자동 시작과 종료 스케줄
-vm_schedule_enabled   = false
-vm_start_schedule     = "0 10 * * *"
-vm_stop_schedule      = "0 2 * * *"
+# VM 자동 종료 스케줄
+vm_schedule_enabled   = true
+vm_stop_schedule      = "0 3 * * *"
 vm_schedule_time_zone = "Asia/Seoul"

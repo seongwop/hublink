@@ -110,10 +110,10 @@ ai-service 로그의 ACK 완료 여부
 
 | 도구           | URL 또는 위치                             | 확인 항목                                                     |
 | ------------ | ------------------------------------- | --------------------------------------------------------- |
-| Grafana      | `http://34.50.1.195:3000`             | ai-service CPU, memory, JVM, DB, Redis 지표                 |
-| Prometheus   | `http://34.50.1.195:9090`             | raw metric query                                          |
+| Grafana      | `http://8.230.17.44:3000`             | ai-service CPU, memory, JVM, DB, Redis 지표                 |
+| Prometheus   | `http://8.230.17.44:9090`             | raw metric query                                          |
 | Redis        | data-vm                               | stream length, lag, pending entry, consumer group, ACK 상태 |
-| Zipkin       | `http://34.50.1.195:9411`             | ai-service 처리 trace                                       |
+| Zipkin       | `http://8.230.17.44:9411`             | ai-service 처리 trace                                       |
 | PostgreSQL   | hublink database                      | AI 메시지 처리량, 처리 상태, DB connection                          |
 | k6           | load-test-vm                          | 이벤트 주입 요청 수, TPS, p95, p99, 실패율                           |
 | service logs | domain-b-vm                           | ai-service consume, 처리 지연, ACK, 예외 로그                     |
@@ -477,7 +477,7 @@ ai-service가 중지된 동안에도 delivery-service 테스트 전용 API는 �
 ```bash
 gcloud compute ssh hublink-domain-b-vm \
   --zone asia-northeast3-a \
-  --project hublink-498115 \
+  --project hublink-500805 \
   --tunnel-through-iap \
   --command "cd /opt/hublink && sudo docker compose -f docker-compose.domain-b.yml stop ai-service"
 ```
@@ -497,7 +497,7 @@ POST /api/v1/deliveries/test/deadline-requested
 ```bash
 gcloud compute ssh hublink-domain-b-vm \
   --zone asia-northeast3-a \
-  --project hublink-498115 \
+  --project hublink-500805 \
   --tunnel-through-iap \
   --command "cd /opt/hublink && sudo docker compose -f docker-compose.domain-b.yml start ai-service"
 ```

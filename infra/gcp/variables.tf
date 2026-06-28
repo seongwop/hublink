@@ -24,7 +24,7 @@ variable "vm_start_schedule" {
 variable "vm_stop_schedule" {
   description = "VM 자동 종료 cron"
   type        = string
-  default     = "0 2 * * *"
+  default     = "0 3 * * *"
 }
 
 # VM 스케줄 타임존

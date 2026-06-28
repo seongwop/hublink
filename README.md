@@ -63,21 +63,21 @@ load-test-vm
 
 | VM | Internal IP | External IP |
 | --- | --- | --- |
-| platform-vm | `10.10.0.10` | `34.50.23.39` |
-| domain-a-vm | `10.10.0.20` | `8.230.24.217` |
-| domain-b-vm | `10.10.0.30` | `8.230.9.99` |
-| data-vm | `10.10.0.40` | `34.64.89.47` |
-| monitoring-vm | `10.10.0.60` | `34.50.1.195` |
-| load-test-vm | `10.10.0.50` | `34.22.78.126` |
+| platform-vm | `10.10.0.10` | `34.50.50.207` |
+| domain-a-vm | `10.10.0.20` | 없음 |
+| domain-b-vm | `10.10.0.30` | 없음 |
+| data-vm | `10.10.0.40` | 없음 |
+| monitoring-vm | `10.10.0.60` | `8.230.17.44` |
+| load-test-vm | `10.10.0.50` | `34.64.86.22` |
 
 ## 모니터링 도구
 
 | 도구 | 주소 | 용도 |
 | --- | --- | --- |
-| Grafana | `http://34.50.1.195:3000` | 메트릭, 로그 통합 조회 |
-| Prometheus | `http://34.50.1.195:9090` | JVM, HTTP, 시스템 메트릭 조회 |
-| Zipkin | `http://34.50.1.195:9411` | 분산 추적 |
-| Kafka UI | `http://34.50.1.195:8082` | topic, message, consumer lag 확인 |
+| Grafana | `http://8.230.17.44:3000` | 메트릭, 로그 통합 조회 |
+| Prometheus | `http://8.230.17.44:9090` | JVM, HTTP, 시스템 메트릭 조회 |
+| Zipkin | `http://8.230.17.44:9411` | 분산 추적 |
+| Kafka UI | `http://8.230.17.44:8082` | topic, message, consumer lag 확인 |
 | Loki | Grafana datasource | Docker 로그 검색 |
 
 ## 문서

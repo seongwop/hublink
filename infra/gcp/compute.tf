@@ -37,6 +37,8 @@ resource "google_compute_address" "external" {
   name         = "${var.name_prefix}-${local.address_name_suffix[each.key]}-external-ip"
   address_type = "EXTERNAL"
   region       = var.region
+
+  depends_on = [google_project_service.required]
 }
 
 # vm_specs 기준 역할별 VM 생성
