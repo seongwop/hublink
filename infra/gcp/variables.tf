@@ -62,6 +62,13 @@ variable "network_cidr" {
   default     = "10.10.0.0/24"
 }
 
+# 외부 IP 없는 VM의 인터넷 egress용 Cloud NAT 사용 여부
+variable "cloud_nat_enabled" {
+  description = "외부 IP 없는 VM의 인터넷 egress용 Cloud NAT 사용 여부"
+  type        = bool
+  default     = false
+}
+
 # VM 부팅 이미지 프로젝트
 variable "boot_image_project" {
   description = "VM 부팅 이미지 프로젝트"

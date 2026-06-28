@@ -17,6 +17,7 @@ PROJECT_ID="${GCP_PROJECT_ID:?GCP_PROJECT_ID is required}"
 ZONE="${GCP_ZONE:?GCP_ZONE is required}"
 VM_USER="${GCP_VM_USER:?GCP_VM_USER is required}"
 REMOTE_DIR="${GCP_REMOTE_DIR:-/opt/hublink}"
+REGISTRY_HOST="${GCP_REGION:-asia-northeast3}-docker.pkg.dev"
 
 # Ubuntu runner IAP 터널 접속
 # 2시간 임시 SSH 키 등록
@@ -36,6 +37,12 @@ echo "Preparing ${REMOTE}:${REMOTE_DIR}"
 gcloud compute ssh "${REMOTE}" "${GCLOUD_FLAGS[@]}" \
   --command "sudo mkdir -p '${REMOTE_DIR}' && sudo chown -R '${VM_USER}:${VM_USER}' '${REMOTE_DIR}'"
 
+# Docker와 compose 재부팅 복구 서비스 준비
+echo "Ensuring Docker on ${VM_NAME}"
+gcloud compute scp scripts/gcp/ensure-docker.sh "${REMOTE}:/tmp/hublink-ensure-docker.sh" "${GCLOUD_FLAGS[@]}"
+gcloud compute ssh "${REMOTE}" "${GCLOUD_FLAGS[@]}" \
+  --command "sudo REMOTE_DIR='${REMOTE_DIR}' bash /tmp/hublink-ensure-docker.sh '${VM_USER}' '${COMPOSE_FILE}'"
+
 # 공통 환경파일과 VM 전용 compose 복사
 echo "Copying .env.gcp and ${COMPOSE_FILE} to ${VM_NAME}"
 gcloud compute scp .env.gcp "${COMPOSE_FILE}" "${REMOTE}:${REMOTE_DIR}/" "${GCLOUD_FLAGS[@]}"
@@ -45,6 +52,12 @@ for path in "$@"; do
   echo "Copying ${path} to ${VM_NAME}"
   gcloud compute scp --recurse "${path}" "${REMOTE}:${REMOTE_DIR}/" "${GCLOUD_FLAGS[@]}"
 done
+
+# Artifact Registry pull 인증
+echo "Configuring Docker registry auth on ${VM_NAME}"
+ACCESS_TOKEN="$(gcloud auth print-access-token)"
+gcloud compute ssh "${REMOTE}" "${GCLOUD_FLAGS[@]}" \
+  --command "printf '%s' '${ACCESS_TOKEN}' | sudo docker login -u oauth2accesstoken --password-stdin 'https://${REGISTRY_HOST}'"
 
 # 커밋 SHA 이미지 pull
 # 변경 컨테이너 교체와 orphan 정리
