@@ -8,6 +8,7 @@ HubLink를 GCP VM에 자동 배포하기 위한 GitHub Actions 구성
 GitHub Actions
 -> 서비스별 Docker 이미지 빌드
 -> Artifact Registry push
+-> 외부 공통 이미지 mirror
 -> .env.gcp 생성
 -> VM별 compose/config/db/monitoring 파일 복사
 -> docker compose pull
@@ -38,6 +39,8 @@ scripts/gcp/deploy-load-test.sh
 ```
 
 `gcp-cicd.yml`은 서비스 이미지 빌드와 VM 배포를 담당한다.
+
+워크플로우 또는 `scripts/gcp/**` 변경 시 새 Artifact Registry 초기 배포를 위해 전체 서비스 이미지를 다시 빌드한다. 앱 VM 또는 monitoring VM 배포가 잡히면 promtail 이미지를 Artifact Registry에 mirror한다.
 
 `gcp-load-test-sync.yml`은 `performance/k6` 스크립트를 `load-test-vm`으로 동기화한다.
 
