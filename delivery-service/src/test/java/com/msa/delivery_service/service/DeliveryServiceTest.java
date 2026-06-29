@@ -20,6 +20,7 @@ import com.msa.delivery_service.message.RedisStreamEventPublisher;
 import com.msa.delivery_service.repository.DeliveryAssignmentCountRepository;
 import com.msa.delivery_service.repository.DeliveryRepository;
 import com.msa.delivery_service.repository.DeliveryRouteHistoryRepository;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -75,14 +76,16 @@ class DeliveryServiceTest {
 
     @BeforeEach
     void setUp() {
+        DeliveryPerformanceMetrics performanceMetrics = new DeliveryPerformanceMetrics(new SimpleMeterRegistry());
         DeliveryAssignmentCountService deliveryAssignmentCountService =
-                new DeliveryAssignmentCountService(deliveryAssignmentCountRepository);
+                new DeliveryAssignmentCountService(deliveryAssignmentCountRepository, performanceMetrics);
         DeliveryCreateService deliveryCreateService = new DeliveryCreateService(
                 deliveryRepository,
                 deliveryRouteHistoryRepository,
                 redisStreamEventPublisher,
                 deliveryOutboxService,
-                deliveryAssignmentCountService
+                deliveryAssignmentCountService,
+                performanceMetrics
         );
         DeliveryExternalService deliveryExternalService = new DeliveryExternalService(hubClient, userClient);
         deliveryService = new DeliveryService(
