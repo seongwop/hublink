@@ -1,4 +1,4 @@
-# Delivery Assignment Aggregate Table Run 01 - 20VU Distributed Lock Wait 2s 결과
+# Delivery Assignment Aggregate Table Only Run 01 - 20VU Distributed No Sleep, Lock Wait 2s 결과
 
 ### 1. 테스트 목적
 
@@ -8,7 +8,7 @@
 
 | 항목 | 값 |
 | --- | --- |
-| 테스트명 | Delivery Assignment Aggregate Table Run 01 - 20VU Distributed Lock Wait 2s |
+| 테스트명 | Delivery Assignment Aggregate Table Only Run 01 - 20VU Distributed No Sleep, Lock Wait 2s |
 | 대상 API | `POST /internal/deliveries` |
 | k6 script | `delivery-create-logic-load.js` |
 | 실행 명령어 | `PRE_TEST_SQL_FILE=db/seed/14-reset-delivery-perf-baseline.sql SUPPLIER_COMPANY_ID='20000000-0000-0000-0000-000000000001' RECEIVER_COMPANY_IDS='20000000-0000-0000-0000-000000000002,20000000-0000-0000-0000-000000000003,20000000-0000-0000-0000-000000000010,20000000-0000-0000-0000-000000000011,20000000-0000-0000-0000-000000000012,20000000-0000-0000-0000-000000000013,20000000-0000-0000-0000-000000000014,20000000-0000-0000-0000-000000000015,20000000-0000-0000-0000-000000000016,20000000-0000-0000-0000-000000000017,20000000-0000-0000-0000-000000000020,20000000-0000-0000-0000-000000000021,20000000-0000-0000-0000-000000000022,20000000-0000-0000-0000-000000000023,20000000-0000-0000-0000-000000000024,20000000-0000-0000-0000-000000000025,20000000-0000-0000-0000-000000000026,20000000-0000-0000-0000-000000000027' SLEEP_SECONDS=0 STAGES='[{\"duration\":\"1m\",\"target\":20},{\"duration\":\"5m\",\"target\":20},{\"duration\":\"2m\",\"target\":0}]' ./run-k6.sh delivery-create-logic-load.js` |
@@ -116,7 +116,18 @@ Baseline `Run 03 - 20VU Distributed` 대비 변화는 아래와 같다.
 
 즉 이번 변경은 "활성 배송 count 쿼리 제거" 자체는 맞았지만, 그 대신 "집계 조회 + 집계 upsert" 비용을 lock 안으로 끌어들여 2초 대기 한도 안에서 14건이 밀려난 상태다.
 
-### 7. 결론
+### 7. 후속 측정 범위 판단
+
+집계 테이블만 적용한 상태에서 50VU, 80VU까지 바로 확장 측정하지 않은 이유는 20VU 단계에서 이미 baseline 대비 명확한 퇴행이 확인됐기 때문이다.
+
+- baseline 20VU는 lock timeout이 0건이었지만, aggregate-table run01은 lock timeout이 14건 발생했다.
+- 총 요청 수와 TPS도 baseline보다 낮아졌다.
+- user-service, hub-service 평균 지연은 오히려 낮아졌으므로 외부 API 지연이 아니라 lock 내부 집계 write 경로가 새 병목으로 보였다.
+- 이 상태로 VU를 높이면 집계 테이블 자체의 효과보다 manager별 반복 upsert 병목이 더 크게 드러날 가능성이 높았다.
+
+따라서 다음 단계는 aggregate-only 구조를 80VU까지 밀어붙이는 것이 아니라, lock 내부 반복 write를 줄이는 bulk upsert 적용으로 잡았다. 즉 이 단계의 결론은 "집계 테이블 자체가 무효"가 아니라 "집계 테이블 증가 로직을 manager별 반복 upsert로 구현하면 lock 내부 체류 시간이 늘어 성능이 악화된다"로 보는 것이 맞다.
+
+### 8. 결론
 
 ```text
 WARN
