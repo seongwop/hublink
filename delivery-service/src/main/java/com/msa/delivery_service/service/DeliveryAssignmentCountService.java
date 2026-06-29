@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -37,11 +38,32 @@ public class DeliveryAssignmentCountService {
 
     @Transactional
     public void increaseHubAssignments(Collection<UUID> managerIds) {
-        Map<UUID, Long> deltas = new HashMap<>();
-        for (UUID managerId : managerIds) {
-            deltas.merge(managerId, 1L, Long::sum);
+        increaseAssignmentCounts(toDeltas(managerIds), DeliveryAssignmentType.HUB_DELIVERY);
+    }
+
+    @Transactional
+    public void increaseDeliveryAssignments(
+            UUID companyDeliveryManagerId,
+            Collection<UUID> hubDeliveryManagerIds
+    ) {
+        Map<DeliveryAssignmentType, Map<UUID, Long>> deltasByAssignmentType =
+                new EnumMap<>(DeliveryAssignmentType.class);
+        deltasByAssignmentType.put(
+                DeliveryAssignmentType.COMPANY_DELIVERY,
+                Map.of(companyDeliveryManagerId, 1L)
+        );
+
+        Map<UUID, Long> hubDeltas = toDeltas(hubDeliveryManagerIds);
+        if (!hubDeltas.isEmpty()) {
+            deltasByAssignmentType.put(DeliveryAssignmentType.HUB_DELIVERY, hubDeltas);
         }
-        increaseAssignmentCounts(deltas, DeliveryAssignmentType.HUB_DELIVERY);
+
+        // 諛곗넚 ?대떦??諛곗젙 吏묎퀎 利앷? 泥섎━ ?쒓컙 怨꾩륫
+        performanceMetrics.recordAssignmentCountOperation(
+                "mixed",
+                "increase",
+                () -> deliveryAssignmentCountRepository.increaseAssignmentCounts(deltasByAssignmentType)
+        );
     }
 
     @Transactional
@@ -106,5 +128,13 @@ public class DeliveryAssignmentCountService {
                 "increase",
                 () -> deliveryAssignmentCountRepository.increaseAssignmentCounts(deltas, assignmentType)
         );
+    }
+
+    private Map<UUID, Long> toDeltas(Collection<UUID> managerIds) {
+        Map<UUID, Long> deltas = new HashMap<>();
+        for (UUID managerId : managerIds) {
+            deltas.merge(managerId, 1L, Long::sum);
+        }
+        return deltas;
     }
 }

@@ -187,12 +187,12 @@ class DeliveryServiceTest {
                         DeliveryRouteType.HUB_TO_COMPANY
                 );
         verify(deliveryAssignmentCountRepository).increaseAssignmentCounts(
-                eq(Map.of(companyManagerId, 1L)),
-                eq(DeliveryAssignmentType.COMPANY_DELIVERY)
-        );
-        verify(deliveryAssignmentCountRepository).increaseAssignmentCounts(
-                eq(Map.of(firstHubManagerId, 1L, secondHubManagerId, 1L)),
-                eq(DeliveryAssignmentType.HUB_DELIVERY)
+                eq(Map.of(
+                        DeliveryAssignmentType.COMPANY_DELIVERY,
+                        Map.of(companyManagerId, 1L),
+                        DeliveryAssignmentType.HUB_DELIVERY,
+                        Map.of(firstHubManagerId, 1L, secondHubManagerId, 1L)
+                ))
         );
     }
 

@@ -8,4 +8,6 @@ import java.util.UUID;
 public interface DeliveryAssignmentCountBulkRepository {
 
     void increaseAssignmentCounts(Map<UUID, Long> deltas, DeliveryAssignmentType assignmentType);
+
+    void increaseAssignmentCounts(Map<DeliveryAssignmentType, Map<UUID, Long>> deltasByAssignmentType);
 }

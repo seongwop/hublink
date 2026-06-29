@@ -105,17 +105,11 @@ public class DeliveryCreateService {
                     savedDelivery.getDeliveryId(),
                     routeHistories.size()
             );
-            // 업체 배송 담당자 집계 증가 처리 시간 계측
+            // 배송 담당자 집계 증가 처리 시간 계측
             performanceMetrics.recordCreateStage(
-                    "assignment_count_company_increase",
-                    () -> deliveryAssignmentCountService.increaseCompanyAssignment(
-                            savedDelivery.getCompanyDeliveryManagerId()
-                    )
-            );
-            // 허브 배송 담당자 집계 증가 처리 시간 계측
-            performanceMetrics.recordCreateStage(
-                    "assignment_count_hub_increase",
-                    () -> deliveryAssignmentCountService.increaseHubAssignments(
+                    "assignment_count_mixed_increase",
+                    () -> deliveryAssignmentCountService.increaseDeliveryAssignments(
+                            savedDelivery.getCompanyDeliveryManagerId(),
                             routeHistories.stream()
                                     .filter(routeHistory -> routeHistory.getRouteType() == DeliveryRouteType.HUB_TO_HUB)
                                     .map(DeliveryRouteHistory::getDeliveryManagerId)
