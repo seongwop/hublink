@@ -1,4 +1,4 @@
-# Delivery Assignment Baseline Run 01 - 20VU 결과
+# Delivery Assignment Baseline Run 01 - 20VU Concentrated No Sleep 결과
 
 ### 1. 테스트 목적
 
@@ -8,7 +8,7 @@
 
 | 항목 | 값 |
 | --- | --- |
-| 테스트명 | Delivery Assignment Baseline Run 01 - 20VU |
+| 테스트명 | Delivery Assignment Baseline Run 01 - 20VU Concentrated No Sleep |
 | 대상 API | `POST /internal/deliveries` |
 | k6 script | `delivery-create-logic-load.js` |
 | 실행 명령어 | `PRE_TEST_SQL_FILE=db/seed/14-reset-delivery-perf-baseline.sql RECEIVER_COMPANY_IDS='20000000-0000-0000-0000-000000000002' SLEEP_SECONDS=0 STAGES='[{"duration":"1m","target":20},{"duration":"5m","target":20},{"duration":"2m","target":0}]' ./run-k6.sh delivery-create-logic-load.js` |
