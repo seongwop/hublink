@@ -29,6 +29,8 @@ public class DeliveryOutboxService {
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final ObjectMapper objectMapper;
     private final TransactionTemplate transactionTemplate;
+    // Outbox 단계별 처리 시간 계측
+    private final DeliveryPerformanceMetrics performanceMetrics;
 
     @Transactional
     public void enqueue(String topic, String eventKey, Object payload) {
@@ -36,24 +38,37 @@ public class DeliveryOutboxService {
             객체 payload -> JSON 문자열로 변환
         */
         String serializedPayload;
+        // payload 직렬화 처리 시간 계측
+        long serializeStartNanos = performanceMetrics.start();
         try {
             serializedPayload = objectMapper.writeValueAsString(payload);
         } catch (JsonProcessingException e) {
             throw new IllegalArgumentException("Kafka outbox payload 직렬화에 실패했습니다.", e);
+        } finally {
+            performanceMetrics.recordOutboxStage("serialize_payload", serializeStartNanos);
         }
         enqueueSerialized(topic, eventKey, serializedPayload);
     }
 
     @Transactional
     public void enqueueSerialized(String topic, String eventKey, String serializedPayload) {
-        if (outboxRepository.existsByTopicAndEventKey(topic, eventKey)) {
+        // Outbox 중복 여부 조회 처리 시간 계측
+        boolean alreadyExists = performanceMetrics.recordOutboxStage(
+                "exists_check",
+                () -> outboxRepository.existsByTopicAndEventKey(topic, eventKey)
+        );
+        if (alreadyExists) {
             log.debug("event=DELIVERY_OUTBOX_ALREADY_EXISTS topic={} eventKey={}", topic, eventKey);
             return;
         }
 
         try {
             // 같은 topic + eventKey 조합에 의한 중복 key 제약조건 충돌 제어
-            DeliveryOutbox savedOutbox = outboxRepository.saveAndFlush(DeliveryOutbox.create(topic, eventKey, serializedPayload));
+            // Outbox 저장 처리 시간 계측
+            DeliveryOutbox savedOutbox = performanceMetrics.recordOutboxStage(
+                    "save_and_flush",
+                    () -> outboxRepository.saveAndFlush(DeliveryOutbox.create(topic, eventKey, serializedPayload))
+            );
             log.info("event=DELIVERY_OUTBOX_ENQUEUED outboxId={} topic={} eventKey={}",
                     savedOutbox.getOutboxId(),
                     savedOutbox.getTopic(),

@@ -47,6 +47,8 @@ public class DeliveryCreateService {
     private final RedisStreamEventPublisher redisStreamEventPublisher;
     private final DeliveryOutboxService deliveryOutboxService;
     private final DeliveryAssignmentCountService deliveryAssignmentCountService;
+    // 배송 생성 단계별 처리 시간 계측
+    private final DeliveryPerformanceMetrics performanceMetrics;
 
     @Transactional
     public DeliveryResponse createDelivery(
@@ -60,6 +62,8 @@ public class DeliveryCreateService {
     ) {
         UUID departureHubId = hubRoutes.get(0).getDepartureHubId();
         UUID destinationHubId = getDestinationHubId(hubRoutes);
+        // 배송 생성 트랜잭션 전체 시간 계측
+        long transactionStartNanos = performanceMetrics.start();
 
         try {
             Delivery delivery = Delivery.create(
@@ -73,7 +77,11 @@ public class DeliveryCreateService {
                     hubManager.getHubManagerSlackId()
             );
             delivery.updateEstimatedArrival(calculateEstimatedArrivalAt(hubRoutes));
-            Delivery savedDelivery = deliveryRepository.save(delivery);
+            // 배송 저장 처리 시간 계측
+            Delivery savedDelivery = performanceMetrics.recordCreateStage(
+                    "delivery_save",
+                    () -> deliveryRepository.save(delivery)
+            );
             log.info("event=DELIVERY_ENTITY_SAVED orderId={} deliveryId={} departureHubId={} destinationHubId={}",
                     request.getOrderId(),
                     savedDelivery.getDeliveryId(),
@@ -87,36 +95,52 @@ public class DeliveryCreateService {
                     hubRoutes,
                     hubDeliveryManagerIds
             );
-            deliveryRouteHistoryRepository.saveAll(routeHistories);
+            // 배송 경로 저장 처리 시간 계측
+            performanceMetrics.recordCreateStage(
+                    "route_history_save_all",
+                    () -> deliveryRouteHistoryRepository.saveAll(routeHistories)
+            );
             log.info("event=DELIVERY_ROUTE_HISTORY_SAVED orderId={} deliveryId={} routeHistoryCount={}",
                     request.getOrderId(),
                     savedDelivery.getDeliveryId(),
                     routeHistories.size()
             );
-            deliveryAssignmentCountService.increaseCompanyAssignment(
-                    savedDelivery.getCompanyDeliveryManagerId()
+            // 업체 배송 담당자 집계 증가 처리 시간 계측
+            performanceMetrics.recordCreateStage(
+                    "assignment_count_company_increase",
+                    () -> deliveryAssignmentCountService.increaseCompanyAssignment(
+                            savedDelivery.getCompanyDeliveryManagerId()
+                    )
             );
-            deliveryAssignmentCountService.increaseHubAssignments(
-                    routeHistories.stream()
-                            .filter(routeHistory -> routeHistory.getRouteType() == DeliveryRouteType.HUB_TO_HUB)
-                            .map(DeliveryRouteHistory::getDeliveryManagerId)
-                            .toList()
+            // 허브 배송 담당자 집계 증가 처리 시간 계측
+            performanceMetrics.recordCreateStage(
+                    "assignment_count_hub_increase",
+                    () -> deliveryAssignmentCountService.increaseHubAssignments(
+                            routeHistories.stream()
+                                    .filter(routeHistory -> routeHistory.getRouteType() == DeliveryRouteType.HUB_TO_HUB)
+                                    .map(DeliveryRouteHistory::getDeliveryManagerId)
+                                    .toList()
+                    )
             );
 
             // 커밋이 완료되면 콜백으로 이벤트 발행
-            redisStreamEventPublisher.publishAfterCommit(
-                    RedisStreamEventPublisher.DEADLINE_REQUESTED_STREAM,
-                    DeadlineRequestedEvent.of(
-                            savedDelivery,
-                            request,
-                            hubManager.getHubManagerId(),
-                            hubManager.getHubManagerSlackId(),
-                            companyDeliveryManager.getDeliveryManagerName(),
-                            companyDeliveryManager.getDeliveryManagerEmail(),
-                            hubRoutes.get(0).getDepartureHubName(),
-                            toDeadlineRouteInfo(hubRoutes),
-                            workStartTime,
-                            workEndTime
+            // 콜백 등록 처리 시간 계측
+            performanceMetrics.recordCreateStage(
+                    "deadline_event_register",
+                    () -> redisStreamEventPublisher.publishAfterCommit(
+                            RedisStreamEventPublisher.DEADLINE_REQUESTED_STREAM,
+                            DeadlineRequestedEvent.of(
+                                    savedDelivery,
+                                    request,
+                                    hubManager.getHubManagerId(),
+                                    hubManager.getHubManagerSlackId(),
+                                    companyDeliveryManager.getDeliveryManagerName(),
+                                    companyDeliveryManager.getDeliveryManagerEmail(),
+                                    hubRoutes.get(0).getDepartureHubName(),
+                                    toDeadlineRouteInfo(hubRoutes),
+                                    workStartTime,
+                                    workEndTime
+                            )
                     )
             );
             log.info("event=AI_DEADLINE_REQUEST_REGISTERED orderId={} deliveryId={} stream={}",
@@ -126,7 +150,11 @@ public class DeliveryCreateService {
             );
 
             DeliveryResponse response = DeliveryResponse.from(savedDelivery);
-            deliveryOutboxService.enqueue(CREATE_SUCCEED_TOPIC, request.getOrderId().toString(), response);
+            // Outbox 저장 처리 시간 계측
+            performanceMetrics.recordCreateStage(
+                    "outbox_enqueue",
+                    () -> deliveryOutboxService.enqueue(CREATE_SUCCEED_TOPIC, request.getOrderId().toString(), response)
+            );
             log.info("event=DELIVERY_SUCCESS_OUTBOX_ENQUEUED orderId={} deliveryId={} topic={}",
                     request.getOrderId(),
                     savedDelivery.getDeliveryId(),
@@ -139,6 +167,9 @@ public class DeliveryCreateService {
                     e.getMostSpecificCause().getMessage()
             );
             throw new CustomException(translateIntegrityException(e));
+        } finally {
+            // 배송 생성 트랜잭션 전체 시간 기록
+            performanceMetrics.recordCreateStage("total_transaction", transactionStartNanos);
         }
     }
 

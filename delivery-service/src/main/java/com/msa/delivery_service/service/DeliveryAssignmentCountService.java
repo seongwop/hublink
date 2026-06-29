@@ -17,6 +17,8 @@ import java.util.UUID;
 public class DeliveryAssignmentCountService {
 
     private final DeliveryAssignmentCountRepository deliveryAssignmentCountRepository;
+    // 배송 담당자 배정 집계 처리 시간 계측
+    private final DeliveryPerformanceMetrics performanceMetrics;
 
     @Transactional(readOnly = true)
     public Map<UUID, Long> getCompanyAssignmentCounts(Collection<UUID> managerIds) {
@@ -44,19 +46,29 @@ public class DeliveryAssignmentCountService {
 
     @Transactional
     public void decreaseCompanyAssignment(UUID managerId) {
-        deliveryAssignmentCountRepository.decreaseAssignmentCount(
-                managerId,
+        // 업체 배송 담당자 집계 감소 처리 시간 계측
+        performanceMetrics.recordAssignmentCountOperation(
                 DeliveryAssignmentType.COMPANY_DELIVERY.name(),
-                1L
+                "decrease",
+                () -> deliveryAssignmentCountRepository.decreaseAssignmentCount(
+                        managerId,
+                        DeliveryAssignmentType.COMPANY_DELIVERY.name(),
+                        1L
+                )
         );
     }
 
     @Transactional
     public void decreaseHubAssignment(UUID managerId) {
-        deliveryAssignmentCountRepository.decreaseAssignmentCount(
-                managerId,
+        // 허브 배송 담당자 집계 감소 처리 시간 계측
+        performanceMetrics.recordAssignmentCountOperation(
                 DeliveryAssignmentType.HUB_DELIVERY.name(),
-                1L
+                "decrease",
+                () -> deliveryAssignmentCountRepository.decreaseAssignmentCount(
+                        managerId,
+                        DeliveryAssignmentType.HUB_DELIVERY.name(),
+                        1L
+                )
         );
     }
 
@@ -69,10 +81,15 @@ public class DeliveryAssignmentCountService {
         }
 
         Map<UUID, Long> countMap = new HashMap<>();
+        // 배송 담당자 배정 집계 조회 처리 시간 계측
         for (ManagerAssignmentCount assignmentCount
-                : deliveryAssignmentCountRepository.findAssignmentCountsByManagerIds(
-                        managerIds,
-                        assignmentType
+                : performanceMetrics.recordAssignmentCountOperation(
+                        assignmentType.name(),
+                        "read",
+                        () -> deliveryAssignmentCountRepository.findAssignmentCountsByManagerIds(
+                                managerIds,
+                                assignmentType
+                        )
                 )) {
             countMap.put(assignmentCount.getManagerId(), assignmentCount.getAssignmentCount());
         }
@@ -83,6 +100,11 @@ public class DeliveryAssignmentCountService {
             Map<UUID, Long> deltas,
             DeliveryAssignmentType assignmentType
     ) {
-        deliveryAssignmentCountRepository.increaseAssignmentCounts(deltas, assignmentType);
+        // 배송 담당자 배정 집계 증가 처리 시간 계측
+        performanceMetrics.recordAssignmentCountOperation(
+                assignmentType.name(),
+                "increase",
+                () -> deliveryAssignmentCountRepository.increaseAssignmentCounts(deltas, assignmentType)
+        );
     }
 }
