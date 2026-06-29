@@ -346,6 +346,7 @@ jobs:
       AI_ENABLED: ${{ vars.AI_ENABLED }}
       KAKAO_ENABLED: ${{ vars.KAKAO_ENABLED }}
       LOG_LEVEL_ROOT: ${{ vars.LOG_LEVEL_ROOT }}
+      DELIVERY_DB_MAX_POOL_SIZE: ${{ vars.DELIVERY_DB_MAX_POOL_SIZE }}
 
     steps:
       - name: Checkout
@@ -387,6 +388,7 @@ jobs:
           SWAGGER_GATEWAY_URL="${SWAGGER_GATEWAY_URL:-http://${PLATFORM_VM_EXTERNAL_IP}:19091}"
           CORS_ALLOWED_ORIGIN="${CORS_ALLOWED_ORIGIN:-${SWAGGER_GATEWAY_URL}}"
           LOG_LEVEL_ROOT="${LOG_LEVEL_ROOT:-WARN}"
+          DELIVERY_DB_MAX_POOL_SIZE="${DELIVERY_DB_MAX_POOL_SIZE:-20}"
 
           cat > .env.gcp <<EOF
           IMAGE_REGISTRY=${IMAGE_REGISTRY}
@@ -402,6 +404,7 @@ jobs:
           DB_URL=jdbc:postgresql://${DATA_VM_IP}:5432/hublink
           DB_USERNAME=${DB_USERNAME}
           DB_PASSWORD=${DB_PASSWORD}
+          DELIVERY_DB_MAX_POOL_SIZE=${DELIVERY_DB_MAX_POOL_SIZE}
 
           REDIS_HOST=${DATA_VM_IP}
           REDIS_PORT=6379
