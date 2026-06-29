@@ -1,5 +1,13 @@
 # Delivery Assignment Optimization
 
+## 최신 실험 요약
+
+- `run06`: mixed bulk upsert로 `COMPANY_DELIVERY`와 `HUB_DELIVERY` 집계 증가 write를 2회에서 1회로 축소했다.
+- 집계 증가 계측값은 기존 개별 bulk upsert 합산 약 1.227ms에서 mixed bulk upsert 0.821ms로 줄었다.
+- 하지만 100VU end-to-end 결과는 TPS 19.52 req/s, p95 5.99s, p99 9.11s, lock timeout 1건으로 개선되지 않았다.
+- 따라서 현재 100VU 병목은 집계 증가 write보다 company lock wait와 Hikari connection pending 영향이 더 큰 것으로 판단한다.
+- 상세 결과: `results/03-aggregate-table/delivery-assignment-aggregate-table-run06-100vu-mixed-bulk-upsert-lock-wait-2s.md`
+
 배송 기사 배정 성능 개선 작업 공간이다.  
 최적화 전 baseline, 구조 변경 단계별 결과, 최종 검증 결과를 누적한다.
 
