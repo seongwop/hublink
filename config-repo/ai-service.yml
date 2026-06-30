@@ -10,6 +10,9 @@ spring:
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: ${AI_DB_MAX_POOL_SIZE:3}
+      minimum-idle: ${AI_DB_MIN_IDLE:1}
 
   jpa:
     hibernate:
