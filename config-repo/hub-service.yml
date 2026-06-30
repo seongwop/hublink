@@ -9,6 +9,9 @@ spring:
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: ${HUB_DB_MAX_POOL_SIZE:10}
+      minimum-idle: ${HUB_DB_MIN_IDLE:2}
   data:
     redis:
       host: ${REDIS_HOST}
