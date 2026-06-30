@@ -45,6 +45,53 @@ set -euo pipefail
 
 ROLE="$(cat /etc/hublink-role 2>/dev/null || true)"
 REMOTE_DIR="/opt/hublink"
+EUREKA_URL="http://10.10.0.10:19090"
+CONFIG_URL="http://10.10.0.10:19092"
+DATA_HOST="10.10.0.40"
+
+wait_http() {
+  local name="$1"
+  local url="$2"
+  local max_seconds="$${3:-600}"
+
+  echo "waiting for $name: $url"
+  for _ in $(seq 1 "$max_seconds"); do
+    if curl -fsS "$url" >/dev/null 2>&1; then
+      echo "$name is ready"
+      return 0
+    fi
+    sleep 1
+  done
+
+  echo "$name is not ready after $${max_seconds}s" >&2
+  return 1
+}
+
+wait_tcp() {
+  local name="$1"
+  local host="$2"
+  local port="$3"
+  local max_seconds="$${4:-600}"
+
+  echo "waiting for $name: $host:$port"
+  for _ in $(seq 1 "$max_seconds"); do
+    if timeout 1 bash -c ":</dev/tcp/$host/$port" >/dev/null 2>&1; then
+      echo "$name is ready"
+      return 0
+    fi
+    sleep 1
+  done
+
+  echo "$name is not ready after $${max_seconds}s" >&2
+  return 1
+}
+
+wait_eureka_app() {
+  local app="$1"
+  local max_seconds="$${2:-600}"
+
+  wait_http "Eureka app $app" "$EUREKA_URL/eureka/apps/$app" "$max_seconds"
+}
 
 case "$ROLE" in
   platform)
@@ -72,7 +119,47 @@ if [ ! -f "$REMOTE_DIR/.env.gcp" ] || [ ! -f "$REMOTE_DIR/$COMPOSE_FILE" ]; then
 fi
 
 cd "$REMOTE_DIR"
+
+case "$ROLE" in
+  domain-a)
+    wait_http "Eureka" "$EUREKA_URL/actuator/health"
+    wait_http "Config Server" "$CONFIG_URL/actuator/health"
+    wait_tcp "PostgreSQL" "$DATA_HOST" 5432
+    wait_tcp "Redis" "$DATA_HOST" 6379
+    wait_tcp "Kafka" "$DATA_HOST" 9092
+    ;;
+  domain-b)
+    wait_http "Eureka" "$EUREKA_URL/actuator/health"
+    wait_http "Config Server" "$CONFIG_URL/actuator/health"
+    wait_tcp "PostgreSQL" "$DATA_HOST" 5432
+    wait_tcp "Redis" "$DATA_HOST" 6379
+    wait_tcp "Kafka" "$DATA_HOST" 9092
+    wait_eureka_app "COMPANY-SERVICE"
+    wait_eureka_app "HUB-SERVICE"
+    wait_eureka_app "USER-SERVICE"
+    wait_eureka_app "PRODUCT-SERVICE"
+    ;;
+esac
+
 docker compose --env-file .env.gcp -f "$COMPOSE_FILE" up -d
+
+case "$ROLE" in
+  platform)
+    wait_http "Eureka" "$EUREKA_URL/actuator/health"
+    wait_http "Config Server" "$CONFIG_URL/actuator/health"
+    ;;
+  domain-a)
+    wait_eureka_app "COMPANY-SERVICE"
+    wait_eureka_app "HUB-SERVICE"
+    wait_eureka_app "USER-SERVICE"
+    wait_eureka_app "PRODUCT-SERVICE"
+    ;;
+  domain-b)
+    wait_eureka_app "DELIVERY-SERVICE"
+    wait_eureka_app "ORDER-SERVICE"
+    wait_eureka_app "STOCK-SERVICE"
+    ;;
+esac
 SCRIPT
 
 chmod +x /usr/local/bin/hublink-compose-up

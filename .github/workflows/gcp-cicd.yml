@@ -364,6 +364,7 @@ jobs:
       SLACK_DB_MIN_IDLE: ${{ vars.SLACK_DB_MIN_IDLE }}
       AI_DB_MAX_POOL_SIZE: ${{ vars.AI_DB_MAX_POOL_SIZE }}
       AI_DB_MIN_IDLE: ${{ vars.AI_DB_MIN_IDLE }}
+      SPRING_CONFIG_IMPORT: ${{ vars.SPRING_CONFIG_IMPORT }}
 
     steps:
       - name: Checkout
@@ -423,6 +424,7 @@ jobs:
           SLACK_DB_MIN_IDLE="${SLACK_DB_MIN_IDLE:-1}"
           AI_DB_MAX_POOL_SIZE="${AI_DB_MAX_POOL_SIZE:-3}"
           AI_DB_MIN_IDLE="${AI_DB_MIN_IDLE:-1}"
+          SPRING_CONFIG_IMPORT="${SPRING_CONFIG_IMPORT:-optional:configserver:http://${PLATFORM_VM_IP}:19092}"
 
           cat > .env.gcp <<EOF
           IMAGE_REGISTRY=${IMAGE_REGISTRY}
@@ -465,6 +467,7 @@ jobs:
 
           EUREKA_URL=http://${PLATFORM_VM_IP}:19090/eureka/
           CONFIG_SERVER_URL=http://${PLATFORM_VM_IP}:19092
+          SPRING_CONFIG_IMPORT=${SPRING_CONFIG_IMPORT}
 
           SWAGGER_GATEWAY_URL=${SWAGGER_GATEWAY_URL}
           ZIPKIN_URL=http://${MONITORING_VM_IP}:9411/api/v2/spans

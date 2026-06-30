@@ -5,6 +5,10 @@ resource "google_compute_resource_policy" "vm_schedule" {
   region = var.region
 
   instance_schedule_policy {
+    vm_start_schedule {
+      schedule = var.vm_start_schedule
+    }
+
     vm_stop_schedule {
       schedule = var.vm_stop_schedule
     }
