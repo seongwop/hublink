@@ -75,5 +75,6 @@ cloud_nat_enabled = true
 
 # VM 자동 종료 스케줄
 vm_schedule_enabled   = true
+vm_start_schedule     = "0 10 * * *"
 vm_stop_schedule      = "0 3 * * *"
 vm_schedule_time_zone = "Asia/Seoul"

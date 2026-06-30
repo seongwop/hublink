@@ -1,5 +1,25 @@
 # Delivery Assignment Optimization
 
+## Latest Run Note
+
+- `pool-tuning run02/run03/run04/run05`: fallback 접근자를 `public`으로 수정한 뒤 20VU, 50VU, 80VU, 100VU를 재측정했다.
+- 네 run 모두 `DELIVERY_011`, `DELIVERY_013`, `IllegalAccessException`은 0건이었다. 즉 fallback 접근 오류와 hub/user 502 폭주는 재현되지 않았다.
+- 20VU는 재측정 대표값 기준 TPS 13.77 req/s, p95 2.03s, 실패 84건(`DELIVERY_014`)이었다.
+- 50VU는 재측정 대표값 기준 TPS 18.95 req/s, p95 3.01s, 실패 43건(`DELIVERY_014`)이었다.
+- 80VU는 TPS 19.41 req/s, p95 4.61s, p99 7.12s, 실패 72건(`DELIVERY_014`)이었다.
+- 100VU는 TPS 20.05 req/s, p95 5.54s, p99 8.54s, 실패 30건(`DELIVERY_014`)이었다.
+- 100VU는 80VU 대비 TPS가 19.41에서 20.05로 소폭만 증가했고 Hikari pending은 62에서 82로 증가해, 현재 구조의 처리량 한계가 50VU 이후부터 뚜렷하게 드러난다.
+- 현재 재현 가능한 병목은 외부 서비스 통신보다 company delivery manager 배정 lock timeout과 Hikari pending 쪽이다.
+- 상세 결과: `results/06-pool-bucket-lock/delivery-assignment-pool-tuning-run02-20vu-fallback-public-lock-wait-2s.md`
+- 상세 결과: `results/06-pool-bucket-lock/delivery-assignment-pool-tuning-run03-50vu-fallback-public-lock-wait-2s.md`
+- 상세 결과: `results/06-pool-bucket-lock/delivery-assignment-pool-tuning-run04-80vu-fallback-public-lock-wait-2s.md`
+- 상세 결과: `results/06-pool-bucket-lock/delivery-assignment-pool-tuning-run05-100vu-fallback-public-lock-wait-2s.md`
+
+- `pool-tuning run01`: Hikari pool 설정 적용은 확인했지만 100VU 테스트는 연속 502로 51.6초 만에 중단했다.
+- 중단 원인은 `DeliveryExternalService`의 Resilience4j fallback 메서드가 `private`이라 fallback 호출 시 `IllegalAccessException`이 발생한 것이다.
+- 이 run은 성능 비교 결과로 사용하지 않고, fallback 접근 오류 수정 후 같은 100VU 조건으로 재측정한다.
+- 상세 결과: `results/06-pool-bucket-lock/delivery-assignment-pool-tuning-run01-100vu-aborted-fallback-access.md`
+
 ## 최신 실험 요약
 
 - `run06`: mixed bulk upsert로 `COMPANY_DELIVERY`와 `HUB_DELIVERY` 집계 증가 write를 2회에서 1회로 축소했다.
