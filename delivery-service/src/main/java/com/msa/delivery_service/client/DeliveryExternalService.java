@@ -47,25 +47,25 @@ public class DeliveryExternalService {
         return userClient.getDeliveryManagers(hubIds);
     }
 
-    private HubResponse getHubFallback(UUID hubId, Throwable e) {
+    public HubResponse getHubFallback(UUID hubId, Throwable e) {
         throw new CustomException(e instanceof FeignException.NotFound
                 ? DeliveryErrorCode.HUB_NOT_FOUND
                 : DeliveryErrorCode.HUB_SERVICE_UNAVAILABLE);
     }
 
-    private List<HubRouteResponse> getHubRoutesFallback(DeliveryRequest request, Throwable e) {
+    public List<HubRouteResponse> getHubRoutesFallback(DeliveryRequest request, Throwable e) {
         throw new CustomException(e instanceof FeignException.NotFound
                 ? DeliveryErrorCode.NO_HUB_ROUTE
                 : DeliveryErrorCode.HUB_SERVICE_UNAVAILABLE);
     }
 
-    private HubManagerResponse getHubManagerFallback(UUID departureHubId, Throwable e) {
+    public HubManagerResponse getHubManagerFallback(UUID departureHubId, Throwable e) {
         throw new CustomException(e instanceof FeignException.NotFound
                 ? DeliveryErrorCode.NO_HUB_MANAGER
                 : DeliveryErrorCode.USER_SERVICE_UNAVAILABLE);
     }
 
-    private List<DeliveryManagerResponse> getDeliveryManagersFallback(List<UUID> hubIds, Throwable e) {
+    public List<DeliveryManagerResponse> getDeliveryManagersFallback(List<UUID> hubIds, Throwable e) {
         throw new CustomException(e instanceof FeignException.NotFound
                 ? DeliveryErrorCode.NO_DELIVERY_MANAGER
                 : DeliveryErrorCode.USER_SERVICE_UNAVAILABLE);
