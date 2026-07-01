@@ -10,15 +10,15 @@
 - 100VU는 TPS 20.05 req/s, p95 5.54s, p99 8.54s, 실패 30건(`DELIVERY_014`)이었다.
 - 100VU는 80VU 대비 TPS가 19.41에서 20.05로 소폭만 증가했고 Hikari pending은 62에서 82로 증가해, 현재 구조의 처리량 한계가 50VU 이후부터 뚜렷하게 드러난다.
 - 현재 재현 가능한 병목은 외부 서비스 통신보다 company delivery manager 배정 lock timeout과 Hikari pending 쪽이다.
-- 상세 결과: `results/06-pool-bucket-lock/delivery-assignment-pool-tuning-run02-20vu-fallback-public-lock-wait-2s.md`
-- 상세 결과: `results/06-pool-bucket-lock/delivery-assignment-pool-tuning-run03-50vu-fallback-public-lock-wait-2s.md`
-- 상세 결과: `results/06-pool-bucket-lock/delivery-assignment-pool-tuning-run04-80vu-fallback-public-lock-wait-2s.md`
-- 상세 결과: `results/06-pool-bucket-lock/delivery-assignment-pool-tuning-run05-100vu-fallback-public-lock-wait-2s.md`
+- 상세 결과: `results/06-pool-tuning/delivery-assignment-pool-tuning-run02-20vu-fallback-public-lock-wait-2s.md`
+- 상세 결과: `results/06-pool-tuning/delivery-assignment-pool-tuning-run03-50vu-fallback-public-lock-wait-2s.md`
+- 상세 결과: `results/06-pool-tuning/delivery-assignment-pool-tuning-run04-80vu-fallback-public-lock-wait-2s.md`
+- 상세 결과: `results/06-pool-tuning/delivery-assignment-pool-tuning-run05-100vu-fallback-public-lock-wait-2s.md`
 
 - `pool-tuning run01`: Hikari pool 설정 적용은 확인했지만 100VU 테스트는 연속 502로 51.6초 만에 중단했다.
 - 중단 원인은 `DeliveryExternalService`의 Resilience4j fallback 메서드가 `private`이라 fallback 호출 시 `IllegalAccessException`이 발생한 것이다.
 - 이 run은 성능 비교 결과로 사용하지 않고, fallback 접근 오류 수정 후 같은 100VU 조건으로 재측정한다.
-- 상세 결과: `results/06-pool-bucket-lock/delivery-assignment-pool-tuning-run01-100vu-aborted-fallback-access.md`
+- 상세 결과: `results/06-pool-tuning/delivery-assignment-pool-tuning-run01-100vu-aborted-fallback-access.md`
 
 ## 최신 실험 요약
 
@@ -26,7 +26,7 @@
 - 집계 증가 계측값은 기존 개별 bulk upsert 합산 약 1.227ms에서 mixed bulk upsert 0.821ms로 줄었다.
 - 하지만 100VU end-to-end 결과는 TPS 19.52 req/s, p95 5.99s, p99 9.11s, lock timeout 1건으로 개선되지 않았다.
 - 따라서 현재 100VU 병목은 집계 증가 write보다 company lock wait와 Hikari connection pending 영향이 더 큰 것으로 판단한다.
-- 상세 결과: `results/03-aggregate-table/delivery-assignment-aggregate-table-run06-100vu-mixed-bulk-upsert-lock-wait-2s.md`
+- 상세 결과: `results/05-mixed-bulk-upsert/delivery-assignment-aggregate-table-run06-100vu-mixed-bulk-upsert-lock-wait-2s.md`
 
 배송 기사 배정 성능 개선 작업 공간이다.  
 최적화 전 baseline, 구조 변경 단계별 결과, 최종 검증 결과를 누적한다.
@@ -68,11 +68,11 @@
    - concentrated 50VU hotspot 확인
 3. `flush/saveAndFlush` 최소화
 4. 집계 테이블 도입
-5. 집계 테이블 기반 배정 로직 전환
-6. Redis 락 버전에서 락 범위 분산
-7. 집계 테이블 기반 DB 락 버전 비교
-8. pool / bucket 단위 락 분리 비교
-9. 구조 변경 후에도 남는 병목 쿼리만 후순위로 최적화
+5. 집계 테이블 기반 bulk upsert 전환
+6. `COMPANY_DELIVERY` / `HUB_DELIVERY` mixed bulk upsert 전환
+7. Hikari pool 조정과 fallback 접근자 수정 후 재측정
+8. 집계 테이블 기반 DB row lock 버전 비교
+9. 구조 변경 후에도 남는 병목 쿼리와 outbox polling 최적화
 
 ## Baseline Test Plan
 
@@ -194,17 +194,19 @@ delivery-assignment-optimization/
 |   +-- 01-baseline/
 |   +-- 02-flush-save/
 |   +-- 03-aggregate-table/
-|   +-- 04-redis-lock-split/
-|   +-- 05-db-lock/
-|   +-- 06-pool-bucket-lock/
-|   +-- 07-post-optimization-validation/
+|   +-- 04-aggregate-bulk-upsert/
+|   +-- 05-mixed-bulk-upsert/
+|   +-- 06-pool-tuning/
+|   +-- 07-db-lock/
+|   +-- 08-post-optimization-validation/
 ```
 
 - `00-legacy`: 기존 create 결과 보관
 - `01-baseline`: 고정 baseline seed 기준 최적화 전 결과
 - `02-flush-save`: flush 최소화 전후 비교
-- `03-aggregate-table`: 집계 테이블 도입 후 비교
-- `04-redis-lock-split`: Redis 락 범위 분산 비교
-- `05-db-lock`: DB 락 대체 버전 비교
-- `06-pool-bucket-lock`: pool / bucket 단위 분산 비교
-- `07-post-optimization-validation`: distributed, stress, 추가 확인
+- `03-aggregate-table`: 집계 테이블 도입 직후 결과
+- `04-aggregate-bulk-upsert`: 집계 테이블 기반 bulk upsert 적용 결과
+- `05-mixed-bulk-upsert`: `COMPANY_DELIVERY`와 `HUB_DELIVERY` 집계 write를 한 번으로 합친 결과
+- `06-pool-tuning`: Hikari pool 조정과 fallback 접근자 수정 후 재측정 결과
+- `07-db-lock`: DB row lock 대체 버전 비교
+- `08-post-optimization-validation`: distributed, stress, 추가 확인
