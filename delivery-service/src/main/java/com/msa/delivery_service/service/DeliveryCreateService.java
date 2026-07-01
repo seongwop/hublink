@@ -5,7 +5,6 @@ import com.msa.delivery_service.client.hub.dto.HubRouteResponse;
 import com.msa.delivery_service.entity.Delivery;
 import com.msa.delivery_service.entity.DeliveryRouteHistory;
 import com.msa.delivery_service.enums.DeliveryErrorCode;
-import com.msa.delivery_service.enums.DeliveryRouteType;
 import com.msa.delivery_service.client.user.dto.DeliveryManagerResponse;
 import com.msa.delivery_service.client.user.dto.HubManagerResponse;
 import com.msa.delivery_service.repository.DeliveryRepository;
@@ -46,7 +45,6 @@ public class DeliveryCreateService {
     private final DeliveryRouteHistoryRepository deliveryRouteHistoryRepository;
     private final RedisStreamEventPublisher redisStreamEventPublisher;
     private final DeliveryOutboxService deliveryOutboxService;
-    private final DeliveryAssignmentCountService deliveryAssignmentCountService;
     // 배송 생성 단계별 처리 시간 계측
     private final DeliveryPerformanceMetrics performanceMetrics;
 
@@ -104,17 +102,6 @@ public class DeliveryCreateService {
                     request.getOrderId(),
                     savedDelivery.getDeliveryId(),
                     routeHistories.size()
-            );
-            // 배송 담당자 집계 증가 처리 시간 계측
-            performanceMetrics.recordCreateStage(
-                    "assignment_count_mixed_increase",
-                    () -> deliveryAssignmentCountService.increaseDeliveryAssignments(
-                            savedDelivery.getCompanyDeliveryManagerId(),
-                            routeHistories.stream()
-                                    .filter(routeHistory -> routeHistory.getRouteType() == DeliveryRouteType.HUB_TO_HUB)
-                                    .map(DeliveryRouteHistory::getDeliveryManagerId)
-                                    .toList()
-                    )
             );
 
             // 커밋이 완료되면 콜백으로 이벤트 발행
