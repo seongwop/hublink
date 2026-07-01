@@ -2,6 +2,15 @@
 
 ## Latest Run Note
 
+- `redis-lock-scope run01/run02`: Redis 분산락을 유지하되 락 안에서는 담당자 선택과 집계 증가 예약만 수행하도록 줄인 뒤 20VU를 2회 측정했다.
+- run01은 TPS 12.96 req/s, p95 2.09s, 실패 126건(`DELIVERY_014`, 2.02%)이었다.
+- run02는 TPS 13.81 req/s, p95 2.12s, 실패 205건(`DELIVERY_014`, 3.09%)이었다.
+- DB 반영량은 두 run 모두 k6 성공 건수와 일치했다.
+- 새 계측 기준 lock hold 평균은 run01 73ms, run02 69ms로 짧았지만 company lock wait는 평균 0.9~1.0s 수준이고 timeout은 2s까지 도달했다.
+- 따라서 현재 병목은 mixed bulk upsert나 배송 저장 트랜잭션보다 company delivery manager lock key 집중으로 판단한다. 락 범위 축소만으로는 20VU 실패율 개선이 확인되지 않았다.
+- 상세 결과: `results/09-redis-lock-scope-reduction/delivery-assignment-redis-lock-scope-run01-20vu-lock-wait-2s.md`
+- 상세 결과: `results/09-redis-lock-scope-reduction/delivery-assignment-redis-lock-scope-run02-20vu-lock-wait-2s.md`
+
 - `pool-tuning run02/run03/run04/run05`: fallback 접근자를 `public`으로 수정한 뒤 20VU, 50VU, 80VU, 100VU를 재측정했다.
 - 네 run 모두 `DELIVERY_011`, `DELIVERY_013`, `IllegalAccessException`은 0건이었다. 즉 fallback 접근 오류와 hub/user 502 폭주는 재현되지 않았다.
 - 20VU는 재측정 대표값 기준 TPS 13.77 req/s, p95 2.03s, 실패 84건(`DELIVERY_014`)이었다.
@@ -199,6 +208,7 @@ delivery-assignment-optimization/
 |   +-- 06-pool-tuning/
 |   +-- 07-db-lock/
 |   +-- 08-post-optimization-validation/
+|   +-- 09-redis-lock-scope-reduction/
 ```
 
 - `00-legacy`: 기존 create 결과 보관
@@ -210,3 +220,4 @@ delivery-assignment-optimization/
 - `06-pool-tuning`: Hikari pool 조정과 fallback 접근자 수정 후 재측정 결과
 - `07-db-lock`: DB row lock 대체 버전 비교
 - `08-post-optimization-validation`: distributed, stress, 추가 확인
+- `09-redis-lock-scope-reduction`: Redis 락 내부 작업을 배정 예약 구간으로 축소한 결과
