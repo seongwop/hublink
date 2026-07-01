@@ -67,6 +67,33 @@ public class DeliveryAssignmentCountService {
     }
 
     @Transactional
+    public void decreaseDeliveryAssignments(
+            UUID companyDeliveryManagerId,
+            Collection<UUID> hubDeliveryManagerIds
+    ) {
+        Map<UUID, Long> hubDeltas = toDeltas(hubDeliveryManagerIds);
+
+        performanceMetrics.recordAssignmentCountOperation(
+                "mixed",
+                "reservation_compensate",
+                () -> {
+                    deliveryAssignmentCountRepository.decreaseAssignmentCount(
+                            companyDeliveryManagerId,
+                            DeliveryAssignmentType.COMPANY_DELIVERY.name(),
+                            1L
+                    );
+                    for (Map.Entry<UUID, Long> hubDelta : hubDeltas.entrySet()) {
+                        deliveryAssignmentCountRepository.decreaseAssignmentCount(
+                                hubDelta.getKey(),
+                                DeliveryAssignmentType.HUB_DELIVERY.name(),
+                                hubDelta.getValue()
+                        );
+                    }
+                }
+        );
+    }
+
+    @Transactional
     public void decreaseCompanyAssignment(UUID managerId) {
         // 업체 배송 담당자 집계 감소 처리 시간 계측
         performanceMetrics.recordAssignmentCountOperation(

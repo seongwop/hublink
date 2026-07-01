@@ -247,25 +247,19 @@ public class DeliveryService {
         // 업체 배송 기사 Lock 키 1개 + 허브 배송 기사 Lock 키 N개
         List<String> lockKeys = buildAssignmentLockKeys(hubRoutes);
 
-        // Lock을 전부 잡고 인자로 들어간 function을 수행
-        return deliveryAssignmentLockService.executeWithLocks(lockKeys, () -> {
-            DeliveryManagerResponse companyDeliveryManager = assignCompanyDeliveryManager(
-                    deliveryManagers,
-                    getDestinationHubId(hubRoutes)
-            );
-            Map<UUID, UUID> hubDeliveryManagerIds = assignHubDeliveryManagers(hubRoutes, deliveryManagers);
-            log.info("event=DELIVERY_MANAGER_ASSIGNED orderId={} companyDeliveryManagerId={} hubRouteAssignmentCount={}",
-                    request.getOrderId(),
-                    companyDeliveryManager.getDeliveryManagerId(),
-                    hubDeliveryManagerIds.size()
-            );
+        // Lock 안에서는 배송 담당자 배정 예약까지만 수행
+        AssignmentReservation reservation = deliveryAssignmentLockService.executeWithLocks(
+                lockKeys,
+                () -> reserveDeliveryAssignment(request, hubRoutes, deliveryManagers)
+        );
 
+        try {
             DeliveryResponse response = deliveryCreateService.createDelivery(
                     request,
                     hubManager,
-                    companyDeliveryManager,
+                    reservation.companyDeliveryManager(),
                     hubRoutes,
-                    hubDeliveryManagerIds,
+                    reservation.hubDeliveryManagerIds(),
                     WORK_START_TIME,
                     WORK_END_TIME
             );
@@ -274,7 +268,61 @@ public class DeliveryService {
                     response.getDeliveryId()
             );
             return response;
-        });
+        } catch (RuntimeException e) {
+            compensateAssignmentReservation(request, reservation, e);
+            throw e;
+        }
+    }
+
+    private AssignmentReservation reserveDeliveryAssignment(
+            DeliveryRequest request,
+            List<HubRouteResponse> hubRoutes,
+            List<DeliveryManagerResponse> deliveryManagers
+    ) {
+        DeliveryManagerResponse companyDeliveryManager = assignCompanyDeliveryManager(
+                deliveryManagers,
+                getDestinationHubId(hubRoutes)
+        );
+        Map<UUID, UUID> hubDeliveryManagerIds = assignHubDeliveryManagers(hubRoutes, deliveryManagers);
+        log.info("event=DELIVERY_MANAGER_ASSIGNED orderId={} companyDeliveryManagerId={} hubRouteAssignmentCount={}",
+                request.getOrderId(),
+                companyDeliveryManager.getDeliveryManagerId(),
+                hubDeliveryManagerIds.size()
+        );
+
+        deliveryAssignmentCountService.increaseDeliveryAssignments(
+                companyDeliveryManager.getDeliveryManagerId(),
+                hubDeliveryManagerIds.values()
+        );
+        log.info("event=DELIVERY_ASSIGNMENT_RESERVED orderId={} companyDeliveryManagerId={} hubRouteAssignmentCount={}",
+                request.getOrderId(),
+                companyDeliveryManager.getDeliveryManagerId(),
+                hubDeliveryManagerIds.size()
+        );
+
+        return new AssignmentReservation(companyDeliveryManager, hubDeliveryManagerIds);
+    }
+
+    private void compensateAssignmentReservation(
+            DeliveryRequest request,
+            AssignmentReservation reservation,
+            RuntimeException cause
+    ) {
+        try {
+            deliveryAssignmentCountService.decreaseDeliveryAssignments(
+                    reservation.companyDeliveryManager().getDeliveryManagerId(),
+                    reservation.hubDeliveryManagerIds().values()
+            );
+            log.warn("event=DELIVERY_ASSIGNMENT_RESERVATION_COMPENSATED orderId={} reason={}",
+                    request.getOrderId(),
+                    cause.toString()
+            );
+        } catch (RuntimeException compensationException) {
+            log.error("event=DELIVERY_ASSIGNMENT_RESERVATION_COMPENSATION_FAILED orderId={}",
+                    request.getOrderId(),
+                    compensationException
+            );
+        }
     }
 
     private List<String> buildAssignmentLockKeys(List<HubRouteResponse> hubRoutes) {
@@ -484,5 +532,11 @@ public class DeliveryService {
     // Hub-Hub 경로가 아닌 원소의 경우 Hub-Company이므로 해당 경로의 출발 hub가 마지막 hub
     private UUID getDestinationHubId(List<HubRouteResponse> hubRoutes) {
         return hubRoutes.get(hubRoutes.size() - 1).getDepartureHubId();
+    }
+
+    private record AssignmentReservation(
+            DeliveryManagerResponse companyDeliveryManager,
+            Map<UUID, UUID> hubDeliveryManagerIds
+    ) {
     }
 }
