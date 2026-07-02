@@ -11,7 +11,6 @@ import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
@@ -42,10 +41,10 @@ public class DeliveryAssignmentLockService {
 
         try {
             // 중복 키 제거
-            // Lock 유형 우선순위와 키 정렬을 통해 락 획득 순서 통일 -> 데드락 방지
+            // 키 정렬을 통해 락 획득 순서 통일 -> 데드락 방지
             sortedKeys = lockKeys.stream()
                     .distinct()
-                    .sorted(Comparator.<String>comparingInt(this::lockOrder).thenComparing(Comparator.naturalOrder()))
+                    .sorted()
                     .toList();
 
             for (String key : sortedKeys) {
@@ -119,15 +118,6 @@ public class DeliveryAssignmentLockService {
             return "hub";
         }
         return "unknown";
-    }
-
-    // Lock 획득 순서 우선순위
-    private int lockOrder(String lockKey) {
-        return switch (lockType(lockKey)) {
-            case "hub" -> 0;
-            case "company" -> 1;
-            default -> 2;
-        };
     }
 
     // 계측 태그에 사용할 Lock 범위 구분
