@@ -17,6 +17,7 @@ PROJECT_ID="${GCP_PROJECT_ID:?GCP_PROJECT_ID is required}"
 ZONE="${GCP_ZONE:?GCP_ZONE is required}"
 VM_USER="${GCP_VM_USER:?GCP_VM_USER is required}"
 REMOTE_DIR="${GCP_REMOTE_DIR:-/opt/hublink}"
+REMOTE_DEPLOY_DIR="${REMOTE_DIR}/.deploy"
 REGISTRY_HOST="${GCP_REGION:-asia-northeast3}-docker.pkg.dev"
 
 # Ubuntu runner IAP 터널 접속
@@ -35,13 +36,13 @@ REMOTE="${VM_USER}@${VM_NAME}"
 # 원격 배포 디렉터리 권한 준비
 echo "Preparing ${REMOTE}:${REMOTE_DIR}"
 gcloud compute ssh "${REMOTE}" "${GCLOUD_FLAGS[@]}" \
-  --command "sudo mkdir -p '${REMOTE_DIR}' && sudo chown -R '${VM_USER}:${VM_USER}' '${REMOTE_DIR}'"
+  --command "sudo mkdir -p '${REMOTE_DIR}' '${REMOTE_DEPLOY_DIR}' && sudo chown -R '${VM_USER}:${VM_USER}' '${REMOTE_DIR}'"
 
 # Docker와 compose 재부팅 복구 서비스 준비
 echo "Ensuring Docker on ${VM_NAME}"
-gcloud compute scp scripts/gcp/ensure-docker.sh "${REMOTE}:/tmp/hublink-ensure-docker.sh" "${GCLOUD_FLAGS[@]}"
+gcloud compute scp scripts/gcp/ensure-docker.sh "${REMOTE}:${REMOTE_DEPLOY_DIR}/hublink-ensure-docker.sh" "${GCLOUD_FLAGS[@]}"
 gcloud compute ssh "${REMOTE}" "${GCLOUD_FLAGS[@]}" \
-  --command "sudo REMOTE_DIR='${REMOTE_DIR}' bash /tmp/hublink-ensure-docker.sh '${VM_USER}' '${COMPOSE_FILE}'"
+  --command "sudo REMOTE_DIR='${REMOTE_DIR}' bash '${REMOTE_DEPLOY_DIR}/hublink-ensure-docker.sh' '${VM_USER}' '${COMPOSE_FILE}'"
 
 # 공통 환경파일과 VM 전용 compose 복사
 echo "Copying .env.gcp and ${COMPOSE_FILE} to ${VM_NAME}"
@@ -63,4 +64,4 @@ gcloud compute ssh "${REMOTE}" "${GCLOUD_FLAGS[@]}" \
 # 변경 컨테이너 교체와 orphan 정리
 echo "Deploying ${COMPOSE_FILE} on ${VM_NAME}"
 gcloud compute ssh "${REMOTE}" "${GCLOUD_FLAGS[@]}" \
-  --command "cd '${REMOTE_DIR}' && for attempt in 1 2 3; do sudo docker compose --env-file .env.gcp -f '${COMPOSE_FILE}' pull && break; echo \"docker compose pull failed. attempt=\${attempt}\" >&2; if [ \"\${attempt}\" -eq 3 ]; then exit 1; fi; sleep \$((attempt * 20)); done && sudo docker compose --env-file .env.gcp -f '${COMPOSE_FILE}' up -d --remove-orphans && sudo docker compose -f '${COMPOSE_FILE}' ps"
+  --command "cd '${REMOTE_DIR}' && for attempt in 1 2 3; do sudo docker compose --env-file .env.gcp -f '${COMPOSE_FILE}' pull && break; echo \"docker compose pull failed. attempt=\${attempt}\" >&2; if [ \"\${attempt}\" -eq 3 ]; then exit 1; fi; sleep \$((attempt * 20)); done && sudo /usr/local/bin/hublink-compose-up && sudo docker compose -f '${COMPOSE_FILE}' ps"
