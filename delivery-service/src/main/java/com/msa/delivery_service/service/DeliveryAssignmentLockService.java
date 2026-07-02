@@ -124,8 +124,8 @@ public class DeliveryAssignmentLockService {
     // Lock 획득 순서 우선순위
     private int lockOrder(String lockKey) {
         return switch (lockType(lockKey)) {
-            case "hub" -> 0;
-            case "company" -> 1;
+            case "company" -> 0;
+            case "hub" -> 1;
             default -> 2;
         };
     }
