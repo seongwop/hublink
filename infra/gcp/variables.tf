@@ -17,7 +17,7 @@ variable "vm_schedule_enabled" {
 variable "vm_start_schedule" {
   description = "VM 자동 시작 cron"
   type        = string
-  default     = "0 10 * * *"
+  default     = "30 9 * * *"
 }
 
 # VM 자동 종료 cron

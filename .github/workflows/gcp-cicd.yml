@@ -10,6 +10,7 @@ on:
     paths:
       - '.github/workflows/gcp-cicd.yml'
       - 'scripts/gcp/**'
+      - 'infra/gcp/scripts/**'
       - 'Dockerfile'
       - 'build.gradle'
       - 'settings.gradle'
@@ -200,7 +201,7 @@ jobs:
                       deploy["monitoring"] = True
                       mirror_promtail = True
 
-                  if file_path.startswith("scripts/gcp/") or file_path == ".github/workflows/gcp-cicd.yml":
+                  if file_path.startswith("scripts/gcp/") or file_path.startswith("infra/gcp/scripts/") or file_path == ".github/workflows/gcp-cicd.yml":
                       services.update(all_services)
                       deploy_all_app_vms()
                       deploy["data"] = True

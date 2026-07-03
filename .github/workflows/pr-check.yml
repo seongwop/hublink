@@ -6,6 +6,8 @@ on:
       - develop
     paths:
       - '.github/workflows/**'
+      - 'scripts/gcp/**'
+      - 'infra/gcp/scripts/**'
       - 'Dockerfile'
       - 'build.gradle'
       - 'settings.gradle'
@@ -44,6 +46,7 @@ jobs:
     outputs:
       services_json: ${{ steps.detect.outputs.services_json }}
       compose_changed: ${{ steps.detect.outputs.compose_changed }}
+      deploy_script_changed: ${{ steps.detect.outputs.deploy_script_changed }}
       has_java_check: ${{ steps.detect.outputs.has_java_check }}
     steps:
       - name: Checkout
@@ -88,6 +91,7 @@ jobs:
 
           changed_services = set()
           compose_changed = False
+          deploy_script_changed = False
           build_all = False
 
           for file_path in changed_files:
@@ -109,6 +113,9 @@ jobs:
               if file_path.startswith("docker-compose.") and file_path.endswith(".yml"):
                   compose_changed = True
 
+              if file_path.startswith("scripts/gcp/") or file_path.startswith("infra/gcp/scripts/"):
+                  deploy_script_changed = True
+
               for service in services:
                   if file_path == service or file_path.startswith(f"{service}/"):
                       changed_services.add(service)
@@ -120,11 +127,13 @@ jobs:
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
               output.write(f"services_json={services_json}\n")
               output.write(f"compose_changed={str(compose_changed).lower()}\n")
+              output.write(f"deploy_script_changed={str(deploy_script_changed).lower()}\n")
               output.write(f"has_java_check={str(bool(changed_services)).lower()}\n")
 
           print("changed_files=", changed_files)
           print("services_json=", services_json)
           print("compose_changed=", compose_changed)
+          print("deploy_script_changed=", deploy_script_changed)
           PY
 
   java-build:
@@ -168,6 +177,23 @@ jobs:
             docker compose --env-file .env.gcp.example -f "${compose_file}" config >/dev/null
           done
 
+  deploy-script-check:
+    name: Validate deploy scripts
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.deploy_script_changed == 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate shell scripts
+        run: |
+          bash -n scripts/gcp/deploy-vm.sh
+          bash -n scripts/gcp/deploy-load-test.sh
+          bash -n scripts/gcp/ensure-docker.sh
+          bash -n scripts/gcp/hublink-compose-up.sh
+          bash -n infra/gcp/scripts/install-docker.sh
+
   pr-check-result:
     name: PR check result
     runs-on: ubuntu-latest
@@ -175,11 +201,12 @@ jobs:
       - detect-changes
       - java-build
       - compose-config
+      - deploy-script-check
     if: always()
     steps:
       - name: Check result
         run: |
-          if [ "${{ needs.java-build.result }}" = "failure" ] || [ "${{ needs.compose-config.result }}" = "failure" ]; then
+          if [ "${{ needs.java-build.result }}" = "failure" ] || [ "${{ needs.compose-config.result }}" = "failure" ] || [ "${{ needs.deploy-script-check.result }}" = "failure" ]; then
             exit 1
           fi
           echo "PR checks passed or were skipped."
