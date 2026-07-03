@@ -2,6 +2,58 @@
 
 ## Latest Run Note
 
+- `redis-lock-order run04`: 같은 hub-first lock 순서로 100VU를 측정했다.
+- 결과는 TPS 21.86 req/s, p95 4.99s, p99 5.91s, 실패 16건(`DELIVERY_014`, 0.15%)이었다.
+- HTTP 실패율 기준은 통과했지만 p95가 3초 threshold를 넘어 k6 실행은 실패 종료됐고, p99도 6초 threshold에 근접했다.
+- timeout failedKey는 20VU, 50VU, 80VU와 동일하게 hub key 1개로 관측됐다.
+- DB 반영량은 k6 성공 10,478건과 일치했다.
+- delivery-service Hikari pending 최대는 82까지 증가했다.
+- 80VU 대비 TPS 증가는 21.31 -> 21.86으로 작았고, p95는 3.83s -> 4.99s, Hikari pending은 62 -> 82로 악화됐다.
+- 상세 결과: `results/07-redis-lock-order/delivery-assignment-redis-lock-order-run04-100vu-hub-first-lock-wait-2s.md`
+
+- `redis-lock-order run03`: 같은 hub-first lock 순서로 80VU를 측정했다.
+- 결과는 TPS 21.31 req/s, p95 3.83s, p99 4.34s, 실패 7건(`DELIVERY_014`, 0.06%)이었다.
+- HTTP 실패율 기준은 통과했지만 p95가 3초 threshold를 넘어 k6 실행은 실패 종료됐다.
+- timeout failedKey는 20VU, 50VU와 동일하게 hub key 1개로 관측됐다.
+- DB 반영량은 k6 성공 10,221건과 일치했지만, 조회 시점 기준 outbox pending 9,821건이 남았다.
+- delivery-service Hikari pending 최대는 62까지 증가했다.
+- 50VU 대비 TPS 증가는 20.75 -> 21.31로 작았고, p95는 2.49s -> 3.83s, Hikari pending은 32 -> 62로 악화됐다.
+- 상세 결과: `results/07-redis-lock-order/delivery-assignment-redis-lock-order-run03-80vu-hub-first-lock-wait-2s.md`
+
+- `redis-lock-order run02`: 같은 hub-first lock 순서로 50VU를 측정했다.
+- 결과는 TPS 20.75 req/s, p95 2.49s, p99 3.01s, 실패 9건(`DELIVERY_014`, 0.09%)이었다.
+- timeout failedKey는 20VU와 동일하게 hub key 1개로 관측됐다.
+- DB 반영량은 k6 성공 9,951건과 일치했지만, 테스트 종료 직후 outbox pending 11,311건, 60초 뒤 pending 9,651건이 남아 outbox publisher backlog가 커졌다.
+- delivery-service Hikari pending 최대도 32까지 증가했다.
+- 상세 결과: `results/07-redis-lock-order/delivery-assignment-redis-lock-order-run02-50vu-hub-first-lock-wait-2s.md`
+
+- `redis-lock-order run01`: Redis lock 획득 순서를 `hub -> company -> unknown`으로 변경한 뒤 20VU를 측정했다.
+- 테스트 전 Config Server, Eureka, company/hub/delivery health, Redis lock 잔여, outbox backlog를 확인했고 서버 상태 문제 없이 정상 실행됐다.
+- 결과는 TPS 14.40 req/s, p95 1.79s, 실패 86건(`DELIVERY_014`, 1.24%)이었다.
+- timeout failedKey는 기존 company key에서 `lock:delivery:hub:10000000-0000-0000-0000-000000000001` 1개로 이동했다.
+- 따라서 기존 company lock 병목 해석은 lock 획득 순서의 영향을 받은 면이 있으며, 현재 입력에서는 공통 hub key도 강한 직렬화 지점으로 판단한다.
+- 상세 결과: `results/07-redis-lock-order/delivery-assignment-redis-lock-order-run01-20vu-hub-first-lock-wait-2s.md`
+
+## Redis Lock Order 전후 비교
+
+50VU는 Redis lock scope reduction 단계에서 같은 VU 결과가 없어서, lock 순서 변경 전 대표값은 `pool-tuning run03`으로 비교한다. 20VU는 직전 단계인 `redis-lock-scope run02`와 안정적으로 재측정된 `pool-tuning run02`를 함께 둔다.
+
+| VU | 구분 | 비교 run | 총 요청 | 성공 | 실패 | 실패율 | TPS | p95 | p99 | timeout key | Hikari pending 최대 |
+| ---: | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- | ---: |
+| 20 | 변경 전 대표값 | `pool-tuning run02` | 6,609 | 6,525 | 84 | 1.27% | 13.77 | 2.03s | 2.20s | company | 2 |
+| 20 | 변경 전 직전값 | `redis-lock-scope run02` | 6,629 | 6,424 | 205 | 3.09% | 13.81 | 2.12s | 2.36s | company | 2 |
+| 20 | 변경 후 | `redis-lock-order run01` | 6,916 | 6,830 | 86 | 1.24% | 14.40 | 1.79s | - | hub | 2 |
+| 50 | 변경 전 대표값 | `pool-tuning run03` | 9,097 | 9,054 | 43 | 0.47% | 18.95 | 3.01s | 3.86s | company | 32 |
+| 50 | 변경 후 | `redis-lock-order run02` | 9,960 | 9,951 | 9 | 0.09% | 20.75 | 2.49s | 3.01s | hub | 32 |
+| 80 | 변경 전 대표값 | `pool-tuning run04` | 9,322 | 9,250 | 72 | 0.77% | 19.41 | 4.61s | 7.12s | company | 62 |
+| 80 | 변경 후 | `redis-lock-order run03` | 10,228 | 10,221 | 7 | 0.06% | 21.31 | 3.83s | 4.34s | hub | 62 |
+| 100 | 변경 전 대표값 | `pool-tuning run05` | 9,650 | 9,620 | 30 | 0.31% | 20.05 | 5.54s | 8.54s | company | 82 |
+| 100 | 변경 후 | `redis-lock-order run04` | 10,494 | 10,478 | 16 | 0.15% | 21.86 | 4.99s | 5.91s | hub | 82 |
+
+비교 결과만 보면 50VU에서는 lock 순서 변경 후 TPS가 18.95에서 20.75로 증가했고, p95는 3.01s에서 2.49s로 감소했으며, 실패도 43건에서 9건으로 줄었다. 80VU와 100VU에서도 TPS, p95, p99, 실패 건수는 이전 대표값보다 좋아졌다. 20VU는 대표값 대비 실패 건수는 거의 같지만 p95와 TPS가 개선됐고, 직전 `redis-lock-scope run02` 대비로는 실패도 205건에서 86건으로 줄었다.
+
+다만 이 비교의 핵심은 단순 성능 개선보다 timeout key가 company에서 hub로 이동했다는 점이다. 즉 기존 company 병목 판단은 lock 획득 순서의 영향을 받았고, 현재 부하 입력에서는 공통 hub key가 먼저 잡히면서 실제 대기 지점으로 드러난다.
+
 - `redis-lock-scope run01/run02`: Redis 분산락을 유지하되 락 안에서는 담당자 선택과 집계 증가 예약만 수행하도록 줄인 뒤 20VU를 2회 측정했다.
 - run01은 TPS 12.96 req/s, p95 2.09s, 실패 126건(`DELIVERY_014`, 2.02%)이었다.
 - run02는 TPS 13.81 req/s, p95 2.12s, 실패 205건(`DELIVERY_014`, 3.09%)이었다.
@@ -80,8 +132,9 @@
 5. 집계 테이블 기반 bulk upsert 전환
 6. `COMPANY_DELIVERY` / `HUB_DELIVERY` mixed bulk upsert 전환
 7. Hikari pool 조정과 fallback 접근자 수정 후 재측정
-8. 집계 테이블 기반 DB row lock 버전 비교
-9. 구조 변경 후에도 남는 병목 쿼리와 outbox polling 최적화
+8. Redis lock 획득 순서 조정으로 실제 병목 key 확인
+9. 집계 테이블 기반 DB row lock 버전 비교
+10. 구조 변경 후에도 남는 병목 쿼리와 outbox polling 최적화
 
 ## Baseline Test Plan
 
@@ -206,7 +259,7 @@ delivery-assignment-optimization/
 |   +-- 04-aggregate-bulk-upsert/
 |   +-- 05-mixed-bulk-upsert/
 |   +-- 06-pool-tuning/
-|   +-- 07-db-lock/
+|   +-- 07-redis-lock-order/
 |   +-- 08-post-optimization-validation/
 |   +-- 09-redis-lock-scope-reduction/
 ```
@@ -218,6 +271,6 @@ delivery-assignment-optimization/
 - `04-aggregate-bulk-upsert`: 집계 테이블 기반 bulk upsert 적용 결과
 - `05-mixed-bulk-upsert`: `COMPANY_DELIVERY`와 `HUB_DELIVERY` 집계 write를 한 번으로 합친 결과
 - `06-pool-tuning`: Hikari pool 조정과 fallback 접근자 수정 후 재측정 결과
-- `07-db-lock`: DB row lock 대체 버전 비교
+- `07-redis-lock-order`: Redis lock 획득 순서 변경 후 실제 timeout key 확인
 - `08-post-optimization-validation`: distributed, stress, 추가 확인
 - `09-redis-lock-scope-reduction`: Redis 락 내부 작업을 배정 예약 구간으로 축소한 결과
