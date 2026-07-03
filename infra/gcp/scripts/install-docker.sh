@@ -5,7 +5,26 @@ set -euo pipefail
 
 export DEBIAN_FRONTEND=noninteractive
 
-echo "hublink role: ${role}" >/etc/hublink-role
+ROLE="${role}"
+echo "$ROLE" >/etc/hublink-role
+
+case "$ROLE" in
+  platform)
+    echo "docker-compose.platform.yml" >/etc/hublink-compose-file
+    ;;
+  domain-a)
+    echo "docker-compose.domain-a.yml" >/etc/hublink-compose-file
+    ;;
+  domain-b)
+    echo "docker-compose.domain-b.yml" >/etc/hublink-compose-file
+    ;;
+  data|data-monitor)
+    echo "docker-compose.data.yml" >/etc/hublink-compose-file
+    ;;
+  monitoring|monitor)
+    echo "docker-compose.monitoring.yml" >/etc/hublink-compose-file
+    ;;
+esac
 
 apt-get update
 apt-get install -y ca-certificates curl gnupg lsb-release git
@@ -43,11 +62,36 @@ cat >/usr/local/bin/hublink-compose-up <<'SCRIPT'
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROLE="$(cat /etc/hublink-role 2>/dev/null || true)"
 REMOTE_DIR="/opt/hublink"
+COMPOSE_FILE="$(cat /etc/hublink-compose-file 2>/dev/null || true)"
 EUREKA_URL="http://10.10.0.10:19090"
 CONFIG_URL="http://10.10.0.10:19092"
 DATA_HOST="10.10.0.40"
+
+if [ -z "$COMPOSE_FILE" ]; then
+  exit 0
+fi
+
+case "$COMPOSE_FILE" in
+  docker-compose.platform.yml)
+    ROLE="platform"
+    ;;
+  docker-compose.domain-a.yml)
+    ROLE="domain-a"
+    ;;
+  docker-compose.domain-b.yml)
+    ROLE="domain-b"
+    ;;
+  docker-compose.data.yml)
+    ROLE="data"
+    ;;
+  docker-compose.monitoring.yml)
+    ROLE="monitoring"
+    ;;
+  *)
+    ROLE=""
+    ;;
+esac
 
 wait_http() {
   local name="$1"
@@ -93,32 +137,21 @@ wait_eureka_app() {
   wait_http "Eureka app $app" "$EUREKA_URL/eureka/apps/$app" "$max_seconds"
 }
 
-case "$ROLE" in
-  platform)
-    COMPOSE_FILE="docker-compose.platform.yml"
-    ;;
-  domain-a)
-    COMPOSE_FILE="docker-compose.domain-a.yml"
-    ;;
-  domain-b)
-    COMPOSE_FILE="docker-compose.domain-b.yml"
-    ;;
-  data|data-monitor)
-    COMPOSE_FILE="docker-compose.data.yml"
-    ;;
-  monitoring|monitor)
-    COMPOSE_FILE="docker-compose.monitoring.yml"
-    ;;
-  *)
-    exit 0
-    ;;
-esac
+stop_compose_before_wait() {
+  case "$ROLE" in
+    platform|domain-a|domain-b)
+      echo "stopping existing compose services before readiness checks"
+      docker compose --env-file .env.gcp -f "$COMPOSE_FILE" stop || true
+      ;;
+  esac
+}
 
 if [ ! -f "$REMOTE_DIR/.env.gcp" ] || [ ! -f "$REMOTE_DIR/$COMPOSE_FILE" ]; then
   exit 0
 fi
 
 cd "$REMOTE_DIR"
+stop_compose_before_wait
 
 case "$ROLE" in
   domain-a)
@@ -141,7 +174,7 @@ case "$ROLE" in
     ;;
 esac
 
-docker compose --env-file .env.gcp -f "$COMPOSE_FILE" up -d
+docker compose --env-file .env.gcp -f "$COMPOSE_FILE" up -d --remove-orphans
 
 case "$ROLE" in
   platform)
@@ -174,6 +207,9 @@ Wants=docker.service network-online.target
 Type=oneshot
 ExecStart=/usr/local/bin/hublink-compose-up
 RemainAfterExit=yes
+TimeoutStartSec=20min
+Restart=on-failure
+RestartSec=30s
 
 [Install]
 WantedBy=multi-user.target
