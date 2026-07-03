@@ -3,10 +3,10 @@ package com.msa.delivery_service.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.msa.delivery_service.entity.DeliveryOutbox;
+import com.msa.delivery_service.repository.DeliveryOutboxCommandRepository;
 import com.msa.delivery_service.repository.DeliveryOutboxRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -26,6 +26,7 @@ public class DeliveryOutboxService {
     private static final long SEND_TIMEOUT_SECONDS = 5;
 
     private final DeliveryOutboxRepository outboxRepository;
+    private final DeliveryOutboxCommandRepository outboxCommandRepository;
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final ObjectMapper objectMapper;
     private final TransactionTemplate transactionTemplate;
@@ -52,31 +53,21 @@ public class DeliveryOutboxService {
 
     @Transactional
     public void enqueueSerialized(String topic, String eventKey, String serializedPayload) {
-        // Outbox 중복 여부 조회 처리 시간 계측
-        boolean alreadyExists = performanceMetrics.recordOutboxStage(
-                "exists_check",
-                () -> outboxRepository.existsByTopicAndEventKey(topic, eventKey)
+        // Outbox 중복 제어 insert 처리 시간 계측
+        UUID outboxId = performanceMetrics.recordOutboxStage(
+                "insert_on_conflict",
+                () -> outboxCommandRepository.insertPending(topic, eventKey, serializedPayload)
         );
-        if (alreadyExists) {
+        if (outboxId == null) {
             log.debug("event=DELIVERY_OUTBOX_ALREADY_EXISTS topic={} eventKey={}", topic, eventKey);
             return;
         }
 
-        try {
-            // 같은 topic + eventKey 조합에 의한 중복 key 제약조건 충돌 제어
-            // Outbox 저장 처리 시간 계측
-            DeliveryOutbox savedOutbox = performanceMetrics.recordOutboxStage(
-                    "save_and_flush",
-                    () -> outboxRepository.saveAndFlush(DeliveryOutbox.create(topic, eventKey, serializedPayload))
-            );
-            log.info("event=DELIVERY_OUTBOX_ENQUEUED outboxId={} topic={} eventKey={}",
-                    savedOutbox.getOutboxId(),
-                    savedOutbox.getTopic(),
-                    savedOutbox.getEventKey()
-            );
-        } catch (DataIntegrityViolationException e) {
-            log.debug("event=DELIVERY_OUTBOX_ALREADY_SAVED topic={} eventKey={}", topic, eventKey);
-        }
+        log.info("event=DELIVERY_OUTBOX_ENQUEUED outboxId={} topic={} eventKey={}",
+                outboxId,
+                topic,
+                eventKey
+        );
     }
 
     @Scheduled(fixedDelayString = "${delivery.kafka.outbox.fixed-delay-ms:1000}")
@@ -131,18 +122,12 @@ public class DeliveryOutboxService {
         }
     }
 
-    // 조회 로직 분리
+    // 상태 변경 로직 분리
     private void markPublished(UUID outboxId) {
-        transactionTemplate.executeWithoutResult(status ->
-                outboxRepository.findById(outboxId)
-                        .ifPresent(DeliveryOutbox::markPublished)
-        );
+        outboxCommandRepository.markPublished(outboxId);
     }
 
     private void markFailed(UUID outboxId, String errorMessage) {
-        transactionTemplate.executeWithoutResult(status ->
-                outboxRepository.findById(outboxId)
-                        .ifPresent(outbox -> outbox.markFailed(errorMessage))
-        );
+        outboxCommandRepository.markFailed(outboxId, errorMessage);
     }
 }

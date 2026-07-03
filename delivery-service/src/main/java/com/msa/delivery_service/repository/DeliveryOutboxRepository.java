@@ -9,8 +9,6 @@ import java.util.UUID;
 
 public interface DeliveryOutboxRepository extends JpaRepository<DeliveryOutbox, UUID> {
 
-    boolean existsByTopicAndEventKey(String topic, String eventKey);
-
     List<DeliveryOutbox> findTop100ByStatusInAndRetryCountLessThanOrderByCreatedAtAsc(
             Collection<DeliveryOutbox.Status> statuses,
             int retryCount
