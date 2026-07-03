@@ -2,6 +2,37 @@
 
 ## Latest Run Note
 
+- `redis-lock-order run08`: company-first lock 순서로 100VU를 측정했다.
+- 결과는 TPS 19.63 req/s, p95 5.34s, p99 5.72s, 실패 38건(`DELIVERY_014`, 0.40%)이었다.
+- timeout key는 company key로 관측됐고, DB 반영량은 k6 성공 9,385건과 일치했다.
+- delivery-service Hikari pending 최대는 82로 hub-first 100VU와 같았다.
+- 외부 hub/user circuit breaker 실패나 not permitted 증가는 관측되지 않았다.
+- hub-first 100VU 대비 company-first는 TPS, 실패율, p95가 나빴다.
+- 상세 결과: `results/07-redis-lock-order/delivery-assignment-redis-lock-order-run08-100vu-company-first-lock-wait-2s.md`
+
+- `redis-lock-order run07`: company-first lock 순서로 빠져 있던 20VU를 보완 측정했다.
+- 결과는 TPS 13.02 req/s, p95 2.10s, p99 2.27s, 실패 145건(`DELIVERY_014`, 2.32%)이었다.
+- timeout key는 company key로 관측됐고, DB 반영량은 k6 성공 6,104건과 일치했다.
+- delivery-service Hikari pending 최대는 2로 낮아, 20VU에서는 connection pool 대기보다 company lock wait가 더 직접적으로 드러났다.
+- 외부 hub/user circuit breaker 실패나 not permitted 증가는 관측되지 않았다.
+- 상세 결과: `results/07-redis-lock-order/delivery-assignment-redis-lock-order-run07-20vu-company-first-lock-wait-2s.md`
+
+- `redis-lock-order run06`: company-first lock 순서로 80VU를 측정했다.
+- 결과는 TPS 18.83 req/s, p95 4.74s, p99 5.36s, 실패 34건(`DELIVERY_014`, 0.37%)이었다.
+- timeout key는 50VU company-first와 동일하게 company key로 관측됐다.
+- DB 반영량은 k6 성공 9,006건과 일치했다.
+- delivery-service Hikari pending 최대는 62로 hub-first 80VU와 같았지만, TPS와 p95/p99는 hub-first보다 나빴다.
+- 외부 hub/user circuit breaker 실패나 not permitted 증가는 관측되지 않았다.
+- 상세 결과: `results/07-redis-lock-order/delivery-assignment-redis-lock-order-run06-80vu-company-first-lock-wait-2s.md`
+
+- `redis-lock-order run05`: company-first lock 순서로 되돌린 뒤 50VU를 재측정했다.
+- 결과는 TPS 17.79 req/s, p95 3.18s, p99 3.65s, 실패 56건(`DELIVERY_014`, 0.65%)이었다.
+- timeout key는 hub-first 때의 hub key에서 다시 company key로 이동했다.
+- DB 반영량은 k6 성공 8,486건과 일치했다.
+- delivery-service Hikari pending 최대는 32로 hub-first 50VU와 같았지만, TPS와 p95는 hub-first보다 나빠졌다.
+- 외부 hub/user circuit breaker 실패나 not permitted 증가는 관측되지 않았다.
+- 상세 결과: `results/07-redis-lock-order/delivery-assignment-redis-lock-order-run05-50vu-company-first-lock-wait-2s.md`
+
 - `redis-lock-order run04`: 같은 hub-first lock 순서로 100VU를 측정했다.
 - 결과는 TPS 21.86 req/s, p95 4.99s, p99 5.91s, 실패 16건(`DELIVERY_014`, 0.15%)이었다.
 - HTTP 실패율 기준은 통과했지만 p95가 3초 threshold를 넘어 k6 실행은 실패 종료됐고, p99도 6초 threshold에 근접했다.
