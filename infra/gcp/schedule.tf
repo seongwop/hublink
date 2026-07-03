@@ -1,5 +1,4 @@
-# VM 자동 종료 스케줄
-# 자동 시작은 서비스 부분 복구 방지를 위해 수동 처리
+# VM 자동 시작/종료 스케줄
 resource "google_compute_resource_policy" "vm_schedule" {
   name   = "${var.name_prefix}-vm-schedule"
   region = var.region

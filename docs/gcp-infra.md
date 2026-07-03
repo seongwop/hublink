@@ -123,23 +123,23 @@ VM 역할별로 Compose 파일을 분리한다.
 | `iam.tf` | VM 실행용 Service Account와 권한 |
 | `artifact-registry.tf` | Docker 이미지 저장소 |
 | `workload-identity.tf` | GitHub Actions OIDC 인증 |
-| `schedule.tf` | VM 자동 종료 스케줄 정책 |
+| `schedule.tf` | VM 자동 시작/종료 스케줄 정책 |
 | `variables.tf` | 입력 변수 선언 |
 | `outputs.tf` | 배포 후 확인할 주요 값 |
 | `terraform.tfvars` | 실제 프로젝트별 입력값 |
 
 `terraform.tfvars`는 개인 환경 파일이므로 git에 올리지 않는다.
 
-## VM 자동 종료
+## VM 자동 시작/종료
 
 VM 스케줄 정책 리소스는 유지하되, 실제 VM 연결 여부는 `vm_schedule_enabled`로 제어한다.
 
-자동 시작은 서비스 기동 순서 문제를 줄이기 위해 미사용. 테스트 시 VM은 수동 시작 후 GitHub Actions 배포로 상태 정리.
+자동 시작 후 `hublink-compose.service`가 Config Server, Eureka, 데이터 계층, 선행 서비스 등록 상태를 확인한 뒤 Docker Compose 서비스를 올린다.
 
 | 항목 | 값 |
 | --- | --- |
 | 사용 여부 | 기본 `true` |
-| 시작 | 수동 |
+| 시작 | 매일 09:30 |
 | 종료 | 매일 03:00 |
 | 타임존 | `Asia/Seoul` |
 
@@ -147,6 +147,7 @@ Terraform 변수:
 
 ```hcl
 vm_schedule_enabled   = true
+vm_start_schedule     = "30 9 * * *"
 vm_stop_schedule      = "0 3 * * *"
 vm_schedule_time_zone = "Asia/Seoul"
 ```

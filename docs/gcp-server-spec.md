@@ -100,17 +100,18 @@
 
 ## 스케줄 상태
 
-VM 자동 종료 스케줄 정책은 Terraform 리소스로 유지한다.
+VM 자동 시작/종료 스케줄 정책은 Terraform 리소스로 유지한다.
 
-현재 설정은 자동 시작 없이 매일 03:00 종료만 사용.
+현재 설정은 매일 09:30 시작, 매일 03:00 종료를 사용.
 
 ```hcl
 vm_schedule_enabled   = true
+vm_start_schedule     = "30 9 * * *"
 vm_stop_schedule      = "0 3 * * *"
 vm_schedule_time_zone = "Asia/Seoul"
 ```
 
-테스트 시작 전 VM 기동은 `scripts/gcp/start-gcp-vms.ps1`로 처리.
+수동 기동이 필요하면 `scripts/gcp/start-gcp-vms.ps1`로 처리.
 
 ## 확인 명령
 

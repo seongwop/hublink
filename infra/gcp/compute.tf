@@ -89,9 +89,10 @@ resource "google_compute_instance" "vm" {
 
   # 최초 부팅 시 Docker 설치 스크립트
   metadata_startup_script = replace(templatefile("${path.module}/scripts/install-docker.sh", {
-    linux_user = var.ssh_username
-    region     = var.region
-    role       = each.value.role
+    linux_user        = var.ssh_username
+    region            = var.region
+    role              = each.value.role
+    compose_up_script = file("${path.module}/../../scripts/gcp/hublink-compose-up.sh")
   }), "\r\n", "\n")
 
   # 이미지 pull과 로그/메트릭 기록용 서비스 계정

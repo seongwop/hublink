@@ -40,9 +40,9 @@ gcloud compute ssh "${REMOTE}" "${GCLOUD_FLAGS[@]}" \
 
 # Docker와 compose 재부팅 복구 서비스 준비
 echo "Ensuring Docker on ${VM_NAME}"
-gcloud compute scp scripts/gcp/ensure-docker.sh "${REMOTE}:${REMOTE_DEPLOY_DIR}/hublink-ensure-docker.sh" "${GCLOUD_FLAGS[@]}"
+gcloud compute scp scripts/gcp/ensure-docker.sh scripts/gcp/hublink-compose-up.sh "${REMOTE}:${REMOTE_DEPLOY_DIR}/" "${GCLOUD_FLAGS[@]}"
 gcloud compute ssh "${REMOTE}" "${GCLOUD_FLAGS[@]}" \
-  --command "sudo REMOTE_DIR='${REMOTE_DIR}' bash '${REMOTE_DEPLOY_DIR}/hublink-ensure-docker.sh' '${VM_USER}' '${COMPOSE_FILE}'"
+  --command "sudo REMOTE_DIR='${REMOTE_DIR}' bash '${REMOTE_DEPLOY_DIR}/ensure-docker.sh' '${VM_USER}' '${COMPOSE_FILE}' '${REMOTE_DEPLOY_DIR}/hublink-compose-up.sh'"
 
 # 공통 환경파일과 VM 전용 compose 복사
 echo "Copying .env.gcp and ${COMPOSE_FILE} to ${VM_NAME}"
