@@ -1,5 +1,9 @@
 BEGIN;
 
+ALTER TABLE delivery_service.p_delivery_outboxes
+    ALTER COLUMN payload TYPE text USING payload::text,
+    ALTER COLUMN last_error TYPE text USING last_error::text;
+
 CREATE TABLE IF NOT EXISTS delivery_service.p_delivery_assignment_counts (
     manager_id uuid NOT NULL,
     assignment_type varchar(50) NOT NULL,
@@ -756,7 +760,7 @@ SELECT
         ELSE 'delivery.create.dlq'
     END,
     event_key,
-    lo_from_bytea(0, convert_to(payload, 'UTF8')),
+    payload,
     CASE
         WHEN seq % 20 < 15 THEN 'PUBLISHED'
         WHEN seq % 20 < 18 THEN 'FAILED'
@@ -772,7 +776,7 @@ SELECT
         ELSE null
     END,
     CASE
-        WHEN seq % 20 >= 15 AND seq % 20 < 18 THEN lo_from_bytea(0, convert_to('seed publish failure', 'UTF8'))
+        WHEN seq % 20 >= 15 AND seq % 20 < 18 THEN 'seed publish failure'
         ELSE null
     END,
     created_at,

@@ -1,6 +1,10 @@
 BEGIN;
 
 -- 배송 대용량 쿼리 기준선 복원
+ALTER TABLE delivery_service.p_delivery_outboxes
+    ALTER COLUMN payload TYPE text USING payload::text,
+    ALTER COLUMN last_error TYPE text USING last_error::text;
+
 TRUNCATE TABLE
     delivery_service.p_delivery_route_histories,
     delivery_service.p_deliveries,
@@ -280,7 +284,7 @@ SELECT
         ELSE 'delivery.create.dlq'
     END,
     ('61000000-0000-0000-0000-' || lpad(seq::text, 12, '0'))::uuid::text,
-    lo_from_bytea(0, convert_to('{"seed":"delivery-query-baseline","seq":' || seq || '}', 'UTF8')),
+    '{"seed":"delivery-query-baseline","seq":' || seq || '}',
     CASE
         WHEN seq % 20 < 15 THEN 'PUBLISHED'
         WHEN seq % 20 < 18 THEN 'FAILED'
@@ -296,7 +300,7 @@ SELECT
         ELSE null
     END,
     CASE
-        WHEN seq % 20 < 18 AND seq % 20 >= 15 THEN lo_from_bytea(0, convert_to('seed publish failure', 'UTF8'))
+        WHEN seq % 20 < 18 AND seq % 20 >= 15 THEN 'seed publish failure'
         ELSE null
     END,
     now() - ((seq % 120) || ' days')::interval,
