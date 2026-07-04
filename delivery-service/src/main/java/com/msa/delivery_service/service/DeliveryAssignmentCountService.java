@@ -164,7 +164,7 @@ public class DeliveryAssignmentCountService {
         }
 
         Map<UUID, Long> countMap = new HashMap<>();
-        // 諛곗넚 ?대떦??諛곗젙 吏묎퀎 row lock 議고쉶 泥섎━ ?쒓컙 怨꾩륫
+        // 배송 담당자 배정 집계 row lock 조회 처리 시간 계측
         for (ManagerAssignmentCount assignmentCount
                 : performanceMetrics.recordAssignmentCountOperation(
                         assignmentType.name(),
