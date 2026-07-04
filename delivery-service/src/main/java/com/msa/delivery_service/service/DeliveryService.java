@@ -28,12 +28,14 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -61,8 +63,8 @@ public class DeliveryService {
     private final DeliveryRouteHistoryRepository deliveryRouteHistoryRepository;
     private final DeliveryExternalService deliveryExternalService;
     private final DeliveryCreateService deliveryCreateService;
-    private final DeliveryAssignmentLockService deliveryAssignmentLockService;
     private final DeliveryAssignmentCountService deliveryAssignmentCountService;
+    private final TransactionTemplate transactionTemplate;
 
     @Value("${delivery.assignment.max-active-per-manager:30}")
     private int maxActiveAssignmentsPerManager;
@@ -245,13 +247,10 @@ public class DeliveryService {
                 deliveryManagers.size()
         );
         // 업체 배송 기사 Lock 키 1개 + 허브 배송 기사 Lock 키 N개
-        List<String> lockKeys = buildAssignmentLockKeys(hubRoutes);
-
         // Lock 안에서는 배송 담당자 배정 예약까지만 수행
-        AssignmentReservation reservation = deliveryAssignmentLockService.executeWithLocks(
-                lockKeys,
-                () -> reserveDeliveryAssignment(request, hubRoutes, deliveryManagers)
-        );
+        AssignmentReservation reservation = Objects.requireNonNull(transactionTemplate.execute(
+                status -> reserveDeliveryAssignment(request, hubRoutes, deliveryManagers)
+        ));
 
         try {
             DeliveryResponse response = deliveryCreateService.createDelivery(
@@ -279,11 +278,17 @@ public class DeliveryService {
             List<HubRouteResponse> hubRoutes,
             List<DeliveryManagerResponse> deliveryManagers
     ) {
+        AssignmentCountSnapshot assignmentCounts = lockAssignmentCounts(hubRoutes, deliveryManagers);
         DeliveryManagerResponse companyDeliveryManager = assignCompanyDeliveryManager(
                 deliveryManagers,
-                getDestinationHubId(hubRoutes)
+                getDestinationHubId(hubRoutes),
+                assignmentCounts.companyAssignmentCounts()
         );
-        Map<UUID, UUID> hubDeliveryManagerIds = assignHubDeliveryManagers(hubRoutes, deliveryManagers);
+        Map<UUID, UUID> hubDeliveryManagerIds = assignHubDeliveryManagers(
+                hubRoutes,
+                deliveryManagers,
+                assignmentCounts.hubAssignmentCounts()
+        );
         log.info("event=DELIVERY_MANAGER_ASSIGNED orderId={} companyDeliveryManagerId={} hubRouteAssignmentCount={}",
                 request.getOrderId(),
                 companyDeliveryManager.getDeliveryManagerId(),
@@ -301,6 +306,49 @@ public class DeliveryService {
         );
 
         return new AssignmentReservation(companyDeliveryManager, hubDeliveryManagerIds);
+    }
+
+    private AssignmentCountSnapshot lockAssignmentCounts(
+            List<HubRouteResponse> hubRoutes,
+            List<DeliveryManagerResponse> deliveryManagers
+    ) {
+        Map<UUID, Long> hubAssignmentCounts = lockHubAssignmentCounts(deliveryManagers);
+        Map<UUID, Long> companyAssignmentCounts = lockCompanyAssignmentCounts(
+                deliveryManagers,
+                getDestinationHubId(hubRoutes)
+        );
+
+        return new AssignmentCountSnapshot(companyAssignmentCounts, hubAssignmentCounts);
+    }
+
+    private Map<UUID, Long> lockCompanyAssignmentCounts(
+            List<DeliveryManagerResponse> deliveryManagers,
+            UUID destinationHubId
+    ) {
+        List<UUID> managerIds = deliveryManagers.stream()
+                .filter(deliveryManager -> destinationHubId.equals(deliveryManager.getHubId()))
+                .filter(deliveryManager -> COMPANY_DELIVERY_MANAGER_TYPE.equals(deliveryManager.getType()))
+                .map(DeliveryManagerResponse::getDeliveryManagerId)
+                .toList();
+
+        if (managerIds.isEmpty()) {
+            return Map.of();
+        }
+
+        return deliveryAssignmentCountService.getCompanyAssignmentCountsForUpdate(managerIds);
+    }
+
+    private Map<UUID, Long> lockHubAssignmentCounts(List<DeliveryManagerResponse> deliveryManagers) {
+        List<UUID> managerIds = deliveryManagers.stream()
+                .filter(deliveryManager -> HUB_DELIVERY_MANAGER_TYPE.equals(deliveryManager.getType()))
+                .map(DeliveryManagerResponse::getDeliveryManagerId)
+                .toList();
+
+        if (managerIds.isEmpty()) {
+            return Map.of();
+        }
+
+        return deliveryAssignmentCountService.getHubAssignmentCountsForUpdate(managerIds);
     }
 
     private void compensateAssignmentReservation(
@@ -413,7 +461,8 @@ public class DeliveryService {
     // 마지막 업체 배송을 담당할 배송 담당자 배정
     private DeliveryManagerResponse assignCompanyDeliveryManager(
             List<DeliveryManagerResponse> deliveryManagers,
-            UUID destinationHubId
+            UUID destinationHubId,
+            Map<UUID, Long> assignmentCounts
     ) {
         List<DeliveryManagerResponse> companyDeliveryManagers = deliveryManagers.stream()
                 .filter(deliveryManager -> destinationHubId.equals(deliveryManager.getHubId()))
@@ -424,33 +473,19 @@ public class DeliveryService {
             throw new CustomException(DeliveryErrorCode.NO_DELIVERY_MANAGER);
         }
 
-        Map<UUID, Long> assignmentCounts = deliveryAssignmentCountService.getCompanyAssignmentCounts(
-                companyDeliveryManagers.stream()
-                        .map(DeliveryManagerResponse::getDeliveryManagerId)
-                        .toList()
-        );
-
         return selectManagerWithinCapacity(companyDeliveryManagers, assignmentCounts);
     }
 
     // 허브 간 이동 경로마다 허브 배송 담당자 배정 - <허브 ID, 배송 담당자 ID> 반환
     private Map<UUID, UUID> assignHubDeliveryManagers(
             List<HubRouteResponse> hubRoutes,
-            List<DeliveryManagerResponse> deliveryManagers
+            List<DeliveryManagerResponse> deliveryManagers,
+            Map<UUID, Long> lockedAssignmentCounts
     ) {
         Map<UUID, UUID> hubDeliveryManagerIds = new java.util.HashMap<>();
         // 각 허브에 해당 하는 담당 매니저를 따로 조회해서 발생하던 N+1 문제 방지
         // 처음부터 모든 경로의 허브 배송 담당자들을 전부 미리 조회
-        List<DeliveryManagerResponse> hubDeliveryManagers = deliveryManagers.stream()
-                .filter(deliveryManager -> HUB_DELIVERY_MANAGER_TYPE.equals(deliveryManager.getType()))
-                .toList();
-        Map<UUID, Long> assignmentCounts = hubDeliveryManagers.isEmpty()
-                ? Map.of()
-                : deliveryAssignmentCountService.getHubAssignmentCounts(
-                        hubDeliveryManagers.stream()
-                                .map(DeliveryManagerResponse::getDeliveryManagerId)
-                                .toList()
-                );
+        Map<UUID, Long> assignmentCounts = new java.util.HashMap<>(lockedAssignmentCounts);
 
         for (int i = 0; i < hubRoutes.size() - 1; i++) {
             HubRouteResponse hubRoute = hubRoutes.get(i);
@@ -537,6 +572,12 @@ public class DeliveryService {
     private record AssignmentReservation(
             DeliveryManagerResponse companyDeliveryManager,
             Map<UUID, UUID> hubDeliveryManagerIds
+    ) {
+    }
+
+    private record AssignmentCountSnapshot(
+            Map<UUID, Long> companyAssignmentCounts,
+            Map<UUID, Long> hubAssignmentCounts
     ) {
     }
 }

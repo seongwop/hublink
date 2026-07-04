@@ -32,6 +32,16 @@ public class DeliveryAssignmentCountService {
     }
 
     @Transactional
+    public Map<UUID, Long> getCompanyAssignmentCountsForUpdate(Collection<UUID> managerIds) {
+        return getAssignmentCountsForUpdate(managerIds, DeliveryAssignmentType.COMPANY_DELIVERY);
+    }
+
+    @Transactional
+    public Map<UUID, Long> getHubAssignmentCountsForUpdate(Collection<UUID> managerIds) {
+        return getAssignmentCountsForUpdate(managerIds, DeliveryAssignmentType.HUB_DELIVERY);
+    }
+
+    @Transactional
     public void increaseCompanyAssignment(UUID managerId) {
         increaseAssignmentCounts(Map.of(managerId, 1L), DeliveryAssignmentType.COMPANY_DELIVERY);
     }
@@ -138,6 +148,30 @@ public class DeliveryAssignmentCountService {
                         () -> deliveryAssignmentCountRepository.findAssignmentCountsByManagerIds(
                                 managerIds,
                                 assignmentType
+                        )
+                )) {
+            countMap.put(assignmentCount.getManagerId(), assignmentCount.getAssignmentCount());
+        }
+        return countMap;
+    }
+
+    private Map<UUID, Long> getAssignmentCountsForUpdate(
+            Collection<UUID> managerIds,
+            DeliveryAssignmentType assignmentType
+    ) {
+        if (managerIds.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<UUID, Long> countMap = new HashMap<>();
+        // 배송 담당자 배정 집계 row lock 조회 처리 시간 계측
+        for (ManagerAssignmentCount assignmentCount
+                : performanceMetrics.recordAssignmentCountOperation(
+                        assignmentType.name(),
+                        "read_for_update",
+                        () -> deliveryAssignmentCountRepository.findAssignmentCountsByManagerIdsForUpdate(
+                                managerIds,
+                                assignmentType.name()
                         )
                 )) {
             countMap.put(assignmentCount.getManagerId(), assignmentCount.getAssignmentCount());
