@@ -8,7 +8,6 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
@@ -45,8 +44,7 @@ public class DeliveryOutbox extends BaseEntity {
     @Column(name = "event_key", nullable = false, length = 100)
     private String eventKey;
 
-    @Lob
-    @Column(name = "payload", nullable = false)
+    @Column(name = "payload", nullable = false, columnDefinition = "text")
     private String payload;
 
     @Enumerated(EnumType.STRING)
@@ -59,8 +57,7 @@ public class DeliveryOutbox extends BaseEntity {
     @Column(name = "published_at")
     private LocalDateTime publishedAt;
 
-    @Lob
-    @Column(name = "last_error")
+    @Column(name = "last_error", columnDefinition = "text")
     private String lastError;
 
     private DeliveryOutbox(String topic, String eventKey, String payload) {
