@@ -513,17 +513,17 @@ jobs:
       - name: Deploy platform services
         # Eureka, Config Server, Gateway 배포
         if: needs.detect-changes.outputs.deploy_platform == 'true'
-        run: scripts/gcp/deploy-vm.sh "${PLATFORM_VM}" docker-compose.platform.yml config-repo monitoring
+        run: scripts/gcp/deploy-vm.sh "${PLATFORM_VM}" docker-compose.platform.yml config-repo monitoring/promtail.yml
 
       - name: Deploy domain A services
         # 사용자, 업체, 허브, 상품 서비스 배포
         if: needs.detect-changes.outputs.deploy_domain_a == 'true'
-        run: scripts/gcp/deploy-vm.sh "${DOMAIN_A_VM}" docker-compose.domain-a.yml monitoring
+        run: scripts/gcp/deploy-vm.sh "${DOMAIN_A_VM}" docker-compose.domain-a.yml monitoring/promtail.yml
 
       - name: Deploy domain B services
         # 주문, 재고, 배송, Slack, AI 서비스 배포
         if: needs.detect-changes.outputs.deploy_domain_b == 'true'
-        run: scripts/gcp/deploy-vm.sh "${DOMAIN_B_VM}" docker-compose.domain-b.yml monitoring
+        run: scripts/gcp/deploy-vm.sh "${DOMAIN_B_VM}" docker-compose.domain-b.yml monitoring/promtail.yml
 
       - name: Show service registry hints
         run: |
