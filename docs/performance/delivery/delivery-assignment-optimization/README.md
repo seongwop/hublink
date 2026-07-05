@@ -2,6 +2,34 @@
 
 ## Latest Run Note
 
+- `db-pessimistic-lock run04`: DB 비관적 락 구조로 100VU를 측정했다.
+- 결과는 TPS 28.79 req/s, p95 3.71s, p99 4.07s, HTTP 실패 0건이었다.
+- Redis lock timeout은 0건으로 유지됐고, DB 반영량은 k6 성공 13,819건과 일치했다.
+- p95가 3초 threshold를 초과해 k6 실행은 threshold 실패로 종료됐다.
+- delivery-service Hikari pending 최대는 82까지 증가했고, 80VU 대비 TPS 증가는 거의 없었다.
+- outbox는 테스트 직후 `FAILED 2,140`, `PENDING 15,179`가 관측됐지만 약 3분 뒤 모두 `PUBLISHED`로 해소됐다.
+- 상세 결과: `results/10-db-pessimistic-lock/delivery-assignment-db-pessimistic-lock-run04-100vu.md`
+
+- `db-pessimistic-lock run03`: DB 비관적 락 구조로 80VU를 측정했다.
+- 결과는 TPS 28.67 req/s, p95 2.92s, p99 3.50s, 실패 0건이었다.
+- Redis lock timeout은 0건으로 유지됐고, DB 반영량은 k6 성공 13,764건과 일치했다.
+- delivery-service Hikari pending 최대는 62까지 증가했고, p95는 3초 threshold 바로 아래까지 상승했다.
+- outbox는 테스트 직후 `FAILED 1,340`, `PENDING 14,624`가 관측됐지만 약 3분 뒤 모두 `PUBLISHED`로 해소됐다.
+- 상세 결과: `results/10-db-pessimistic-lock/delivery-assignment-db-pessimistic-lock-run03-80vu.md`
+
+- `db-pessimistic-lock run02`: DB 비관적 락 구조로 50VU를 측정했다.
+- 결과는 TPS 26.27 req/s, p95 2.16s, p99 3.53s, 실패 0건이었다.
+- Redis lock timeout은 0건으로 유지됐고, DB 반영량은 k6 성공 12,608건과 일치했다.
+- delivery-service Hikari pending 최대는 32까지 증가했고, `hub_delivery read_for_update` 평균은 550.94ms였다.
+- outbox는 테스트 직후 `PENDING 12,608`이 남았지만 약 3분 뒤 모두 `PUBLISHED`로 해소됐다.
+- 상세 결과: `results/10-db-pessimistic-lock/delivery-assignment-db-pessimistic-lock-run02-50vu.md`
+
+- `db-pessimistic-lock run01`: Redis 분산락 대신 집계 테이블 row `for update` 기반 DB 비관적 락으로 20VU를 측정했다.
+- 결과는 TPS 19.53 req/s, p95 1.43s, p99 1.73s, 실패 0건이었다.
+- Redis lock timeout은 0건으로 제거됐고, DB 반영량은 k6 성공 9,374건과 일치했다.
+- 병목 지점은 Redis lock wait에서 `hub_delivery read_for_update` 평균 669.56ms로 이동했다.
+- 상세 결과: `results/10-db-pessimistic-lock/delivery-assignment-db-pessimistic-lock-run01-20vu.md`
+
 - `redis-lock-order run08`: company-first lock 순서로 100VU를 측정했다.
 - 결과는 TPS 19.63 req/s, p95 5.34s, p99 5.72s, 실패 38건(`DELIVERY_014`, 0.40%)이었다.
 - timeout key는 company key로 관측됐고, DB 반영량은 k6 성공 9,385건과 일치했다.
@@ -293,6 +321,7 @@ delivery-assignment-optimization/
 |   +-- 07-redis-lock-order/
 |   +-- 08-post-optimization-validation/
 |   +-- 09-redis-lock-scope-reduction/
+|   +-- 10-db-pessimistic-lock/
 ```
 
 - `00-legacy`: 기존 create 결과 보관
@@ -305,3 +334,4 @@ delivery-assignment-optimization/
 - `07-redis-lock-order`: Redis lock 획득 순서 변경 후 실제 timeout key 확인
 - `08-post-optimization-validation`: distributed, stress, 추가 확인
 - `09-redis-lock-scope-reduction`: Redis 락 내부 작업을 배정 예약 구간으로 축소한 결과
+- `10-db-pessimistic-lock`: Redis 분산락 제거 후 DB row `for update` 기반 비관적 락 비교 결과
