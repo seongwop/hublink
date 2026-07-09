@@ -2,6 +2,36 @@
 
 ## Latest Run Note
 
+- `pool-size-30 run04`: delivery-service Hikari maximum pool size 30 조건에서 100VU를 측정했다.
+- 결과는 TPS 28.60 req/s, p95 3.49s, p99 4.01s, HTTP 실패 0건이었다.
+- p95가 3초 threshold를 초과해 k6 실행은 threshold 실패로 종료됐다.
+- delivery-service Hikari max는 30, active max는 30, pending max는 72였다.
+- DB 반영량은 k6 성공 13,733건과 일치했고, outbox는 테스트 직후 `FAILED 1,290`, `PENDING 14,143`이 남았지만 약 150초 뒤 모두 `PUBLISHED`로 해소됐다.
+- 이전 DB 비관적 락 100VU 대비 Hikari pending과 p95는 소폭 개선됐지만, TPS는 거의 동일하고 p95 threshold는 여전히 실패했다.
+- 상세 결과: `results/11-pool-size-30/delivery-assignment-pool-size-30-run04-100vu.md`
+
+- `pool-size-30 run03`: delivery-service Hikari maximum pool size 30 조건에서 80VU를 측정했다.
+- 결과는 TPS 27.45 req/s, p95 3.07s, p99 3.45s, HTTP 실패 0건이었다.
+- p95가 3초 threshold를 초과해 k6 실행은 threshold 실패로 종료됐다.
+- delivery-service Hikari max는 30, active max는 30, pending max는 52였다.
+- DB 반영량은 k6 성공 13,177건과 일치했고, outbox는 테스트 직후 `FAILED 360`, `PENDING 13,417`이 남았지만 약 150초 뒤 모두 `PUBLISHED`로 해소됐다.
+- 이전 DB 비관적 락 80VU 대비 Hikari pending은 줄었지만 TPS와 p95는 개선되지 않아, connection pool보다 `hub_delivery read_for_update` 대기가 더 우선적인 병목으로 유지됐다.
+- 상세 결과: `results/11-pool-size-30/delivery-assignment-pool-size-30-run03-80vu.md`
+
+- `pool-size-30 run02`: delivery-service Hikari maximum pool size 30 조건에서 50VU를 측정했다.
+- 결과는 TPS 24.61 req/s, p95 2.42s, p99 3.42s, 실패 0건이었다.
+- delivery-service Hikari max는 30, active max는 30, pending max는 22였다.
+- DB 반영량은 k6 성공 11,815건과 일치했고, outbox는 테스트 직후 `PENDING 9,615`가 남았지만 약 90초 뒤 모두 `PUBLISHED`로 해소됐다.
+- 이전 DB 비관적 락 50VU 대비 Hikari pending은 줄었지만 TPS와 p95는 개선되지 않아, 병목은 여전히 `hub_delivery read_for_update` 대기로 보인다.
+- 상세 결과: `results/11-pool-size-30/delivery-assignment-pool-size-30-run02-50vu.md`
+
+- `pool-size-30 run01`: DB 비관적 락 구조에서 delivery-service Hikari maximum pool size를 30으로 늘리고 20VU를 측정했다.
+- 결과는 TPS 17.85 req/s, p95 1.68s, p99 1.96s, 실패 0건이었다.
+- delivery-service Hikari max는 30, active max는 21, pending max는 0이었다.
+- DB 반영량은 k6 성공 8,570건과 일치했고, outbox는 모두 `PUBLISHED` 상태로 해소됐다.
+- pool size 20의 DB 비관적 락 20VU 대비 TPS와 p95는 소폭 악화됐고, 20VU에서는 pool 확장 효과가 뚜렷하게 나타나지 않았다.
+- 상세 결과: `results/11-pool-size-30/delivery-assignment-pool-size-30-run01-20vu.md`
+
 - `db-pessimistic-lock run04`: DB 비관적 락 구조로 100VU를 측정했다.
 - 결과는 TPS 28.79 req/s, p95 3.71s, p99 4.07s, HTTP 실패 0건이었다.
 - Redis lock timeout은 0건으로 유지됐고, DB 반영량은 k6 성공 13,819건과 일치했다.
@@ -322,6 +352,7 @@ delivery-assignment-optimization/
 |   +-- 08-post-optimization-validation/
 |   +-- 09-redis-lock-scope-reduction/
 |   +-- 10-db-pessimistic-lock/
+|   +-- 11-pool-size-30/
 ```
 
 - `00-legacy`: 기존 create 결과 보관
@@ -335,3 +366,4 @@ delivery-assignment-optimization/
 - `08-post-optimization-validation`: distributed, stress, 추가 확인
 - `09-redis-lock-scope-reduction`: Redis 락 내부 작업을 배정 예약 구간으로 축소한 결과
 - `10-db-pessimistic-lock`: Redis 분산락 제거 후 DB row `for update` 기반 비관적 락 비교 결과
+- `11-pool-size-30`: DB 비관적 락 유지 상태에서 delivery-service Hikari pool size 30 실험 결과
