@@ -6,6 +6,9 @@ COMPOSE_FILE="$(cat /etc/hublink-compose-file 2>/dev/null || true)"
 EUREKA_URL="http://10.10.0.10:19090"
 CONFIG_URL="http://10.10.0.10:19092"
 DATA_HOST="10.10.0.40"
+DEPLOY_MODE="${HUBLINK_DEPLOY_MODE:-full}"
+DEPLOY_SERVICES="${HUBLINK_DEPLOY_SERVICES:-}"
+FORCE_RECREATE="${HUBLINK_FORCE_RECREATE:-false}"
 
 if [ -z "${COMPOSE_FILE}" ]; then
   exit 0
@@ -37,6 +40,11 @@ if [ ! -f "${REMOTE_DIR}/.env.gcp" ] || [ ! -f "${REMOTE_DIR}/${COMPOSE_FILE}" ]
 fi
 
 cd "${REMOTE_DIR}"
+
+target_services=()
+if [ -n "${DEPLOY_SERVICES}" ]; then
+  read -r -a target_services <<< "${DEPLOY_SERVICES}"
+fi
 
 wait_http() {
   local name="$1"
@@ -82,7 +90,72 @@ wait_eureka_app() {
   wait_http "Eureka app ${app}" "${EUREKA_URL}/eureka/apps/${app}" "${max_seconds}"
 }
 
+wait_compose_service() {
+  local service="$1"
+
+  case "${service}" in
+    eureka-server)
+      wait_http "Eureka" "${EUREKA_URL}/actuator/health"
+      ;;
+    config-server)
+      wait_http "Config Server" "${CONFIG_URL}/actuator/health"
+      ;;
+    api-gateway)
+      wait_eureka_app "API-GATEWAY"
+      ;;
+    user-service)
+      wait_eureka_app "USER-SERVICE"
+      ;;
+    company-service)
+      wait_eureka_app "COMPANY-SERVICE"
+      ;;
+    hub-service)
+      wait_eureka_app "HUB-SERVICE"
+      ;;
+    product-service)
+      wait_eureka_app "PRODUCT-SERVICE"
+      ;;
+    order-service)
+      wait_eureka_app "ORDER-SERVICE"
+      ;;
+    stock-service)
+      wait_eureka_app "STOCK-SERVICE"
+      ;;
+    delivery-service)
+      wait_eureka_app "DELIVERY-SERVICE"
+      ;;
+    postgres)
+      wait_tcp "PostgreSQL" "localhost" 5432
+      ;;
+    redis)
+      wait_tcp "Redis" "localhost" 6379
+      ;;
+    kafka)
+      wait_tcp "Kafka" "localhost" 9092
+      ;;
+    prometheus)
+      wait_http "Prometheus" "http://localhost:9090/-/healthy"
+      ;;
+    loki)
+      wait_http "Loki" "http://localhost:3100/ready"
+      ;;
+    grafana)
+      wait_http "Grafana" "http://localhost:3000/api/health"
+      ;;
+  esac
+}
+
+wait_target_services() {
+  for service in "${target_services[@]}"; do
+    wait_compose_service "${service}"
+  done
+}
+
 stop_compose_before_wait() {
+  if [ "${#target_services[@]}" -gt 0 ]; then
+    return
+  fi
+
   case "${ROLE}" in
     platform|domain-a|domain-b)
       echo "stopping existing compose services before readiness checks"
@@ -117,6 +190,17 @@ case "${ROLE}" in
     wait_tcp "Kafka" "${DATA_HOST}" 9092
     ;;
 esac
+
+if [ "${#target_services[@]}" -gt 0 ]; then
+  up_args=(up -d --no-deps)
+  if [ "${DEPLOY_MODE}" = "config" ] || [ "${FORCE_RECREATE}" = "true" ]; then
+    up_args+=(--force-recreate)
+  fi
+
+  docker compose --env-file .env.gcp -f "${COMPOSE_FILE}" "${up_args[@]}" "${target_services[@]}"
+  wait_target_services
+  exit 0
+fi
 
 docker compose --env-file .env.gcp -f "${COMPOSE_FILE}" up -d --remove-orphans
 

@@ -75,6 +75,8 @@ jobs:
       deploy_monitoring: ${{ steps.detect.outputs.deploy_monitoring }}
       mirror_promtail: ${{ steps.detect.outputs.mirror_promtail }}
       should_deploy: ${{ steps.detect.outputs.should_deploy }}
+      foundation_targets_json: ${{ steps.detect.outputs.foundation_targets_json }}
+      app_targets_json: ${{ steps.detect.outputs.app_targets_json }}
 
     steps:
       - name: Checkout
@@ -116,7 +118,7 @@ jobs:
               if line.strip()
           ]
 
-          service_to_vm = {
+          service_to_role = {
               "eureka-server": "platform",
               "config-server": "platform",
               "api-gateway": "platform",
@@ -131,100 +133,188 @@ jobs:
               "ai-service": "domain_b",
           }
 
-          all_services = list(service_to_vm.keys())
-          services = set()
-          deploy = {
-              "platform": False,
-              "domain_a": False,
-              "domain_b": False,
-              "data": False,
-              "monitoring": False,
+          role_to_vm = {
+              "platform": "hublink-platform-vm",
+              "domain_a": "hublink-domain-a-vm",
+              "domain_b": "hublink-domain-b-vm",
+              "data": "hublink-data-vm",
+              "monitoring": "hublink-monitoring-vm",
           }
+          role_to_compose = {
+              "platform": "docker-compose.platform.yml",
+              "domain_a": "docker-compose.domain-a.yml",
+              "domain_b": "docker-compose.domain-b.yml",
+              "data": "docker-compose.data.yml",
+              "monitoring": "docker-compose.monitoring.yml",
+          }
+          full_extras = {
+              "platform": ["config-repo", "monitoring/promtail.yml"],
+              "domain_a": ["monitoring/promtail.yml"],
+              "domain_b": ["monitoring/promtail.yml"],
+              "data": ["db"],
+              "monitoring": ["monitoring"],
+          }
+          compose_to_role = {
+              "docker-compose.platform.yml": "platform",
+              "docker-compose.domain-a.yml": "domain_a",
+              "docker-compose.domain-b.yml": "domain_b",
+              "docker-compose.data.yml": "data",
+              "docker-compose.monitoring.yml": "monitoring",
+          }
+          mode_rank = {"sync": 0, "config": 1, "image": 2, "full": 3}
+
+          all_services = list(service_to_role.keys())
+          role_service_order = {
+              role: [service for service in all_services if service_to_role[service] == role]
+              for role in {"platform", "domain_a", "domain_b"}
+          }
+          services = set()
+          targets = {}
           mirror_promtail = False
 
-          def deploy_service_vm(service):
-              vm = service_to_vm[service]
-              deploy[vm] = True
+          def ensure_target(role):
+              return targets.setdefault(role, {
+                  "role": role,
+                  "vm": role_to_vm[role],
+                  "compose": role_to_compose[role],
+                  "mode": "sync",
+                  "services": set(),
+                  "extras": set(),
+                  "force_recreate": False,
+                  "skip_ensure": True,
+              })
 
-          def deploy_all_app_vms():
-              deploy["platform"] = True
-              deploy["domain_a"] = True
-              deploy["domain_b"] = True
+          def add_target(role, deploy_mode, services_to_deploy=(), extras=(), force_recreate=False, skip_ensure=True):
+              target = ensure_target(role)
+              if mode_rank[deploy_mode] > mode_rank[target["mode"]]:
+                  target["mode"] = deploy_mode
+              if deploy_mode == "full":
+                  target["services"].clear()
+              elif target["mode"] != "full":
+                  target["services"].update(services_to_deploy)
+              target["extras"].update(extras)
+              target["force_recreate"] = target["force_recreate"] or force_recreate
+              target["skip_ensure"] = target["skip_ensure"] and skip_ensure
+
+          def add_full_role(role, skip_ensure=True):
+              add_target(role, "full", extras=full_extras.get(role, []), skip_ensure=skip_ensure)
+
+          def add_image_service(service):
+              services.add(service)
+              add_target(service_to_role[service], "image", [service])
+
+          def add_config_service(service):
+              add_target("platform", "sync", extras=["config-repo"])
+              add_target(service_to_role[service], "config", [service], force_recreate=True)
+
+          def add_all_app_services_as_image():
+              for service in all_services:
+                  add_image_service(service)
+
+          def add_all_app_roles_full(skip_ensure=True):
+              for role in ("platform", "domain_a", "domain_b"):
+                  add_full_role(role, skip_ensure=skip_ensure)
 
           if mode == "all":
-              services.update(all_services)
-              deploy_all_app_vms()
-              deploy["data"] = True
-              deploy["monitoring"] = True
+              add_all_app_services_as_image()
+              add_full_role("platform", skip_ensure=False)
+              add_full_role("domain_a", skip_ensure=False)
+              add_full_role("domain_b", skip_ensure=False)
+              add_full_role("data", skip_ensure=False)
+              add_full_role("monitoring", skip_ensure=False)
               mirror_promtail = True
           else:
               for file_path in changed_files:
                   for service in all_services:
                       if file_path == service or file_path.startswith(f"{service}/"):
-                          services.add(service)
-                          deploy_service_vm(service)
+                          add_image_service(service)
 
                   if (
                       file_path in {"Dockerfile", "build.gradle", "settings.gradle", "gradlew"}
                       or file_path.startswith("gradle/")
                       or file_path.startswith("core-common/")
                   ):
-                      services.update(all_services)
-                      deploy_all_app_vms()
+                      add_all_app_services_as_image()
 
                   if file_path.startswith("config-repo/"):
-                      deploy_all_app_vms()
+                      config_name = Path(file_path).name
+                      config_service = config_name.removesuffix(".yml").removesuffix(".yaml")
+                      if config_service in service_to_role:
+                          add_config_service(config_service)
+                      else:
+                          add_target("platform", "sync", extras=["config-repo"])
+                          for service in all_services:
+                              add_config_service(service)
 
                   if file_path.startswith("db/"):
-                      deploy["data"] = True
+                      add_full_role("data")
 
                   if file_path == "monitoring/promtail.yml":
-                      deploy_all_app_vms()
-                      deploy["monitoring"] = True
+                      for role in ("platform", "domain_a", "domain_b", "monitoring"):
+                          add_target(role, "config", ["promtail"], extras=["monitoring/promtail.yml"], force_recreate=True)
                       mirror_promtail = True
                   elif file_path.startswith("monitoring/"):
-                      deploy["monitoring"] = True
+                      add_full_role("monitoring")
 
-                  if file_path == "docker-compose.platform.yml":
-                      deploy["platform"] = True
-
-                  if file_path == "docker-compose.domain-a.yml":
-                      deploy["domain_a"] = True
-
-                  if file_path == "docker-compose.domain-b.yml":
-                      deploy["domain_b"] = True
-
-                  if file_path == "docker-compose.data.yml":
-                      deploy["data"] = True
-
-                  if file_path == "docker-compose.monitoring.yml":
-                      deploy["monitoring"] = True
-                      mirror_promtail = True
+                  if file_path in compose_to_role:
+                      add_full_role(compose_to_role[file_path])
+                      if file_path in {"docker-compose.platform.yml", "docker-compose.domain-a.yml", "docker-compose.domain-b.yml", "docker-compose.monitoring.yml"}:
+                          mirror_promtail = True
 
                   if file_path.startswith("scripts/gcp/") or file_path.startswith("infra/gcp/scripts/") or file_path == ".github/workflows/gcp-cicd.yml":
-                      services.update(all_services)
-                      deploy_all_app_vms()
-                      deploy["data"] = True
-                      deploy["monitoring"] = True
+                      add_all_app_roles_full(skip_ensure=False)
+                      add_full_role("data", skip_ensure=False)
+                      add_full_role("monitoring", skip_ensure=False)
 
-          mirror_promtail = mirror_promtail or deploy["platform"] or deploy["domain_a"] or deploy["domain_b"] or deploy["monitoring"]
+          def target_to_json(role):
+              target = targets[role]
+              ordered_services = []
+              if target["mode"] != "full":
+                  ordered = role_service_order.get(role, [])
+                  ordered_services = [service for service in ordered if service in target["services"]]
+                  ordered_services.extend(sorted(target["services"] - set(ordered_services)))
+              return {
+                  "role": role,
+                  "vm": target["vm"],
+                  "compose": target["compose"],
+                  "mode": target["mode"],
+                  "services": " ".join(ordered_services),
+                  "extras": " ".join(sorted(target["extras"])),
+                  "force_recreate": str(target["force_recreate"]).lower(),
+                  "skip_ensure": str(target["skip_ensure"]).lower(),
+              }
 
           services_json = json.dumps([service for service in all_services if service in services])
-          should_deploy = any(deploy.values())
+          foundation_targets = [
+              target_to_json(role)
+              for role in ("data", "monitoring", "platform")
+              if role in targets
+          ]
+          app_targets = [
+              target_to_json(role)
+              for role in ("domain_a", "domain_b")
+              if role in targets
+          ]
+          foundation_targets_json = json.dumps(foundation_targets)
+          app_targets_json = json.dumps(app_targets)
+          should_deploy = bool(targets)
 
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
               output.write(f"services_json={services_json}\n")
-              output.write(f"deploy_platform={str(deploy['platform']).lower()}\n")
-              output.write(f"deploy_domain_a={str(deploy['domain_a']).lower()}\n")
-              output.write(f"deploy_domain_b={str(deploy['domain_b']).lower()}\n")
-              output.write(f"deploy_data={str(deploy['data']).lower()}\n")
-              output.write(f"deploy_monitoring={str(deploy['monitoring']).lower()}\n")
+              output.write(f"deploy_platform={str('platform' in targets).lower()}\n")
+              output.write(f"deploy_domain_a={str('domain_a' in targets).lower()}\n")
+              output.write(f"deploy_domain_b={str('domain_b' in targets).lower()}\n")
+              output.write(f"deploy_data={str('data' in targets).lower()}\n")
+              output.write(f"deploy_monitoring={str('monitoring' in targets).lower()}\n")
               output.write(f"mirror_promtail={str(mirror_promtail).lower()}\n")
               output.write(f"should_deploy={str(should_deploy).lower()}\n")
+              output.write(f"foundation_targets_json={foundation_targets_json}\n")
+              output.write(f"app_targets_json={app_targets_json}\n")
 
           print("changed_files=", changed_files)
           print("services_json=", services_json)
-          print("deploy=", deploy)
+          print("foundation_targets_json=", foundation_targets_json)
+          print("app_targets_json=", app_targets_json)
           print("mirror_promtail=", mirror_promtail)
           PY
 
@@ -435,41 +525,123 @@ jobs:
           # heredoc 들여쓰기 공백 제거
           sed -i 's/^          //' .env.gcp
 
-      - name: Check gcloud access
-        # VM 목록 조회 권한 확인
-        run: |
-          gcloud compute instances list \
-            --project "${GCP_PROJECT_ID}" \
-            --filter="name~'hublink-.*-vm'" \
-            --format="table(name,status,networkInterfaces[0].networkIP,networkInterfaces[0].accessConfigs[0].natIP)"
+          SERVICES_JSON='${{ needs.detect-changes.outputs.services_json }}'
+          export SERVICES_JSON
+          python - <<'PY' >> .env.gcp
+          import json
+          import os
+
+          services = [
+              "eureka-server",
+              "config-server",
+              "api-gateway",
+              "user-service",
+              "company-service",
+              "hub-service",
+              "product-service",
+              "order-service",
+              "stock-service",
+              "delivery-service",
+              "slack-service",
+              "ai-service",
+          ]
+          built_services = set(json.loads(os.environ.get("SERVICES_JSON") or "[]"))
+          sha = os.environ["GITHUB_SHA"]
+          for service in services:
+              variable = service.upper().replace("-", "_") + "_IMAGE_TAG"
+              tag = sha if service in built_services else "latest"
+              print(f"{variable}={tag}")
+          PY
 
       - name: Prepare deploy script
         run: chmod +x scripts/gcp/deploy-vm.sh
 
-      - name: Deploy data services
-        # 데이터 저장소와 메시지 브로커 배포
-        if: needs.detect-changes.outputs.deploy_data == 'true'
-        run: scripts/gcp/deploy-vm.sh "${DATA_VM}" docker-compose.data.yml db
+      - name: Deploy foundation targets
+        if: needs.detect-changes.outputs.foundation_targets_json != '[]'
+        env:
+          DEPLOY_TARGETS_JSON: ${{ needs.detect-changes.outputs.foundation_targets_json }}
+        run: |
+          python - <<'PY'
+          import concurrent.futures
+          import json
+          import os
+          import subprocess
+          import sys
 
-      - name: Deploy monitoring services
-        # 모니터링 계층 배포
-        if: needs.detect-changes.outputs.deploy_monitoring == 'true'
-        run: scripts/gcp/deploy-vm.sh "${MONITORING_VM}" docker-compose.monitoring.yml monitoring
+          targets = json.loads(os.environ["DEPLOY_TARGETS_JSON"])
 
-      - name: Deploy platform services
-        # Eureka, Config Server, Gateway 배포
-        if: needs.detect-changes.outputs.deploy_platform == 'true'
-        run: scripts/gcp/deploy-vm.sh "${PLATFORM_VM}" docker-compose.platform.yml config-repo monitoring/promtail.yml
+          def deploy(target):
+              env = os.environ.copy()
+              env["DEPLOY_MODE"] = target["mode"]
+              env["DEPLOY_SERVICES"] = target.get("services", "")
+              env["DEPLOY_FORCE_RECREATE"] = target.get("force_recreate", "false")
+              env["DEPLOY_SKIP_DOCKER_ENSURE"] = target.get("skip_ensure", "true")
 
-      - name: Deploy domain A services
-        # 사용자, 업체, 허브, 상품 서비스 배포
-        if: needs.detect-changes.outputs.deploy_domain_a == 'true'
-        run: scripts/gcp/deploy-vm.sh "${DOMAIN_A_VM}" docker-compose.domain-a.yml monitoring/promtail.yml
+              command = ["scripts/gcp/deploy-vm.sh", target["vm"], target["compose"]]
+              extras = target.get("extras", "")
+              if extras:
+                  command.extend(extras.split())
 
-      - name: Deploy domain B services
-        # 주문, 재고, 배송, Slack, AI 서비스 배포
-        if: needs.detect-changes.outputs.deploy_domain_b == 'true'
-        run: scripts/gcp/deploy-vm.sh "${DOMAIN_B_VM}" docker-compose.domain-b.yml monitoring/promtail.yml
+              print(f"deploy target={target['role']} mode={target['mode']} services={target.get('services', '')}", flush=True)
+              result = subprocess.run(command, env=env)
+              return target, result.returncode
+
+          failures = []
+          with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, len(targets))) as executor:
+              futures = [executor.submit(deploy, target) for target in targets]
+              for future in concurrent.futures.as_completed(futures):
+                  target, code = future.result()
+                  if code != 0:
+                      failures.append((target["role"], code))
+
+          if failures:
+              print(f"deploy failures={failures}", file=sys.stderr)
+              sys.exit(1)
+          PY
+
+      - name: Deploy app targets
+        if: needs.detect-changes.outputs.app_targets_json != '[]'
+        env:
+          DEPLOY_TARGETS_JSON: ${{ needs.detect-changes.outputs.app_targets_json }}
+        run: |
+          python - <<'PY'
+          import concurrent.futures
+          import json
+          import os
+          import subprocess
+          import sys
+
+          targets = json.loads(os.environ["DEPLOY_TARGETS_JSON"])
+
+          def deploy(target):
+              env = os.environ.copy()
+              env["DEPLOY_MODE"] = target["mode"]
+              env["DEPLOY_SERVICES"] = target.get("services", "")
+              env["DEPLOY_FORCE_RECREATE"] = target.get("force_recreate", "false")
+              env["DEPLOY_SKIP_DOCKER_ENSURE"] = target.get("skip_ensure", "true")
+
+              command = ["scripts/gcp/deploy-vm.sh", target["vm"], target["compose"]]
+              extras = target.get("extras", "")
+              if extras:
+                  command.extend(extras.split())
+
+              print(f"deploy target={target['role']} mode={target['mode']} services={target.get('services', '')}", flush=True)
+              result = subprocess.run(command, env=env)
+              return target, result.returncode
+
+          failures = []
+          with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, len(targets))) as executor:
+              futures = [executor.submit(deploy, target) for target in targets]
+              for future in concurrent.futures.as_completed(futures):
+                  target, code = future.result()
+                  if code != 0:
+                      failures.append((target["role"], code))
+
+          if failures:
+              print(f"deploy failures={failures}", file=sys.stderr)
+              sys.exit(1)
+          PY
+
 
       - name: Show service registry hints
         run: |

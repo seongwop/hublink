@@ -104,9 +104,6 @@ jobs:
               } or file_path.startswith("gradle/"):
                   build_all = True
 
-              if file_path.startswith("config-repo/"):
-                  build_all = True
-
               if file_path.startswith(".github/workflows/"):
                   build_all = True
 
