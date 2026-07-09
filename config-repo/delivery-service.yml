@@ -45,6 +45,7 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
+    open-in-view: false
     properties:
       hibernate:
         default_schema: delivery_service

@@ -20,6 +20,7 @@ spring:
   jpa:
     show-sql: false
     defer-datasource-initialization: false
+    open-in-view: false
     hibernate:
       ddl-auto: update
     properties:
