@@ -2,7 +2,7 @@
 services:
   # 서비스 디스커버리 서버
   eureka-server:
-    image: ${IMAGE_REGISTRY}/hublink-eureka-server:${IMAGE_TAG:-latest}
+    image: ${IMAGE_REGISTRY}/hublink-eureka-server:${EUREKA_SERVER_IMAGE_TAG:-latest}
     container_name: hublink-eureka-server
     restart: unless-stopped
     env_file:
@@ -22,7 +22,7 @@ services:
 
   # Config Server
   config-server:
-    image: ${IMAGE_REGISTRY}/hublink-config-server:${IMAGE_TAG:-latest}
+    image: ${IMAGE_REGISTRY}/hublink-config-server:${CONFIG_SERVER_IMAGE_TAG:-latest}
     container_name: hublink-config-server
     restart: unless-stopped
     env_file:
@@ -49,7 +49,7 @@ services:
 
   # 외부 요청 진입 Gateway
   api-gateway:
-    image: ${IMAGE_REGISTRY}/hublink-api-gateway:${IMAGE_TAG:-latest}
+    image: ${IMAGE_REGISTRY}/hublink-api-gateway:${API_GATEWAY_IMAGE_TAG:-latest}
     container_name: hublink-api-gateway
     restart: unless-stopped
     env_file:

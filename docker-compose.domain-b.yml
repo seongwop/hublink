@@ -2,7 +2,7 @@
 services:
   # 주문 서비스
   order-service:
-    image: ${IMAGE_REGISTRY}/hublink-order-service:${IMAGE_TAG:-latest}
+    image: ${IMAGE_REGISTRY}/hublink-order-service:${ORDER_SERVICE_IMAGE_TAG:-latest}
     container_name: hublink-order-service
     restart: unless-stopped
     env_file:
@@ -19,7 +19,7 @@ services:
 
   # 재고 서비스
   stock-service:
-    image: ${IMAGE_REGISTRY}/hublink-stock-service:${IMAGE_TAG:-latest}
+    image: ${IMAGE_REGISTRY}/hublink-stock-service:${STOCK_SERVICE_IMAGE_TAG:-latest}
     container_name: hublink-stock-service
     restart: unless-stopped
     env_file:
@@ -36,7 +36,7 @@ services:
 
   # 배송 서비스
   delivery-service:
-    image: ${IMAGE_REGISTRY}/hublink-delivery-service:${IMAGE_TAG:-latest}
+    image: ${IMAGE_REGISTRY}/hublink-delivery-service:${DELIVERY_SERVICE_IMAGE_TAG:-latest}
     container_name: hublink-delivery-service
     restart: unless-stopped
     env_file:
@@ -53,7 +53,7 @@ services:
 
   # Slack 알림 서비스
   slack-service:
-    image: ${IMAGE_REGISTRY}/hublink-slack-service:${IMAGE_TAG:-latest}
+    image: ${IMAGE_REGISTRY}/hublink-slack-service:${SLACK_SERVICE_IMAGE_TAG:-latest}
     container_name: hublink-slack-service
     restart: unless-stopped
     env_file:
@@ -70,7 +70,7 @@ services:
 
   # AI 연계 서비스
   ai-service:
-    image: ${IMAGE_REGISTRY}/hublink-ai-service:${IMAGE_TAG:-latest}
+    image: ${IMAGE_REGISTRY}/hublink-ai-service:${AI_SERVICE_IMAGE_TAG:-latest}
     container_name: hublink-ai-service
     restart: unless-stopped
     env_file:
