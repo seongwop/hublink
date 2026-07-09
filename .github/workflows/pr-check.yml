@@ -170,6 +170,7 @@ jobs:
 
       - name: Validate compose files
         run: |
+          cp .env.gcp.example .env.gcp
           for compose_file in docker-compose.*.yml; do
             docker compose --env-file .env.gcp.example -f "${compose_file}" config >/dev/null
           done

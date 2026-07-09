@@ -148,4 +148,4 @@ case '${DEPLOY_MODE}' in
     ;;
 esac
 
-sudo docker compose -f '${COMPOSE_FILE}' ps"
+sudo docker compose --env-file .env.gcp -f '${COMPOSE_FILE}' ps"
