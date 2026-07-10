@@ -190,7 +190,9 @@ jobs:
           bash -n scripts/gcp/deploy-load-test.sh
           bash -n scripts/gcp/ensure-docker.sh
           bash -n scripts/gcp/hublink-compose-up.sh
+          bash -n scripts/gcp/test-hublink-compose-up.sh
           bash -n infra/gcp/scripts/install-docker.sh
+          bash scripts/gcp/test-hublink-compose-up.sh
 
   pr-check-result:
     name: PR check result
