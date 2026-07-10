@@ -35,7 +35,7 @@ public interface DeliveryAssignmentCountRepository
         where assignment_type = :assignmentType
           and manager_id in (:managerIds)
         order by manager_id
-        for update
+        for update skip locked
     """, nativeQuery = true)
     List<ManagerAssignmentCount> findAssignmentCountsByManagerIdsForUpdate(
             @Param("managerIds") Collection<UUID> managerIds,
