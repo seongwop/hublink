@@ -180,10 +180,13 @@ case "${ROLE}" in
     wait_tcp "PostgreSQL" "${DATA_HOST}" 5432
     wait_tcp "Redis" "${DATA_HOST}" 6379
     wait_tcp "Kafka" "${DATA_HOST}" 9092
-    wait_eureka_app "COMPANY-SERVICE"
-    wait_eureka_app "HUB-SERVICE"
-    wait_eureka_app "USER-SERVICE"
-    wait_eureka_app "PRODUCT-SERVICE"
+    if [ "${#target_services[@]}" -eq 0 ]; then
+      # 전체 domain-b 배포용 도메인 A 준비 상태 확인
+      wait_eureka_app "COMPANY-SERVICE"
+      wait_eureka_app "HUB-SERVICE"
+      wait_eureka_app "USER-SERVICE"
+      wait_eureka_app "PRODUCT-SERVICE"
+    fi
     ;;
   monitoring)
     wait_tcp "PostgreSQL" "${DATA_HOST}" 5432
