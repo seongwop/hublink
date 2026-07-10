@@ -168,7 +168,7 @@ public class DeliveryAssignmentCountService {
         for (ManagerAssignmentCount assignmentCount
                 : performanceMetrics.recordAssignmentCountOperation(
                         assignmentType.name(),
-                        "read_for_update",
+                        "read_for_update_skip_locked",
                         () -> deliveryAssignmentCountRepository.findAssignmentCountsByManagerIdsForUpdate(
                                 managerIds,
                                 assignmentType.name()

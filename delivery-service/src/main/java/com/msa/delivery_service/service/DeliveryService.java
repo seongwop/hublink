@@ -524,6 +524,9 @@ public class DeliveryService {
             Map<UUID, Long> assignmentCounts
     ) {
         return deliveryManagers.stream()
+                .filter(deliveryManager -> assignmentCounts.containsKey(
+                        deliveryManager.getDeliveryManagerId()
+                ))
                 .filter(deliveryManager -> assignmentCount(deliveryManager, assignmentCounts)
                         < maxActiveAssignmentsPerManager)
                 .min(Comparator
