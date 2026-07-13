@@ -20,6 +20,7 @@ import com.msa.delivery_service.message.RedisStreamEventPublisher;
 import com.msa.delivery_service.repository.DeliveryAssignmentCountRepository;
 import com.msa.delivery_service.repository.DeliveryRepository;
 import com.msa.delivery_service.repository.DeliveryRouteHistoryRepository;
+import com.msa.delivery_service.repository.ManagerAssignmentCount;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -29,6 +30,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.support.TransactionCallback;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.lang.reflect.Constructor;
 import java.util.List;
@@ -36,7 +39,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.function.Supplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -61,7 +63,7 @@ class DeliveryServiceTest {
     private UserClient userClient;
 
     @Mock
-    private DeliveryAssignmentLockService deliveryAssignmentLockService;
+    private TransactionTemplate transactionTemplate;
 
     @Mock
     private RedisStreamEventPublisher redisStreamEventPublisher;
@@ -84,7 +86,6 @@ class DeliveryServiceTest {
                 deliveryRouteHistoryRepository,
                 redisStreamEventPublisher,
                 deliveryOutboxService,
-                deliveryAssignmentCountService,
                 performanceMetrics
         );
         DeliveryExternalService deliveryExternalService = new DeliveryExternalService(hubClient, userClient);
@@ -93,8 +94,8 @@ class DeliveryServiceTest {
                 deliveryRouteHistoryRepository,
                 deliveryExternalService,
                 deliveryCreateService,
-                deliveryAssignmentLockService,
-                deliveryAssignmentCountService
+                deliveryAssignmentCountService,
+                transactionTemplate
         );
         ReflectionTestUtils.setField(deliveryService, "maxActiveAssignmentsPerManager", 30);
     }
@@ -140,20 +141,23 @@ class DeliveryServiceTest {
         when(hubClient.getRoutes(supplierCompanyId, receiverCompanyId)).thenReturn(List.of(firstRoute, secondRoute, lastRoute));
         when(userClient.getHubManager(firstHubId)).thenReturn(hubManager);
         when(userClient.getDeliveryManagers(anyList())).thenReturn(List.of(companyManager, firstHubManager, secondHubManager));
-        when(deliveryAssignmentCountRepository.findAssignmentCountsByManagerIds(
+        when(deliveryAssignmentCountRepository.findAssignmentCountsByManagerIdsForUpdate(
                 eq(List.of(companyManagerId)),
-                eq(DeliveryAssignmentType.COMPANY_DELIVERY)
+                eq(DeliveryAssignmentType.COMPANY_DELIVERY.name())
         ))
-                .thenReturn(List.of());
-        when(deliveryAssignmentCountRepository.findAssignmentCountsByManagerIds(
+                .thenReturn(List.of(createManagerAssignmentCount(companyManagerId, 0)));
+        when(deliveryAssignmentCountRepository.findAssignmentCountsByManagerIdsForUpdate(
                 eq(List.of(firstHubManagerId, secondHubManagerId)),
-                eq(DeliveryAssignmentType.HUB_DELIVERY)
+                eq(DeliveryAssignmentType.HUB_DELIVERY.name())
         ))
-                .thenReturn(List.of());
-        when(deliveryAssignmentLockService.executeWithLocks(anyList(), any()))
+                .thenReturn(List.of(
+                        createManagerAssignmentCount(firstHubManagerId, 0),
+                        createManagerAssignmentCount(secondHubManagerId, 0)
+                ));
+        when(transactionTemplate.execute(any()))
                 .thenAnswer(invocation -> {
-                    Supplier<?> supplier = invocation.getArgument(1);
-                    return supplier.get();
+                    TransactionCallback<?> callback = invocation.getArgument(0);
+                    return callback.doInTransaction(null);
                 });
         when(deliveryRepository.save(any(Delivery.class))).thenAnswer(invocation -> {
             Delivery delivery = invocation.getArgument(0);
@@ -367,6 +371,20 @@ class DeliveryServiceTest {
         ReflectionTestUtils.setField(response, "type", type);
         ReflectionTestUtils.setField(response, "deliverySequence", deliverySequence);
         return response;
+    }
+
+    private ManagerAssignmentCount createManagerAssignmentCount(UUID managerId, long assignmentCount) {
+        return new ManagerAssignmentCount() {
+            @Override
+            public UUID getManagerId() {
+                return managerId;
+            }
+
+            @Override
+            public long getAssignmentCount() {
+                return assignmentCount;
+            }
+        };
     }
 
     private <T> T instantiate(Class<T> type) {

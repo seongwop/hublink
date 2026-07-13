@@ -2,6 +2,13 @@
 
 ## Latest Run Note
 
+- `osiv-disabled run01`: delivery-service, hub-service, company-service의 OSIV를 비활성화한 뒤 기존 pool size 30 조건과 같은 100VU로 측정했다.
+- 결과는 TPS 26.95 req/s, p95 4.75s, p99 6.35s, HTTP 실패 0건이었다.
+- `LazyInitializationException`은 발생하지 않았고 DB 반영량은 k6 성공 12,938건과 일치했으며, outbox backlog도 추가 90초 뒤 모두 해소됐다.
+- delivery-service Hikari pending 최대는 기존 pool-size-30 100VU와 같은 72였지만, `hub_delivery read_for_update` 평균은 758.59ms에서 1,003.90ms로 증가했다.
+- OSIV 비활성화의 기능 안전성은 확인했지만 성능 개선 효과는 없었고, 현재 병목은 DB row lock 대기와 connection pending으로 유지됐다.
+- 상세 결과: `results/12-osiv-disabled/delivery-assignment-osiv-disabled-run01-100vu.md`
+
 - `pool-size-30 run04`: delivery-service Hikari maximum pool size 30 조건에서 100VU를 측정했다.
 - 결과는 TPS 28.60 req/s, p95 3.49s, p99 4.01s, HTTP 실패 0건이었다.
 - p95가 3초 threshold를 초과해 k6 실행은 threshold 실패로 종료됐다.
@@ -223,7 +230,9 @@
 7. Hikari pool 조정과 fallback 접근자 수정 후 재측정
 8. Redis lock 획득 순서 조정으로 실제 병목 key 확인
 9. 집계 테이블 기반 DB row lock 버전 비교
-10. 구조 변경 후에도 남는 병목 쿼리와 outbox polling 최적화
+10. delivery-service Hikari pool size 30 비교
+11. delivery, hub, company 서비스 OSIV 비활성화 검증
+12. 구조 변경 후에도 남는 병목 쿼리와 outbox polling 최적화
 
 ## Baseline Test Plan
 
@@ -353,6 +362,7 @@ delivery-assignment-optimization/
 |   +-- 09-redis-lock-scope-reduction/
 |   +-- 10-db-pessimistic-lock/
 |   +-- 11-pool-size-30/
+|   +-- 12-osiv-disabled/
 ```
 
 - `00-legacy`: 기존 create 결과 보관
@@ -367,3 +377,4 @@ delivery-assignment-optimization/
 - `09-redis-lock-scope-reduction`: Redis 락 내부 작업을 배정 예약 구간으로 축소한 결과
 - `10-db-pessimistic-lock`: Redis 분산락 제거 후 DB row `for update` 기반 비관적 락 비교 결과
 - `11-pool-size-30`: DB 비관적 락 유지 상태에서 delivery-service Hikari pool size 30 실험 결과
+- `12-osiv-disabled`: delivery, hub, company 서비스 OSIV 비활성화 후 기능 안전성과 성능 비교 결과
