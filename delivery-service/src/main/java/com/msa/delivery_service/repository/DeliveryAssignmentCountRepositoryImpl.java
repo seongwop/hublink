@@ -8,13 +8,55 @@ import org.springframework.stereotype.Repository;
 
 import java.sql.PreparedStatement;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
 @RequiredArgsConstructor
 public class DeliveryAssignmentCountRepositoryImpl implements DeliveryAssignmentCountBulkRepository {
+
+    /*
+        SKIP LOCKED 적용 전 후보 전체 row lock 조회 쿼리
+
+        select manager_id as "managerId",
+               active_assignment_count as "assignmentCount"
+        from delivery_service.p_delivery_assignment_counts
+        where assignment_type = :assignmentType
+          and manager_id in (:managerIds)
+        order by manager_id
+        for update
+
+        SKIP LOCKED 단독 적용 쿼리
+
+        select manager_id as "managerId",
+               active_assignment_count as "assignmentCount"
+        from delivery_service.p_delivery_assignment_counts
+        where assignment_type = :assignmentType
+          and manager_id in (:managerIds)
+        order by manager_id
+        for update skip locked
+    */
+    private static final String RESERVE_ASSIGNMENT_SQL = """
+        with candidate as (
+            select assignment_count.manager_id
+            from delivery_service.p_delivery_assignment_counts assignment_count
+            where assignment_count.assignment_type = ?
+              and assignment_count.manager_id = any (?)
+              and assignment_count.active_assignment_count < ?
+            order by assignment_count.active_assignment_count
+            limit 1
+            for update of assignment_count skip locked
+        )
+        update delivery_service.p_delivery_assignment_counts assignment_count
+        set active_assignment_count = assignment_count.active_assignment_count + 1
+        from candidate
+        where assignment_count.manager_id = candidate.manager_id
+          and assignment_count.assignment_type = ?
+        returning assignment_count.manager_id
+    """;
 
     private static final String BULK_INCREASE_SQL = """
         insert into delivery_service.p_delivery_assignment_counts (
@@ -38,6 +80,32 @@ public class DeliveryAssignmentCountRepositoryImpl implements DeliveryAssignment
     """;
 
     private final JdbcTemplate jdbcTemplate;
+
+    @Override
+    public Optional<UUID> reserveAssignment(
+            Collection<UUID> managerIds,
+            DeliveryAssignmentType assignmentType,
+            long maxActiveAssignments
+    ) {
+        if (managerIds.isEmpty()) {
+            return Optional.empty();
+        }
+
+        PreparedStatementCreator preparedStatementCreator = connection -> {
+            PreparedStatement statement = connection.prepareStatement(RESERVE_ASSIGNMENT_SQL);
+            statement.setString(1, assignmentType.name());
+            statement.setArray(2, connection.createArrayOf("uuid", managerIds.toArray(UUID[]::new)));
+            statement.setLong(3, maxActiveAssignments);
+            statement.setString(4, assignmentType.name());
+            return statement;
+        };
+        return jdbcTemplate.query(
+                preparedStatementCreator,
+                resultSet -> resultSet.next()
+                        ? Optional.of(resultSet.getObject("manager_id", UUID.class))
+                        : Optional.empty()
+        );
+    }
 
     @Override
     public void increaseAssignmentCounts(Map<UUID, Long> deltas, DeliveryAssignmentType assignmentType) {

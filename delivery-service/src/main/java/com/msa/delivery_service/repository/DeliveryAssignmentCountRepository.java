@@ -28,20 +28,6 @@ public interface DeliveryAssignmentCountRepository
             @Param("assignmentType") DeliveryAssignmentType assignmentType
     );
 
-    @Query(value = """
-        select manager_id as "managerId",
-               active_assignment_count as "assignmentCount"
-        from delivery_service.p_delivery_assignment_counts
-        where assignment_type = :assignmentType
-          and manager_id in (:managerIds)
-        order by manager_id
-        for update skip locked
-    """, nativeQuery = true)
-    List<ManagerAssignmentCount> findAssignmentCountsByManagerIdsForUpdate(
-            @Param("managerIds") Collection<UUID> managerIds,
-            @Param("assignmentType") String assignmentType
-    );
-
     @Modifying
     @Query(value = """
         update delivery_service.p_delivery_assignment_counts

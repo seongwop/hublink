@@ -20,7 +20,6 @@ import com.msa.delivery_service.message.RedisStreamEventPublisher;
 import com.msa.delivery_service.repository.DeliveryAssignmentCountRepository;
 import com.msa.delivery_service.repository.DeliveryRepository;
 import com.msa.delivery_service.repository.DeliveryRouteHistoryRepository;
-import com.msa.delivery_service.repository.ManagerAssignmentCount;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -141,19 +140,24 @@ class DeliveryServiceTest {
         when(hubClient.getRoutes(supplierCompanyId, receiverCompanyId)).thenReturn(List.of(firstRoute, secondRoute, lastRoute));
         when(userClient.getHubManager(firstHubId)).thenReturn(hubManager);
         when(userClient.getDeliveryManagers(anyList())).thenReturn(List.of(companyManager, firstHubManager, secondHubManager));
-        when(deliveryAssignmentCountRepository.findAssignmentCountsByManagerIdsForUpdate(
+        when(deliveryAssignmentCountRepository.reserveAssignment(
+                eq(List.of(firstHubManagerId)),
+                eq(DeliveryAssignmentType.HUB_DELIVERY),
+                eq(30L)
+        ))
+                .thenReturn(Optional.of(firstHubManagerId));
+        when(deliveryAssignmentCountRepository.reserveAssignment(
+                eq(List.of(secondHubManagerId)),
+                eq(DeliveryAssignmentType.HUB_DELIVERY),
+                eq(30L)
+        ))
+                .thenReturn(Optional.of(secondHubManagerId));
+        when(deliveryAssignmentCountRepository.reserveAssignment(
                 eq(List.of(companyManagerId)),
-                eq(DeliveryAssignmentType.COMPANY_DELIVERY.name())
+                eq(DeliveryAssignmentType.COMPANY_DELIVERY),
+                eq(30L)
         ))
-                .thenReturn(List.of(createManagerAssignmentCount(companyManagerId, 0)));
-        when(deliveryAssignmentCountRepository.findAssignmentCountsByManagerIdsForUpdate(
-                eq(List.of(firstHubManagerId, secondHubManagerId)),
-                eq(DeliveryAssignmentType.HUB_DELIVERY.name())
-        ))
-                .thenReturn(List.of(
-                        createManagerAssignmentCount(firstHubManagerId, 0),
-                        createManagerAssignmentCount(secondHubManagerId, 0)
-                ));
+                .thenReturn(Optional.of(companyManagerId));
         when(transactionTemplate.execute(any()))
                 .thenAnswer(invocation -> {
                     TransactionCallback<?> callback = invocation.getArgument(0);
@@ -190,13 +194,20 @@ class DeliveryServiceTest {
                         DeliveryRouteType.HUB_TO_HUB,
                         DeliveryRouteType.HUB_TO_COMPANY
                 );
-        verify(deliveryAssignmentCountRepository).increaseAssignmentCounts(
-                eq(Map.of(
-                        DeliveryAssignmentType.COMPANY_DELIVERY,
-                        Map.of(companyManagerId, 1L),
-                        DeliveryAssignmentType.HUB_DELIVERY,
-                        Map.of(firstHubManagerId, 1L, secondHubManagerId, 1L)
-                ))
+        verify(deliveryAssignmentCountRepository).reserveAssignment(
+                eq(List.of(firstHubManagerId)),
+                eq(DeliveryAssignmentType.HUB_DELIVERY),
+                eq(30L)
+        );
+        verify(deliveryAssignmentCountRepository).reserveAssignment(
+                eq(List.of(secondHubManagerId)),
+                eq(DeliveryAssignmentType.HUB_DELIVERY),
+                eq(30L)
+        );
+        verify(deliveryAssignmentCountRepository).reserveAssignment(
+                eq(List.of(companyManagerId)),
+                eq(DeliveryAssignmentType.COMPANY_DELIVERY),
+                eq(30L)
         );
     }
 
@@ -371,20 +382,6 @@ class DeliveryServiceTest {
         ReflectionTestUtils.setField(response, "type", type);
         ReflectionTestUtils.setField(response, "deliverySequence", deliverySequence);
         return response;
-    }
-
-    private ManagerAssignmentCount createManagerAssignmentCount(UUID managerId, long assignmentCount) {
-        return new ManagerAssignmentCount() {
-            @Override
-            public UUID getManagerId() {
-                return managerId;
-            }
-
-            @Override
-            public long getAssignmentCount() {
-                return assignmentCount;
-            }
-        };
     }
 
     private <T> T instantiate(Class<T> type) {

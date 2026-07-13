@@ -1,6 +1,8 @@
 package com.msa.delivery_service.service;
 
+import com.msa.core_common.error.exception.CustomException;
 import com.msa.delivery_service.enums.DeliveryAssignmentType;
+import com.msa.delivery_service.enums.DeliveryErrorCode;
 import com.msa.delivery_service.repository.DeliveryAssignmentCountRepository;
 import com.msa.delivery_service.repository.ManagerAssignmentCount;
 import lombok.RequiredArgsConstructor;
@@ -32,13 +34,21 @@ public class DeliveryAssignmentCountService {
     }
 
     @Transactional
-    public Map<UUID, Long> getCompanyAssignmentCountsForUpdate(Collection<UUID> managerIds) {
-        return getAssignmentCountsForUpdate(managerIds, DeliveryAssignmentType.COMPANY_DELIVERY);
+    public UUID reserveCompanyAssignment(Collection<UUID> managerIds, long maxActiveAssignments) {
+        return reserveAssignment(
+                managerIds,
+                DeliveryAssignmentType.COMPANY_DELIVERY,
+                maxActiveAssignments
+        );
     }
 
     @Transactional
-    public Map<UUID, Long> getHubAssignmentCountsForUpdate(Collection<UUID> managerIds) {
-        return getAssignmentCountsForUpdate(managerIds, DeliveryAssignmentType.HUB_DELIVERY);
+    public UUID reserveHubAssignment(Collection<UUID> managerIds, long maxActiveAssignments) {
+        return reserveAssignment(
+                managerIds,
+                DeliveryAssignmentType.HUB_DELIVERY,
+                maxActiveAssignments
+        );
     }
 
     @Transactional
@@ -155,28 +165,26 @@ public class DeliveryAssignmentCountService {
         return countMap;
     }
 
-    private Map<UUID, Long> getAssignmentCountsForUpdate(
+    private UUID reserveAssignment(
             Collection<UUID> managerIds,
-            DeliveryAssignmentType assignmentType
+            DeliveryAssignmentType assignmentType,
+            long maxActiveAssignments
     ) {
         if (managerIds.isEmpty()) {
-            return Map.of();
+            throw new CustomException(DeliveryErrorCode.NO_DELIVERY_MANAGER);
         }
 
-        Map<UUID, Long> countMap = new HashMap<>();
         // 배송 담당자 배정 집계 row lock 조회 처리 시간 계측
-        for (ManagerAssignmentCount assignmentCount
-                : performanceMetrics.recordAssignmentCountOperation(
-                        assignmentType.name(),
-                        "read_for_update_skip_locked",
-                        () -> deliveryAssignmentCountRepository.findAssignmentCountsByManagerIdsForUpdate(
-                                managerIds,
-                                assignmentType.name()
-                        )
-                )) {
-            countMap.put(assignmentCount.getManagerId(), assignmentCount.getAssignmentCount());
-        }
-        return countMap;
+        // 배송 담당자 선택과 집계 증가를 하나의 쿼리로 처리
+        return performanceMetrics.recordAssignmentCountOperation(
+                assignmentType.name(),
+                "reserve_atomic_skip_locked",
+                () -> deliveryAssignmentCountRepository.reserveAssignment(
+                        managerIds,
+                        assignmentType,
+                        maxActiveAssignments
+                ).orElseThrow(() -> new CustomException(DeliveryErrorCode.NO_DELIVERY_MANAGER))
+        );
     }
 
     private void increaseAssignmentCounts(
