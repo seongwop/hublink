@@ -4,6 +4,7 @@ import com.msa.core_common.error.exception.CustomException;
 import com.msa.delivery_service.client.hub.HubClient;
 import com.msa.delivery_service.client.hub.dto.HubResponse;
 import com.msa.delivery_service.client.hub.dto.HubRouteResponse;
+import com.msa.delivery_service.client.user.DeliveryManagerCache;
 import com.msa.delivery_service.client.user.UserClient;
 import com.msa.delivery_service.client.user.dto.DeliveryManagerResponse;
 import com.msa.delivery_service.client.user.dto.HubManagerResponse;
@@ -23,6 +24,7 @@ public class DeliveryExternalService {
 
     private final HubClient hubClient;
     private final UserClient userClient;
+    private final DeliveryManagerCache deliveryManagerCache;
 
     @CircuitBreaker(name = "hub-service", fallbackMethod = "getHubFallback")
     public HubResponse getHub(UUID hubId) {
@@ -42,9 +44,15 @@ public class DeliveryExternalService {
         return userClient.getHubManager(departureHubId);
     }
 
+    // 경로 Hub별 담당자 후보 캐시 병합
     @CircuitBreaker(name = "user-service", fallbackMethod = "getDeliveryManagersFallback")
     public List<DeliveryManagerResponse> getDeliveryManagers(List<UUID> hubIds) {
-        return userClient.getDeliveryManagers(hubIds);
+        return hubIds.stream()
+                .distinct()
+                .sorted()
+                .map(deliveryManagerCache::getDeliveryManagers)
+                .flatMap(List::stream)
+                .toList();
     }
 
     public HubResponse getHubFallback(UUID hubId, Throwable e) {
