@@ -818,14 +818,24 @@ WHERE deleted_at IS NULL
 GROUP BY company_delivery_manager_id
 UNION ALL
 SELECT
-    delivery_manager_id,
+    delivery_manager.user_id,
     'HUB_DELIVERY',
-    count(*)
-FROM delivery_service.p_delivery_route_histories
-WHERE deleted_at IS NULL
-  AND route_type = 'HUB_TO_HUB'
-  AND status NOT IN ('COMPLETED', 'SKIPPED', 'FAILED')
-GROUP BY delivery_manager_id;
+    coalesce(active_assignment.active_assignment_count, 0)
+FROM user_service.p_delivery_managers delivery_manager
+LEFT JOIN (
+    SELECT
+        delivery_manager_id,
+        count(*) AS active_assignment_count
+    FROM delivery_service.p_delivery_route_histories
+    WHERE deleted_at IS NULL
+      AND route_type = 'HUB_TO_HUB'
+      AND status NOT IN ('COMPLETED', 'SKIPPED', 'FAILED')
+    GROUP BY delivery_manager_id
+) active_assignment
+    ON active_assignment.delivery_manager_id = delivery_manager.user_id
+WHERE delivery_manager.hub_id = '10000000-0000-0000-0000-000000000001'::uuid
+  AND delivery_manager.type = 'HUB_DELIVERY'
+  AND delivery_manager.deleted_at IS NULL;
 
 DROP TABLE tmp_delivery_perf_history;
 DROP TABLE tmp_delivery_perf_active;
