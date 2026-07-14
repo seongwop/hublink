@@ -136,6 +136,23 @@ VM 스케줄 정책 리소스는 유지하되, 실제 VM 연결 여부는 `vm_sc
 
 자동 시작 후 `hublink-compose.service`가 Config Server, Eureka, 데이터 계층, 선행 서비스 등록 상태를 확인한 뒤 Docker Compose 서비스를 올린다.
 
+애플리케이션 컨테이너는 `restart: on-failure`를 사용한다. Docker daemon 재기동만으로 먼저 시작되지 않으며, 준비 상태를 확인한 `hublink-compose.service`가 기동을 담당한다. 프로세스가 비정상 종료되면 Docker가 다시 시작한다. 데이터 계층과 promtail은 기존 `unless-stopped`를 유지한다.
+
+도메인 서비스와 API Gateway는 배포 Compose에서 `SPRING_CONFIG_IMPORT=configserver:...`를 강제한다. Config Server에 연결하지 못하면 기본 설정으로 계속 실행하지 않고 기동에 실패하며, `on-failure` 정책으로 다시 시도한다.
+
+재기동 순서는 다음과 같다.
+
+```text
+data 준비
+-> Eureka와 Config Server health 확인
+-> 서비스별 Config 응답 확인
+-> domain-a 기동 및 현재 컨테이너 Eureka 등록 확인
+-> domain-b 기동 및 현재 컨테이너 Eureka 등록 확인
+-> monitoring 준비 확인
+```
+
+배포 스크립트는 `/opt/hublink/scripts/gcp/hublink-compose-up.sh`를 매번 `/usr/local/bin/hublink-compose-up`에 동기화한다. 저장소 스크립트만 갱신되고 systemd 부팅 스크립트가 이전 버전으로 남는 상태를 방지한다.
+
 | 항목 | 값 |
 | --- | --- |
 | 사용 여부 | 기본 `true` |
@@ -156,6 +173,20 @@ vm_schedule_time_zone = "Asia/Seoul"
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/gcp/start-gcp-vms.ps1 -Deploy
+```
+
+부팅 절차 수동 재실행:
+
+```bash
+sudo systemctl restart hublink-compose.service
+sudo systemctl status hublink-compose.service --no-pager
+```
+
+부팅 스크립트 동기화와 restart 정책 확인:
+
+```bash
+sudo sha256sum /usr/local/bin/hublink-compose-up /opt/hublink/scripts/gcp/hublink-compose-up.sh
+sudo docker inspect --format '{{.HostConfig.RestartPolicy.Name}}' hublink-company-service
 ```
 
 수정 후 반영:

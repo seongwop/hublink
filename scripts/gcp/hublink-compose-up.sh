@@ -64,6 +64,13 @@ wait_http() {
   return 1
 }
 
+wait_config_service() {
+  local service="$1"
+  local max_seconds="${2:-600}"
+
+  wait_http "Config ${service}" "${CONFIG_URL}/${service}/default" "${max_seconds}"
+}
+
 wait_tcp() {
   local name="$1"
   local host="$2"
@@ -90,6 +97,44 @@ wait_eureka_app() {
   wait_http "Eureka app ${app}" "${EUREKA_URL}/eureka/apps/${app}" "${max_seconds}"
 }
 
+wait_eureka_service() {
+  local service="$1"
+  local app="$2"
+  local max_seconds="${3:-600}"
+
+  echo "waiting for current Eureka instance ${app}"
+  for _ in $(seq 1 "${max_seconds}"); do
+    local container_id
+    local container_hostname
+    local response
+
+    container_id="$(docker compose --env-file .env.gcp -f "${COMPOSE_FILE}" ps -q "${service}" 2>/dev/null || true)"
+    if [ -n "${container_id}" ]; then
+      container_hostname="$(docker inspect --format '{{.Config.Hostname}}' "${container_id}" 2>/dev/null || true)"
+      response="$(curl -fsS -H 'Accept: application/json' "${EUREKA_URL}/eureka/apps/${app}" 2>/dev/null || true)"
+      if [ -n "${container_hostname}" ] \
+        && grep -Fq "\"instanceId\":\"${container_hostname}:" <<< "${response}" \
+        && grep -Fq '"status":"UP"' <<< "${response}"; then
+        echo "current Eureka instance ${app} is ready"
+        return 0
+      fi
+    fi
+    sleep 1
+  done
+
+  echo "current Eureka instance ${app} is not ready after ${max_seconds}s" >&2
+  return 1
+}
+
+wait_registered_service() {
+  local service="$1"
+  local app="$2"
+  local health_url="$3"
+
+  wait_http "${service}" "${health_url}"
+  wait_eureka_service "${service}" "${app}"
+}
+
 wait_compose_service() {
   local service="$1"
 
@@ -101,28 +146,34 @@ wait_compose_service() {
       wait_http "Config Server" "${CONFIG_URL}/actuator/health"
       ;;
     api-gateway)
-      wait_eureka_app "API-GATEWAY"
+      wait_registered_service "api-gateway" "API-GATEWAY" "http://localhost:19091/actuator/health"
       ;;
     user-service)
-      wait_eureka_app "USER-SERVICE"
+      wait_registered_service "user-service" "USER-SERVICE" "http://localhost:19093/actuator/health"
       ;;
     company-service)
-      wait_eureka_app "COMPANY-SERVICE"
+      wait_registered_service "company-service" "COMPANY-SERVICE" "http://localhost:19096/actuator/health"
       ;;
     hub-service)
-      wait_eureka_app "HUB-SERVICE"
+      wait_registered_service "hub-service" "HUB-SERVICE" "http://localhost:19095/actuator/health"
       ;;
     product-service)
-      wait_eureka_app "PRODUCT-SERVICE"
+      wait_registered_service "product-service" "PRODUCT-SERVICE" "http://localhost:19097/actuator/health"
       ;;
     order-service)
-      wait_eureka_app "ORDER-SERVICE"
+      wait_registered_service "order-service" "ORDER-SERVICE" "http://localhost:19094/actuator/health"
       ;;
     stock-service)
-      wait_eureka_app "STOCK-SERVICE"
+      wait_registered_service "stock-service" "STOCK-SERVICE" "http://localhost:19098/actuator/health"
       ;;
     delivery-service)
-      wait_eureka_app "DELIVERY-SERVICE"
+      wait_registered_service "delivery-service" "DELIVERY-SERVICE" "http://localhost:19099/actuator/health"
+      ;;
+    slack-service)
+      wait_registered_service "slack-service" "SLACK-SERVICE" "http://localhost:19100/actuator/health"
+      ;;
+    ai-service)
+      wait_registered_service "ai-service" "AI-SERVICE" "http://localhost:19101/actuator/health"
       ;;
     postgres)
       wait_tcp "PostgreSQL" "localhost" 5432
@@ -143,6 +194,19 @@ wait_compose_service() {
       wait_http "Grafana" "http://localhost:3000/api/health"
       ;;
   esac
+}
+
+is_target_service() {
+  local expected="$1"
+  local service
+
+  for service in "${target_services[@]}"; do
+    if [ "${service}" = "${expected}" ]; then
+      return 0
+    fi
+  done
+
+  return 1
 }
 
 wait_target_services() {
@@ -170,6 +234,10 @@ case "${ROLE}" in
   domain-a)
     wait_http "Eureka" "${EUREKA_URL}/actuator/health"
     wait_http "Config Server" "${CONFIG_URL}/actuator/health"
+    wait_config_service "user-service"
+    wait_config_service "company-service"
+    wait_config_service "hub-service"
+    wait_config_service "product-service"
     wait_tcp "PostgreSQL" "${DATA_HOST}" 5432
     wait_tcp "Redis" "${DATA_HOST}" 6379
     wait_tcp "Kafka" "${DATA_HOST}" 9092
@@ -177,14 +245,21 @@ case "${ROLE}" in
   domain-b)
     wait_http "Eureka" "${EUREKA_URL}/actuator/health"
     wait_http "Config Server" "${CONFIG_URL}/actuator/health"
+    wait_config_service "order-service"
+    wait_config_service "stock-service"
+    wait_config_service "delivery-service"
+    wait_config_service "slack-service"
+    wait_config_service "ai-service"
     wait_tcp "PostgreSQL" "${DATA_HOST}" 5432
     wait_tcp "Redis" "${DATA_HOST}" 6379
     wait_tcp "Kafka" "${DATA_HOST}" 9092
-    if [ "${#target_services[@]}" -eq 0 ]; then
-      # 전체 domain-b 배포용 도메인 A 준비 상태 확인
+    if [ "${#target_services[@]}" -eq 0 ] || is_target_service "delivery-service"; then
+      # 배송 서비스 선행 등록 상태 확인
       wait_eureka_app "COMPANY-SERVICE"
       wait_eureka_app "HUB-SERVICE"
       wait_eureka_app "USER-SERVICE"
+    fi
+    if [ "${#target_services[@]}" -eq 0 ]; then
       wait_eureka_app "PRODUCT-SERVICE"
     fi
     ;;
@@ -211,17 +286,19 @@ case "${ROLE}" in
   platform)
     wait_http "Eureka" "${EUREKA_URL}/actuator/health"
     wait_http "Config Server" "${CONFIG_URL}/actuator/health"
+    wait_config_service "api-gateway"
+    wait_compose_service "api-gateway"
     ;;
   domain-a)
-    wait_eureka_app "COMPANY-SERVICE"
-    wait_eureka_app "HUB-SERVICE"
-    wait_eureka_app "USER-SERVICE"
-    wait_eureka_app "PRODUCT-SERVICE"
+    wait_compose_service "company-service"
+    wait_compose_service "hub-service"
+    wait_compose_service "user-service"
+    wait_compose_service "product-service"
     ;;
   domain-b)
-    wait_eureka_app "DELIVERY-SERVICE"
-    wait_eureka_app "ORDER-SERVICE"
-    wait_eureka_app "STOCK-SERVICE"
+    wait_compose_service "delivery-service"
+    wait_compose_service "order-service"
+    wait_compose_service "stock-service"
     ;;
   monitoring)
     wait_http "Prometheus" "http://localhost:9090/-/healthy"

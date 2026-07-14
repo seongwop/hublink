@@ -4,11 +4,12 @@ services:
   order-service:
     image: ${IMAGE_REGISTRY}/hublink-order-service:${ORDER_SERVICE_IMAGE_TAG:-latest}
     container_name: hublink-order-service
-    restart: unless-stopped
+    restart: on-failure
     env_file:
       - ${HUBLINK_ENV_FILE:-.env.gcp}
     environment:
       SERVER_PORT: "19094"
+      SPRING_CONFIG_IMPORT: configserver:${CONFIG_SERVER_URL}
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: ${EUREKA_URL}
       EUREKA_INSTANCE_HOSTNAME: ${DOMAIN_B_VM_IP}
       EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
@@ -21,11 +22,12 @@ services:
   stock-service:
     image: ${IMAGE_REGISTRY}/hublink-stock-service:${STOCK_SERVICE_IMAGE_TAG:-latest}
     container_name: hublink-stock-service
-    restart: unless-stopped
+    restart: on-failure
     env_file:
       - ${HUBLINK_ENV_FILE:-.env.gcp}
     environment:
       SERVER_PORT: "19098"
+      SPRING_CONFIG_IMPORT: configserver:${CONFIG_SERVER_URL}
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: ${EUREKA_URL}
       EUREKA_INSTANCE_HOSTNAME: ${DOMAIN_B_VM_IP}
       EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
@@ -38,11 +40,12 @@ services:
   delivery-service:
     image: ${IMAGE_REGISTRY}/hublink-delivery-service:${DELIVERY_SERVICE_IMAGE_TAG:-latest}
     container_name: hublink-delivery-service
-    restart: unless-stopped
+    restart: on-failure
     env_file:
       - ${HUBLINK_ENV_FILE:-.env.gcp}
     environment:
       SERVER_PORT: "19099"
+      SPRING_CONFIG_IMPORT: configserver:${CONFIG_SERVER_URL}
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: ${EUREKA_URL}
       EUREKA_INSTANCE_HOSTNAME: ${DOMAIN_B_VM_IP}
       EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
@@ -55,11 +58,12 @@ services:
   slack-service:
     image: ${IMAGE_REGISTRY}/hublink-slack-service:${SLACK_SERVICE_IMAGE_TAG:-latest}
     container_name: hublink-slack-service
-    restart: unless-stopped
+    restart: on-failure
     env_file:
       - ${HUBLINK_ENV_FILE:-.env.gcp}
     environment:
       SERVER_PORT: "19100"
+      SPRING_CONFIG_IMPORT: configserver:${CONFIG_SERVER_URL}
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: ${EUREKA_URL}
       EUREKA_INSTANCE_HOSTNAME: ${DOMAIN_B_VM_IP}
       EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
@@ -72,11 +76,12 @@ services:
   ai-service:
     image: ${IMAGE_REGISTRY}/hublink-ai-service:${AI_SERVICE_IMAGE_TAG:-latest}
     container_name: hublink-ai-service
-    restart: unless-stopped
+    restart: on-failure
     env_file:
       - ${HUBLINK_ENV_FILE:-.env.gcp}
     environment:
       SERVER_PORT: "19101"
+      SPRING_CONFIG_IMPORT: configserver:${CONFIG_SERVER_URL}
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: ${EUREKA_URL}
       EUREKA_INSTANCE_HOSTNAME: ${DOMAIN_B_VM_IP}
       EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
