@@ -100,8 +100,14 @@ gcloud compute ssh "${REMOTE}" "${GCLOUD_FLAGS[@]}" \
 cd '${REMOTE_DIR}'
 tar -xzf '${REMOTE_ARCHIVE}' -C '${REMOTE_DIR}'
 
-if [ '${DEPLOY_SKIP_DOCKER_ENSURE}' != 'true' ] || ! command -v docker >/dev/null 2>&1 || ! docker compose version >/dev/null 2>&1; then
+if [ '${DEPLOY_SKIP_DOCKER_ENSURE}' != 'true' ] \
+  || ! command -v docker >/dev/null 2>&1 \
+  || ! docker compose version >/dev/null 2>&1 \
+  || ! sudo systemctl cat hublink-compose.service >/dev/null 2>&1; then
   sudo REMOTE_DIR='${REMOTE_DIR}' bash '${REMOTE_DIR}/scripts/gcp/ensure-docker.sh' '${VM_USER}' '${COMPOSE_FILE}' '${REMOTE_DIR}/scripts/gcp/hublink-compose-up.sh'
+else
+  sudo install -m 0755 '${REMOTE_DIR}/scripts/gcp/hublink-compose-up.sh' /usr/local/bin/hublink-compose-up
+  sudo systemctl enable hublink-compose.service >/dev/null
 fi
 
 if [ '${DEPLOY_MODE}' = 'sync' ]; then

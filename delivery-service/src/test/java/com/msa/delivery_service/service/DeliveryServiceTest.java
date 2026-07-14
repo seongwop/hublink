@@ -3,6 +3,7 @@ package com.msa.delivery_service.service;
 import com.msa.delivery_service.client.DeliveryExternalService;
 import com.msa.delivery_service.client.hub.HubClient;
 import com.msa.delivery_service.client.hub.dto.HubRouteResponse;
+import com.msa.delivery_service.client.user.DeliveryManagerCache;
 import com.msa.delivery_service.client.user.UserClient;
 import com.msa.delivery_service.enums.DeliveryAssignmentType;
 import com.msa.delivery_service.enums.DeliveryLocationType;
@@ -41,7 +42,6 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -87,7 +87,9 @@ class DeliveryServiceTest {
                 deliveryOutboxService,
                 performanceMetrics
         );
-        DeliveryExternalService deliveryExternalService = new DeliveryExternalService(hubClient, userClient);
+        DeliveryManagerCache deliveryManagerCache = new DeliveryManagerCache(userClient);
+        DeliveryExternalService deliveryExternalService =
+                new DeliveryExternalService(hubClient, userClient, deliveryManagerCache);
         deliveryService = new DeliveryService(
                 deliveryRepository,
                 deliveryRouteHistoryRepository,
@@ -139,7 +141,9 @@ class DeliveryServiceTest {
         when(deliveryRepository.existsByOrderId(orderId)).thenReturn(false);
         when(hubClient.getRoutes(supplierCompanyId, receiverCompanyId)).thenReturn(List.of(firstRoute, secondRoute, lastRoute));
         when(userClient.getHubManager(firstHubId)).thenReturn(hubManager);
-        when(userClient.getDeliveryManagers(anyList())).thenReturn(List.of(companyManager, firstHubManager, secondHubManager));
+        when(userClient.getDeliveryManagers(List.of(firstHubId))).thenReturn(List.of(firstHubManager));
+        when(userClient.getDeliveryManagers(List.of(secondHubId))).thenReturn(List.of(secondHubManager));
+        when(userClient.getDeliveryManagers(List.of(finalHubId))).thenReturn(List.of(companyManager));
         when(deliveryAssignmentCountRepository.reserveAssignment(
                 eq(List.of(firstHubManagerId)),
                 eq(DeliveryAssignmentType.HUB_DELIVERY),

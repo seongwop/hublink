@@ -57,6 +57,10 @@ logging:
     root: ${LOG_LEVEL_ROOT:WARN}
 
 delivery:
+  # Hub ID별 배송 담당자 후보 로컬 캐시
+  manager-cache:
+    ttl-seconds: ${DELIVERY_MANAGER_CACHE_TTL_SECONDS:60}
+    maximum-hubs: ${DELIVERY_MANAGER_CACHE_MAXIMUM_HUBS:32}
   assignment:
     max-active-per-manager: ${DELIVERY_ASSIGNMENT_MAX_ACTIVE_PER_MANAGER:30}
     lock-wait: ${DELIVERY_ASSIGNMENT_LOCK_WAIT:2s}

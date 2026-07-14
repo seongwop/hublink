@@ -4,7 +4,7 @@ services:
   eureka-server:
     image: ${IMAGE_REGISTRY}/hublink-eureka-server:${EUREKA_SERVER_IMAGE_TAG:-latest}
     container_name: hublink-eureka-server
-    restart: unless-stopped
+    restart: on-failure
     env_file:
       - ${HUBLINK_ENV_FILE:-.env.gcp}
     environment:
@@ -24,7 +24,7 @@ services:
   config-server:
     image: ${IMAGE_REGISTRY}/hublink-config-server:${CONFIG_SERVER_IMAGE_TAG:-latest}
     container_name: hublink-config-server
-    restart: unless-stopped
+    restart: on-failure
     env_file:
       - ${HUBLINK_ENV_FILE:-.env.gcp}
     environment:
@@ -51,11 +51,12 @@ services:
   api-gateway:
     image: ${IMAGE_REGISTRY}/hublink-api-gateway:${API_GATEWAY_IMAGE_TAG:-latest}
     container_name: hublink-api-gateway
-    restart: unless-stopped
+    restart: on-failure
     env_file:
       - ${HUBLINK_ENV_FILE:-.env.gcp}
     environment:
       SERVER_PORT: "19091"
+      SPRING_CONFIG_IMPORT: configserver:${CONFIG_SERVER_URL}
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: ${EUREKA_URL}
       EUREKA_INSTANCE_HOSTNAME: ${PLATFORM_VM_IP}
       EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"

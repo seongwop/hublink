@@ -140,6 +140,15 @@ data-vm
 
 DB, Redis, Kafka가 먼저 떠야 하고, 그 다음 모니터링 계층과 Eureka/Config Server가 떠야 도메인 서비스들이 설정을 읽고 Eureka에 등록된다.
 
+배포와 VM 재기동에서는 다음 조건을 모두 확인한다.
+
+- Config Server actuator health와 서비스별 설정 endpoint 응답
+- 대상 서비스 actuator health
+- 현재 컨테이너 hostname과 일치하는 Eureka `UP` 인스턴스
+- 배송 서비스 배포 전 company, hub, user 서비스 등록
+
+배포 archive의 `hublink-compose-up.sh`는 Docker 설치 확인을 생략하는 배포에서도 `/usr/local/bin/hublink-compose-up`에 갱신된다.
+
 ## 확인 주소
 
 외부 IP는 아래 명령으로 확인한다.

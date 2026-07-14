@@ -4,11 +4,12 @@ services:
   user-service:
     image: ${IMAGE_REGISTRY}/hublink-user-service:${USER_SERVICE_IMAGE_TAG:-latest}
     container_name: hublink-user-service
-    restart: unless-stopped
+    restart: on-failure
     env_file:
       - ${HUBLINK_ENV_FILE:-.env.gcp}
     environment:
       SERVER_PORT: "19093"
+      SPRING_CONFIG_IMPORT: configserver:${CONFIG_SERVER_URL}
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: ${EUREKA_URL}
       EUREKA_INSTANCE_HOSTNAME: ${DOMAIN_A_VM_IP}
       EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
@@ -21,11 +22,12 @@ services:
   company-service:
     image: ${IMAGE_REGISTRY}/hublink-company-service:${COMPANY_SERVICE_IMAGE_TAG:-latest}
     container_name: hublink-company-service
-    restart: unless-stopped
+    restart: on-failure
     env_file:
       - ${HUBLINK_ENV_FILE:-.env.gcp}
     environment:
       SERVER_PORT: "19096"
+      SPRING_CONFIG_IMPORT: configserver:${CONFIG_SERVER_URL}
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: ${EUREKA_URL}
       EUREKA_INSTANCE_HOSTNAME: ${DOMAIN_A_VM_IP}
       EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
@@ -38,11 +40,12 @@ services:
   hub-service:
     image: ${IMAGE_REGISTRY}/hublink-hub-service:${HUB_SERVICE_IMAGE_TAG:-latest}
     container_name: hublink-hub-service
-    restart: unless-stopped
+    restart: on-failure
     env_file:
       - ${HUBLINK_ENV_FILE:-.env.gcp}
     environment:
       SERVER_PORT: "19095"
+      SPRING_CONFIG_IMPORT: configserver:${CONFIG_SERVER_URL}
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: ${EUREKA_URL}
       EUREKA_INSTANCE_HOSTNAME: ${DOMAIN_A_VM_IP}
       EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
@@ -55,11 +58,12 @@ services:
   product-service:
     image: ${IMAGE_REGISTRY}/hublink-product-service:${PRODUCT_SERVICE_IMAGE_TAG:-latest}
     container_name: hublink-product-service
-    restart: unless-stopped
+    restart: on-failure
     env_file:
       - ${HUBLINK_ENV_FILE:-.env.gcp}
     environment:
       SERVER_PORT: "19097"
+      SPRING_CONFIG_IMPORT: configserver:${CONFIG_SERVER_URL}
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: ${EUREKA_URL}
       EUREKA_INSTANCE_HOSTNAME: ${DOMAIN_A_VM_IP}
       EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
