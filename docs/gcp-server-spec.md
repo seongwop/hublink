@@ -27,7 +27,7 @@
 | `hublink-platform-vm` | `e2-standard-2` | 2 | 8 GB | 30 GB | `10.10.0.10` | `34.50.50.207` | Eureka, Config Server, API Gateway |
 | `hublink-domain-a-vm` | `e2-standard-2` | 2 | 8 GB | 30 GB | `10.10.0.20` | 없음 | user, company, hub, product |
 | `hublink-domain-b-vm` | `e2-standard-2` | 2 | 8 GB | 30 GB | `10.10.0.30` | 없음 | order, stock, delivery, slack, ai |
-| `hublink-data-vm` | `e2-standard-2` | 2 | 8 GB | 50 GB | `10.10.0.40` | 없음 | PostgreSQL, Redis, Kafka |
+| `hublink-data-vm` | `e2-standard-4` | 4 | 16 GB | 50 GB | `10.10.0.40` | 없음 | PostgreSQL, Redis, Kafka |
 | `hublink-monitoring-vm` | `e2-standard-2` | 2 | 8 GB | 50 GB | `10.10.0.60` | `8.230.17.44` | Kafka UI, Zipkin, Prometheus, Loki, Grafana |
 | `hublink-load-test-vm` | `e2-medium` | 2 | 4 GB | 20 GB | `10.10.0.50` | `34.64.86.22` | k6 부하 발생 |
 

@@ -167,7 +167,7 @@ variable "vm_specs" {
     }
     data = {
       role         = "data"
-      machine_type = "e2-standard-2"
+      machine_type = "e2-standard-4"
       disk_size_gb = 50
       internal_ip  = "10.10.0.40"
       tags         = ["hublink", "hublink-ssh", "hublink-data"]
