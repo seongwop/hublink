@@ -66,7 +66,7 @@ variable "network_cidr" {
 variable "cloud_nat_enabled" {
   description = "외부 IP 없는 VM의 인터넷 egress용 Cloud NAT 사용 여부"
   type        = bool
-  default     = false
+  default     = true
 }
 
 # VM 부팅 이미지 프로젝트
@@ -115,7 +115,7 @@ variable "public_source_ranges" {
 variable "external_ip_vm_names" {
   description = "고정 외부 IP를 연결할 VM 이름 목록"
   type        = set(string)
-  default     = ["platform", "data", "monitoring", "load-test"]
+  default     = ["platform", "monitoring", "load-test"]
 }
 
 # Docker 이미지 저장소 ID
