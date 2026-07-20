@@ -147,6 +147,10 @@ DB, Redis, Kafka가 먼저 떠야 하고, 그 다음 모니터링 계층과 Eure
 - 현재 컨테이너 hostname과 일치하는 Eureka `UP` 인스턴스
 - 배송 서비스 배포 전 company, hub, user 서비스 등록
 
+config 배포도 대상 이미지를 먼저 pull한 뒤 컨테이너를 교체한다. Compose의 `latest` 태그가 VM 로컬 캐시에 남아 이전 이미지를 재사용하는 상황을 방지한다.
+
+VM 재기동에서는 Promtail을 먼저 기동하고 선행 서비스 준비 상태를 확인한다. 준비 상태 확인 전에 전체 Compose를 중지하지 않아 timeout이 로그 수집 중단으로 이어지지 않게 한다.
+
 배포 archive의 `hublink-compose-up.sh`는 Docker 설치 확인을 생략하는 배포에서도 `/usr/local/bin/hublink-compose-up`에 갱신된다.
 
 ## 확인 주소

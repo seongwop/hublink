@@ -215,20 +215,16 @@ wait_target_services() {
   done
 }
 
-stop_compose_before_wait() {
-  if [ "${#target_services[@]}" -gt 0 ]; then
-    return
-  fi
-
+start_promtail_before_wait() {
   case "${ROLE}" in
     platform|domain-a|domain-b)
-      echo "stopping existing compose services before readiness checks"
-      docker compose --env-file .env.gcp -f "${COMPOSE_FILE}" stop || true
+      echo "starting promtail before readiness checks"
+      docker compose --env-file .env.gcp -f "${COMPOSE_FILE}" up -d --no-deps promtail
       ;;
   esac
 }
 
-stop_compose_before_wait
+start_promtail_before_wait
 
 case "${ROLE}" in
   domain-a)
