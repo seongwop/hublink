@@ -75,8 +75,9 @@ GitHub 저장소에서 `Settings` -> `Secrets and variables` -> `Actions` -> `Va
 | `AI_ENABLED` | `false` |
 | `KAKAO_ENABLED` | `false` |
 | `LOG_LEVEL_ROOT` | `WARN` |
+| `DELIVERY_ASSIGNMENT_MAX_ACTIVE_PER_MANAGER` | `60` |
 
-`LOG_LEVEL_ROOT`를 등록하지 않으면 workflow에서 `WARN`으로 생성한다.
+`LOG_LEVEL_ROOT`를 등록하지 않으면 workflow에서 `WARN`으로 생성한다. `DELIVERY_ASSIGNMENT_MAX_ACTIVE_PER_MANAGER`는 GCP 성능 테스트에서 담당자 수를 바꾸지 않고 용량 소진을 방지하기 위한 값이며, 등록하지 않으면 `60`으로 생성한다. 애플리케이션 기본값 `30`은 유지한다.
 
 ## GCP 인증 리소스
 
@@ -146,6 +147,10 @@ DB, Redis, Kafka가 먼저 떠야 하고, 그 다음 모니터링 계층과 Eure
 - 대상 서비스 actuator health
 - 현재 컨테이너 hostname과 일치하는 Eureka `UP` 인스턴스
 - 배송 서비스 배포 전 company, hub, user 서비스 등록
+
+config 배포도 대상 이미지를 먼저 pull한 뒤 컨테이너를 교체한다. Compose의 `latest` 태그가 VM 로컬 캐시에 남아 이전 이미지를 재사용하는 상황을 방지한다.
+
+VM 재기동에서는 Promtail을 먼저 기동하고 선행 서비스 준비 상태를 확인한다. 준비 상태 확인 전에 전체 Compose를 중지하지 않아 timeout이 로그 수집 중단으로 이어지지 않게 한다.
 
 배포 archive의 `hublink-compose-up.sh`는 Docker 설치 확인을 생략하는 배포에서도 `/usr/local/bin/hublink-compose-up`에 갱신된다.
 

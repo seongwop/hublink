@@ -100,6 +100,7 @@ assert_count() {
 # 배송 서비스 부분 배포 검증
 run_compose "docker-compose.domain-b.yml" "image" "delivery-service"
 
+grep -Fq 'docker compose --env-file .env.gcp -f docker-compose.domain-b.yml up -d --no-deps promtail' "${LOG_FILE}"
 grep -Fq 'curl -fsS http://10.10.0.10:19092/delivery-service/default' "${LOG_FILE}"
 grep -Fq '/eureka/apps/COMPANY-SERVICE' "${LOG_FILE}"
 grep -Fq '/eureka/apps/HUB-SERVICE' "${LOG_FILE}"
@@ -119,11 +120,11 @@ fi
 # domain-b 전체 재기동 순서 검증
 run_compose "docker-compose.domain-b.yml" "full" ""
 
-grep -Fq 'docker compose --env-file .env.gcp -f docker-compose.domain-b.yml stop' "${LOG_FILE}"
+grep -Fq 'docker compose --env-file .env.gcp -f docker-compose.domain-b.yml up -d --no-deps promtail' "${LOG_FILE}"
 grep -Fq '/eureka/apps/PRODUCT-SERVICE' "${LOG_FILE}"
 grep -Fq 'docker compose --env-file .env.gcp -f docker-compose.domain-b.yml up -d --remove-orphans' "${LOG_FILE}"
 assert_before \
-  'docker compose --env-file .env.gcp -f docker-compose.domain-b.yml stop' \
+  'docker compose --env-file .env.gcp -f docker-compose.domain-b.yml up -d --no-deps promtail' \
   'curl -fsS http://10.10.0.10:19090/actuator/health'
 assert_before \
   'curl -fsS http://10.10.0.10:19092/delivery-service/default' \
@@ -131,11 +132,15 @@ assert_before \
 assert_before \
   'docker compose --env-file .env.gcp -f docker-compose.domain-b.yml up -d --remove-orphans' \
   'curl -fsS http://localhost:19099/actuator/health'
+if grep -Fq 'docker compose --env-file .env.gcp -f docker-compose.domain-b.yml stop' "${LOG_FILE}"; then
+  echo '전체 재기동에서 준비 상태 확인 전 서비스 중지 발생' >&2
+  exit 1
+fi
 
 # domain-a 전체 재기동 순서 검증
 run_compose "docker-compose.domain-a.yml" "full" ""
 
-grep -Fq 'docker compose --env-file .env.gcp -f docker-compose.domain-a.yml stop' "${LOG_FILE}"
+grep -Fq 'docker compose --env-file .env.gcp -f docker-compose.domain-a.yml up -d --no-deps promtail' "${LOG_FILE}"
 grep -Fq 'curl -fsS http://10.10.0.10:19092/company-service/default' "${LOG_FILE}"
 grep -Fq 'docker compose --env-file .env.gcp -f docker-compose.domain-a.yml up -d --remove-orphans' "${LOG_FILE}"
 assert_before \
@@ -150,5 +155,7 @@ assert_count 1 'SPRING_CONFIG_IMPORT: configserver:${CONFIG_SERVER_URL}' "${REPO
 assert_count 4 'SPRING_CONFIG_IMPORT: configserver:${CONFIG_SERVER_URL}' "${REPO_ROOT}/docker-compose.domain-a.yml"
 assert_count 5 'SPRING_CONFIG_IMPORT: configserver:${CONFIG_SERVER_URL}' "${REPO_ROOT}/docker-compose.domain-b.yml"
 grep -Fq '/usr/local/bin/hublink-compose-up' "${SCRIPT_DIR}/deploy-vm.sh"
+config_branch="$(sed -n '/^  config)/,/^    ;;/p' "${SCRIPT_DIR}/deploy-vm.sh")"
+grep -Fq "pull \${DEPLOY_SERVICES}" <<<"${config_branch}"
 
 echo 'hublink-compose-up 재기동 순서 검증 완료'

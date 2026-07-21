@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
+  <title id="title">배송 담당자 캐시 적용 전후 User Service 조회 RPS 비교</title>
+  <desc id="desc">동일한 100VU 8분 테스트에서 캐시 적용 전과 후의 담당자 검색 RPS를 경과 시간 기준으로 겹친 그래프</desc>
+  <style>
+    text { font-family: "Pretendard", "Noto Sans KR", "Malgun Gothic", sans-serif; fill: #172033; }
+    .title { font-size: 28px; font-weight: 700; }
+    .subtitle { font-size: 15px; fill: #526077; }
+    .card-label { font-size: 14px; fill: #667085; }
+    .card-value { font-size: 24px; font-weight: 700; }
+    .axis-label { font-size: 13px; fill: #667085; }
+    .axis-title { font-size: 14px; font-weight: 600; fill: #344054; }
+    .legend { font-size: 14px; font-weight: 600; }
+    .grid { stroke: #DCE3EC; stroke-width: 1; }
+    .grid.vertical { stroke-dasharray: 3 6; }
+    .note { font-size: 12px; fill: #667085; }
+  </style>
+  <rect width="1200" height="720" fill="#FFFFFF"/>
+  <text x="60" y="46" class="title">캐시 적용 후 User Service 담당자 조회 최대 RPS 99.65% 감소</text>
+  <text x="60" y="74" class="subtitle">동일 100VU · 8분 · 동일 PromQL · 15초 step · 경과 시간 기준 정렬</text>
+
+  <rect x="60" y="96" width="330" height="70" rx="10" fill="#FFF1F0" stroke="#FFD1CC"/>
+  <text x="80" y="120" class="card-label">최대 조회 RPS</text>
+  <text x="80" y="151" class="card-value" fill="#C73E3A">28.90 → 0.10</text>
+
+  <rect x="410" y="96" width="330" height="70" rx="10" fill="#ECFDF8" stroke="#B7EAD9"/>
+  <text x="430" y="120" class="card-label">담당자 검색 완료 호출</text>
+  <text x="430" y="151" class="card-value" fill="#087F6B">4,144 → 24</text>
+
+  <rect x="760" y="96" width="380" height="70" rx="10" fill="#F3F6FA" stroke="#D8E0EA"/>
+  <text x="780" y="120" class="card-label">완료 호출 감소율</text>
+  <text x="780" y="151" class="card-value" fill="#344054">99.42%</text>
+
+  <line x1="90" y1="600" x2="1150" y2="600" class="grid"/>
+  <text x="72" y="605" text-anchor="end" class="axis-label">0</text>
+  <line x1="90" y1="531.6666666666666" x2="1150" y2="531.6666666666666" class="grid"/>
+  <text x="72" y="536.6666666666666" text-anchor="end" class="axis-label">5</text>
+  <line x1="90" y1="463.33333333333337" x2="1150" y2="463.33333333333337" class="grid"/>
+  <text x="72" y="468.33333333333337" text-anchor="end" class="axis-label">10</text>
+  <line x1="90" y1="395" x2="1150" y2="395" class="grid"/>
+  <text x="72" y="400" text-anchor="end" class="axis-label">15</text>
+  <line x1="90" y1="326.6666666666667" x2="1150" y2="326.6666666666667" class="grid"/>
+  <text x="72" y="331.6666666666667" text-anchor="end" class="axis-label">20</text>
+  <line x1="90" y1="258.3333333333333" x2="1150" y2="258.3333333333333" class="grid"/>
+  <text x="72" y="263.3333333333333" text-anchor="end" class="axis-label">25</text>
+  <line x1="90" y1="190" x2="1150" y2="190" class="grid"/>
+  <text x="72" y="195" text-anchor="end" class="axis-label">30</text>
+  <line x1="90" y1="190" x2="90" y2="600" class="grid vertical"/>
+  <text x="90" y="630" text-anchor="middle" class="axis-label">0:00</text>
+  <line x1="222.5" y1="190" x2="222.5" y2="600" class="grid vertical"/>
+  <text x="222.5" y="630" text-anchor="middle" class="axis-label">1:00</text>
+  <line x1="355" y1="190" x2="355" y2="600" class="grid vertical"/>
+  <text x="355" y="630" text-anchor="middle" class="axis-label">2:00</text>
+  <line x1="487.5" y1="190" x2="487.5" y2="600" class="grid vertical"/>
+  <text x="487.5" y="630" text-anchor="middle" class="axis-label">3:00</text>
+  <line x1="620" y1="190" x2="620" y2="600" class="grid vertical"/>
+  <text x="620" y="630" text-anchor="middle" class="axis-label">4:00</text>
+  <line x1="752.5" y1="190" x2="752.5" y2="600" class="grid vertical"/>
+  <text x="752.5" y="630" text-anchor="middle" class="axis-label">5:00</text>
+  <line x1="885" y1="190" x2="885" y2="600" class="grid vertical"/>
+  <text x="885" y="630" text-anchor="middle" class="axis-label">6:00</text>
+  <line x1="1017.5" y1="190" x2="1017.5" y2="600" class="grid vertical"/>
+  <text x="1017.5" y="630" text-anchor="middle" class="axis-label">7:00</text>
+  <line x1="1150" y1="190" x2="1150" y2="600" class="grid vertical"/>
+  <text x="1150" y="630" text-anchor="middle" class="axis-label">8:00</text>
+  <line x1="90" y1="600" x2="1150" y2="600" stroke="#98A2B3" stroke-width="1.5"/>
+  <line x1="90" y1="190" x2="90" y2="600" stroke="#98A2B3" stroke-width="1.5"/>
+
+  <polyline points="90.00,600.00 123.13,600.00 156.25,600.00 189.38,600.00 222.50,600.00 255.63,567.66 288.75,567.66 321.88,556.72 355.00,556.72 388.13,540.78 421.25,540.78 454.38,524.83 487.50,524.83 520.63,554.44 553.75,554.44 586.88,536.22 620.00,536.22 653.13,528.48 686.25,528.48 719.38,548.98 752.50,548.98 785.63,538.50 818.75,538.50 851.88,524.83 885.00,524.83 918.13,552.17 951.25,552.17 984.38,539.87 1017.50,539.87 1050.63,206.86 1083.75,206.86 1116.88,205.03 1150.00,205.03" fill="none" stroke="#D64545" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+  <polyline points="90.00,600.00 123.13,598.63 156.25,598.63 189.38,600.00 222.50,600.00 255.63,599.54 288.75,599.54 321.88,599.09 355.00,599.09 388.13,600.00 421.25,600.00 454.38,598.63 487.50,598.63 520.63,600.00 553.75,600.00 586.88,598.63 620.00,598.63 653.13,600.00 686.25,600.00 719.38,598.63 752.50,598.63 785.63,600.00 818.75,600.00 851.88,598.63 885.00,598.63 918.13,600.00 951.25,600.00 984.38,598.63 1017.50,598.63 1050.63,600.00 1083.75,600.00 1116.88,598.63 1150.00,598.63" fill="none" stroke="#0F9D8A" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+
+  <text x="28" y="405" transform="rotate(-90 28 405)" class="axis-title">User 담당자 검색 RPS</text>
+  <text x="620" y="650" text-anchor="middle" class="axis-title">테스트 시작 후 경과 시간</text>
+
+  <line x1="365" y1="682" x2="405" y2="682" stroke="#D64545" stroke-width="4"/>
+  <text x="415" y="687" class="legend">캐시 적용 전 · 2026-07-14 14:51:34 KST</text>
+  <line x1="715" y1="682" x2="755" y2="682" stroke="#0F9D8A" stroke-width="4"/>
+  <text x="765" y="687" class="legend">캐시 적용 후 · 2026-07-14 23:12:01 KST</text>
+
+  <text x="1140" y="710" text-anchor="end" class="note">Grafana Prometheus datasource · Y축 0~30 RPS 고정 · 최대 RPS 감소 99.65%</text>
+</svg>

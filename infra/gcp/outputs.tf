@@ -38,11 +38,11 @@ output "env_gcp_values" {
   description = ".env.gcp에 반영할 주요 값"
   value = {
     IMAGE_REGISTRY   = "${var.region}-docker.pkg.dev/${var.project_id}/${google_artifact_registry_repository.docker.repository_id}"
-    PLATFORM_VM_IP   = google_compute_instance.vm["platform"].network_interface[0].network_ip
-    DOMAIN_A_VM_IP   = google_compute_instance.vm["domain-a"].network_interface[0].network_ip
-    DOMAIN_B_VM_IP   = google_compute_instance.vm["domain-b"].network_interface[0].network_ip
+    PLATFORM_VM_IP   = try(google_compute_instance.vm["platform"].network_interface[0].network_ip, null)
+    DOMAIN_A_VM_IP   = try(google_compute_instance.vm["domain-a"].network_interface[0].network_ip, null)
+    DOMAIN_B_VM_IP   = try(google_compute_instance.vm["domain-b"].network_interface[0].network_ip, null)
     DATA_VM_IP       = try(google_compute_instance.vm["data"].network_interface[0].network_ip, null)
     MONITORING_VM_IP = try(google_compute_instance.vm["monitoring"].network_interface[0].network_ip, null)
-    LOAD_TEST_VM_IP  = google_compute_instance.vm["load-test"].network_interface[0].network_ip
+    LOAD_TEST_VM_IP  = try(google_compute_instance.vm["load-test"].network_interface[0].network_ip, null)
   }
 }

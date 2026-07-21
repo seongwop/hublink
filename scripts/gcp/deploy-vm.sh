@@ -146,6 +146,21 @@ case '${DEPLOY_MODE}' in
     sudo REMOTE_DIR='${REMOTE_DIR}' HUBLINK_DEPLOY_MODE='image' HUBLINK_FORCE_RECREATE='${DEPLOY_FORCE_RECREATE}' HUBLINK_DEPLOY_SERVICES='${DEPLOY_SERVICES}' bash '${REMOTE_DIR}/scripts/gcp/hublink-compose-up.sh'
     ;;
   config)
+    if [ -n '${DEPLOY_SERVICES}' ]; then
+      for attempt in 1 2 3; do
+        sudo docker compose --env-file .env.gcp -f '${COMPOSE_FILE}' pull ${DEPLOY_SERVICES} && break
+        echo \"docker compose pull failed. attempt=\${attempt}\" >&2
+        if [ \"\${attempt}\" -eq 3 ]; then exit 1; fi
+        sleep \$((attempt * 20))
+      done
+    else
+      for attempt in 1 2 3; do
+        sudo docker compose --env-file .env.gcp -f '${COMPOSE_FILE}' pull && break
+        echo \"docker compose pull failed. attempt=\${attempt}\" >&2
+        if [ \"\${attempt}\" -eq 3 ]; then exit 1; fi
+        sleep \$((attempt * 20))
+      done
+    fi
     sudo REMOTE_DIR='${REMOTE_DIR}' HUBLINK_DEPLOY_MODE='config' HUBLINK_FORCE_RECREATE='true' HUBLINK_DEPLOY_SERVICES='${DEPLOY_SERVICES}' bash '${REMOTE_DIR}/scripts/gcp/hublink-compose-up.sh'
     ;;
   *)

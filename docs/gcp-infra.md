@@ -134,16 +134,17 @@ VM 역할별로 Compose 파일을 분리한다.
 
 VM 스케줄 정책 리소스는 유지하되, 실제 VM 연결 여부는 `vm_schedule_enabled`로 제어한다.
 
-자동 시작 후 `hublink-compose.service`가 Config Server, Eureka, 데이터 계층, 선행 서비스 등록 상태를 확인한 뒤 Docker Compose 서비스를 올린다.
+자동 시작 후 `hublink-compose.service`가 Promtail을 먼저 기동하고 Config Server, Eureka, 데이터 계층, 선행 서비스 등록 상태를 확인한 뒤 Docker Compose 서비스를 올린다. 준비 상태 확인 중에는 실행 중인 애플리케이션을 미리 중지하지 않아 선행 서비스 timeout이 로그 수집 중단과 전체 서비스 중지로 번지지 않게 한다.
 
-애플리케이션 컨테이너는 `restart: on-failure`를 사용한다. Docker daemon 재기동만으로 먼저 시작되지 않으며, 준비 상태를 확인한 `hublink-compose.service`가 기동을 담당한다. 프로세스가 비정상 종료되면 Docker가 다시 시작한다. 데이터 계층과 promtail은 기존 `unless-stopped`를 유지한다.
+애플리케이션 컨테이너는 `restart: on-failure`를 사용한다. Docker daemon 복구만으로 서비스 기동 순서가 보장되지는 않으므로 `hublink-compose.service`가 준비 상태를 다시 확인하고 Compose 상태를 정리한다. 프로세스가 비정상 종료되면 Docker가 다시 시작한다. 데이터 계층과 promtail은 기존 `unless-stopped`를 유지한다.
 
 도메인 서비스와 API Gateway는 배포 Compose에서 `SPRING_CONFIG_IMPORT=configserver:...`를 강제한다. Config Server에 연결하지 못하면 기본 설정으로 계속 실행하지 않고 기동에 실패하며, `on-failure` 정책으로 다시 시도한다.
 
 재기동 순서는 다음과 같다.
 
 ```text
-data 준비
+Promtail 기동
+-> data 준비
 -> Eureka와 Config Server health 확인
 -> 서비스별 Config 응답 확인
 -> domain-a 기동 및 현재 컨테이너 Eureka 등록 확인
