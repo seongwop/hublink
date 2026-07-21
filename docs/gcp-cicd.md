@@ -75,8 +75,9 @@ GitHub 저장소에서 `Settings` -> `Secrets and variables` -> `Actions` -> `Va
 | `AI_ENABLED` | `false` |
 | `KAKAO_ENABLED` | `false` |
 | `LOG_LEVEL_ROOT` | `WARN` |
+| `DELIVERY_ASSIGNMENT_MAX_ACTIVE_PER_MANAGER` | `60` |
 
-`LOG_LEVEL_ROOT`를 등록하지 않으면 workflow에서 `WARN`으로 생성한다.
+`LOG_LEVEL_ROOT`를 등록하지 않으면 workflow에서 `WARN`으로 생성한다. `DELIVERY_ASSIGNMENT_MAX_ACTIVE_PER_MANAGER`는 GCP 성능 테스트에서 담당자 수를 바꾸지 않고 용량 소진을 방지하기 위한 값이며, 등록하지 않으면 `60`으로 생성한다. 애플리케이션 기본값 `30`은 유지한다.
 
 ## GCP 인증 리소스
 
