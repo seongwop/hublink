@@ -57,6 +57,9 @@ logging:
     root: ${LOG_LEVEL_ROOT:WARN}
 
 delivery:
+  kafka:
+    outbox:
+      fixed-delay-ms: ${DELIVERY_OUTBOX_FIXED_DELAY_MS:100}
   # Hub ID별 배송 담당자 후보 로컬 캐시
   manager-cache:
     ttl-seconds: ${DELIVERY_MANAGER_CACHE_TTL_SECONDS:60}

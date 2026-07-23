@@ -14,6 +14,7 @@ public class PartialIndexInitializer {
         1. 배송 생성 제약
         2. 업체 배송 담당자 배정 제약
         3. 허브 배송 담당자 배정 제약
+        4. Outbox 발행 대상 조회
     */
 
     private final JdbcTemplate jdbcTemplate;
@@ -64,6 +65,13 @@ public class PartialIndexInitializer {
         jdbcTemplate.execute("""
                 CREATE INDEX IF NOT EXISTS idx_p_delivery_assignment_counts_type_manager
                 ON delivery_service.p_delivery_assignment_counts (assignment_type, manager_id)
+                """);
+
+        jdbcTemplate.execute("""
+                CREATE INDEX IF NOT EXISTS idx_delivery_outbox_publishable_created_at
+                ON delivery_service.p_delivery_outboxes (created_at, outbox_id)
+                WHERE status IN ('PENDING', 'FAILED')
+                  AND retry_count < 5
                 """);
     }
 }

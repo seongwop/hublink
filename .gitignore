@@ -50,3 +50,6 @@ gcp-sa-key.json
 docker-compose-local.yml
 application-local.yml
 order-service/.env
+
+# 성능 테스트 로컬 원본 산출물
+docs/performance/**/local-artifacts/

@@ -30,8 +30,11 @@ services:
       - ${HUBLINK_ENV_FILE:-.env.gcp}
     environment:
       DATA_SOURCE_NAME: postgresql://${DB_USERNAME}:${DB_PASSWORD}@${DATA_VM_IP}:5432/hublink?sslmode=disable
+      PG_EXPORTER_EXTEND_QUERY_PATH: /etc/postgres_exporter/queries.yml
     ports:
       - "9187:9187"
+    volumes:
+      - ./monitoring/postgres-exporter-queries.yml:/etc/postgres_exporter/queries.yml:ro
 
   # 분산 추적 수집 서버
   zipkin:

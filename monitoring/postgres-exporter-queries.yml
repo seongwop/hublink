@@ -1,0 +1,11 @@
+pg_delivery_outbox:
+  query: |
+    SELECT count(*)::double precision AS publishable_backlog
+    FROM delivery_service.p_delivery_outboxes
+    WHERE status IN ('PENDING', 'FAILED')
+      AND retry_count < 5
+  master: true
+  metrics:
+    - publishable_backlog:
+        usage: "GAUGE"
+        description: "Number of delivery outbox rows waiting for publish"

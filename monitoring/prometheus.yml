@@ -46,6 +46,7 @@ scrape_configs:
 
   # PostgreSQL 메트릭
   - job_name: 'hublink-postgres-exporter'
+    scrape_interval: 10s
     static_configs:
       - targets:
           - 'postgres-exporter:9187'
