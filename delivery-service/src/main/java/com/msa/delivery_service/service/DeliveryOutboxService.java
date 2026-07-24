@@ -8,6 +8,7 @@ import com.msa.delivery_service.repository.DeliveryOutboxRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.support.SendResult;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,6 +16,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
@@ -78,12 +80,13 @@ public class DeliveryOutboxService {
         */
         List<DeliveryOutbox> outboxes = findPublishTargets();
 
-        /*
-            Kafka 이벤트 동기 처리 로직과 트랜잭션을 분리해서 DB 커넥션 점유를 줄임
-        */
-        for (DeliveryOutbox outbox : outboxes) {
-            publish(outbox);
-        }
+        // Kafka 발행 요청 선제 제출
+        List<PendingPublish> pendingPublishes = outboxes.stream()
+                .map(this::send)
+                .toList();
+
+        // ACK 결과 확인 후 상태 순차 반영
+        pendingPublishes.forEach(this::completePublish);
     }
 
     // self-invocation 문제를 피하기 위해 별도 트랜잭션 생성
@@ -97,10 +100,21 @@ public class DeliveryOutboxService {
         );
     }
 
-    private void publish(DeliveryOutbox outbox) {
+    private PendingPublish send(DeliveryOutbox outbox) {
         try {
-            kafkaTemplate
-                    .send(outbox.getTopic(), outbox.getEventKey(), outbox.getPayload())
+            return new PendingPublish(
+                    outbox,
+                    kafkaTemplate.send(outbox.getTopic(), outbox.getEventKey(), outbox.getPayload())
+            );
+        } catch (Exception e) {
+            return new PendingPublish(outbox, CompletableFuture.failedFuture(e));
+        }
+    }
+
+    private void completePublish(PendingPublish pendingPublish) {
+        DeliveryOutbox outbox = pendingPublish.outbox();
+        try {
+            pendingPublish.sendFuture()
                     .get(SEND_TIMEOUT_SECONDS, TimeUnit.SECONDS); // 브로커로부터 ack 수신 대기
             // 전송 성공을 확인한 경우만 상태 변경
             markPublished(outbox.getOutboxId());
@@ -129,5 +143,11 @@ public class DeliveryOutboxService {
 
     private void markFailed(UUID outboxId, String errorMessage) {
         outboxCommandRepository.markFailed(outboxId, errorMessage);
+    }
+
+    private record PendingPublish(
+            DeliveryOutbox outbox,
+            CompletableFuture<SendResult<String, String>> sendFuture
+    ) {
     }
 }
