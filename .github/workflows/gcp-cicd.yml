@@ -438,6 +438,7 @@ jobs:
       KAKAO_ENABLED: ${{ vars.KAKAO_ENABLED }}
       LOG_LEVEL_ROOT: ${{ vars.LOG_LEVEL_ROOT }}
       DELIVERY_ASSIGNMENT_MAX_ACTIVE_PER_MANAGER: ${{ vars.DELIVERY_ASSIGNMENT_MAX_ACTIVE_PER_MANAGER }}
+      DELIVERY_OUTBOX_FIXED_DELAY_MS: ${{ vars.DELIVERY_OUTBOX_FIXED_DELAY_MS }}
 
     steps:
       - name: Checkout
@@ -469,6 +470,7 @@ jobs:
           AI_ENABLED="${AI_ENABLED:-false}"
           KAKAO_ENABLED="${KAKAO_ENABLED:-false}"
           DELIVERY_ASSIGNMENT_MAX_ACTIVE_PER_MANAGER="${DELIVERY_ASSIGNMENT_MAX_ACTIVE_PER_MANAGER:-60}"
+          DELIVERY_OUTBOX_FIXED_DELAY_MS="${DELIVERY_OUTBOX_FIXED_DELAY_MS:-100}"
 
           # platform 외부 IP 조회
           PLATFORM_VM_EXTERNAL_IP="$(gcloud compute instances describe "${PLATFORM_VM}" --zone "${GCP_ZONE}" --project "${GCP_PROJECT_ID}" --format='get(networkInterfaces[0].accessConfigs[0].natIP)')"
@@ -523,6 +525,7 @@ jobs:
 
           LOG_LEVEL_ROOT=${LOG_LEVEL_ROOT}
           DELIVERY_ASSIGNMENT_MAX_ACTIVE_PER_MANAGER=${DELIVERY_ASSIGNMENT_MAX_ACTIVE_PER_MANAGER}
+          DELIVERY_OUTBOX_FIXED_DELAY_MS=${DELIVERY_OUTBOX_FIXED_DELAY_MS}
           EOF
 
           # heredoc 들여쓰기 공백 제거
