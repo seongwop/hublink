@@ -1,5 +1,9 @@
 # Outbox Polling Interval 실험 계획
 
+### 결과
+
+- [Run 01 - 100VU](./run01-100vu/delivery-outbox-polling-interval-run01-100vu.md): Outbox 회복은 3.25배 빨라졌지만 배송 TPS가 30.18% 감소해 `WARN`으로 판정했다.
+
 ### 변경값
 
 | 구분 | fixed delay |

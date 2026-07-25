@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -85,8 +86,15 @@ public class DeliveryOutboxService {
                 .map(this::send)
                 .toList();
 
-        // ACK 결과 확인 후 상태 순차 반영
-        pendingPublishes.forEach(this::completePublish);
+        List<DeliveryOutbox> publishedOutboxes = new ArrayList<>(pendingPublishes.size());
+        for (PendingPublish pendingPublish : pendingPublishes) {
+            if (awaitPublish(pendingPublish)) {
+                publishedOutboxes.add(pendingPublish.outbox());
+            }
+        }
+
+        // Kafka ACK 성공 Outbox 상태 일괄 반영
+        markPublished(publishedOutboxes);
     }
 
     // self-invocation 문제를 피하기 위해 별도 트랜잭션 생성
@@ -111,18 +119,12 @@ public class DeliveryOutboxService {
         }
     }
 
-    private void completePublish(PendingPublish pendingPublish) {
+    private boolean awaitPublish(PendingPublish pendingPublish) {
         DeliveryOutbox outbox = pendingPublish.outbox();
         try {
             pendingPublish.sendFuture()
                     .get(SEND_TIMEOUT_SECONDS, TimeUnit.SECONDS); // 브로커로부터 ack 수신 대기
-            // 전송 성공을 확인한 경우만 상태 변경
-            markPublished(outbox.getOutboxId());
-            log.info("event=DELIVERY_OUTBOX_PUBLISHED outboxId={} topic={} eventKey={}",
-                    outbox.getOutboxId(),
-                    outbox.getTopic(),
-                    outbox.getEventKey()
-            );
+            return true;
         } catch (Exception e) {
             // 상태 변경 및 추후 재처리
             markFailed(outbox.getOutboxId(), e.getMessage());
@@ -133,12 +135,28 @@ public class DeliveryOutboxService {
                     outbox.getRetryCount(),
                     e
             );
+            return false;
         }
     }
 
     // 상태 변경 로직 분리
-    private void markPublished(UUID outboxId) {
-        outboxCommandRepository.markPublished(outboxId);
+    private void markPublished(List<DeliveryOutbox> outboxes) {
+        if (outboxes.isEmpty()) {
+            return;
+        }
+
+        outboxCommandRepository.markPublished(
+                outboxes.stream()
+                        .map(DeliveryOutbox::getOutboxId)
+                        .toList()
+        );
+        outboxes.forEach(outbox ->
+                log.info("event=DELIVERY_OUTBOX_PUBLISHED outboxId={} topic={} eventKey={}",
+                        outbox.getOutboxId(),
+                        outbox.getTopic(),
+                        outbox.getEventKey()
+                )
+        );
     }
 
     private void markFailed(UUID outboxId, String errorMessage) {

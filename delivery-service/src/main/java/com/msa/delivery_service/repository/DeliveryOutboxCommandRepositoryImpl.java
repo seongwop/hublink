@@ -2,8 +2,11 @@ package com.msa.delivery_service.repository;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Repository
@@ -33,7 +36,7 @@ public class DeliveryOutboxCommandRepositoryImpl implements DeliveryOutboxComman
             published_at = now(),
             last_error = null,
             updated_at = now()
-        where outbox_id = ?
+        where outbox_id in (:outboxIds)
     """;
 
     private static final String MARK_FAILED_SQL = """
@@ -46,6 +49,7 @@ public class DeliveryOutboxCommandRepositoryImpl implements DeliveryOutboxComman
     """;
 
     private final JdbcTemplate jdbcTemplate;
+    private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
     @Override
     public UUID insertPending(String topic, String eventKey, String payload) {
@@ -61,8 +65,14 @@ public class DeliveryOutboxCommandRepositoryImpl implements DeliveryOutboxComman
     }
 
     @Override
-    public void markPublished(UUID outboxId) {
-        jdbcTemplate.update(MARK_PUBLISHED_SQL, outboxId);
+    public void markPublished(List<UUID> outboxIds) {
+        if (outboxIds.isEmpty()) {
+            return;
+        }
+        namedParameterJdbcTemplate.update(
+                MARK_PUBLISHED_SQL,
+                Map.of("outboxIds", outboxIds)
+        );
     }
 
     @Override
