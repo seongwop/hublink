@@ -1,14 +1,31 @@
 name: GCP CI/CD
 
 on:
-  # 수동 전체 배포
+  # 수동 배포
   workflow_dispatch:
+    inputs:
+      deploy_scope:
+        description: 수동 배포 범위
+        required: true
+        default: all
+        type: choice
+        options:
+          - all
+          - delivery-replay
+      delivery_source_ref:
+        description: 배송 이미지 소스 브랜치, 태그 또는 커밋 SHA
+        required: false
+        type: string
+      delivery_outbox_fixed_delay_ms:
+        description: 재현 시작 1000, 폴링 단축 이후 100
+        required: true
+        default: '1000'
+        type: string
   # develop 배포 관련 변경 감지
   push:
     branches:
       - develop
     paths:
-      - '.github/workflows/gcp-cicd.yml'
       - 'scripts/gcp/**'
       - 'infra/gcp/scripts/**'
       - 'Dockerfile'
@@ -89,9 +106,22 @@ jobs:
 
       - name: Detect changed files
         id: files
+        env:
+          MANUAL_DEPLOY_SCOPE: ${{ inputs.deploy_scope }}
+          DELIVERY_SOURCE_REF: ${{ inputs.delivery_source_ref }}
         run: |
-          # 수동 실행은 전체 배포 대상으로 처리
+          # 수동 실행 범위 처리
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            if [ "${MANUAL_DEPLOY_SCOPE}" = "delivery-replay" ]; then
+              if [ -z "${DELIVERY_SOURCE_REF}" ]; then
+                echo "delivery_source_ref is required for delivery-replay" >&2
+                exit 1
+              fi
+              echo "mode=delivery-replay" >> "${GITHUB_OUTPUT}"
+              : > changed-files.txt
+              exit 0
+            fi
+
             echo "mode=all" >> "${GITHUB_OUTPUT}"
             git ls-files > changed-files.txt
             exit 0
@@ -231,6 +261,8 @@ jobs:
               add_full_role("data", skip_ensure=False)
               add_full_role("monitoring", skip_ensure=False)
               mirror_promtail = True
+          elif mode == "delivery-replay":
+              add_image_service("delivery-service")
           else:
               for file_path in changed_files:
                   for service in all_services:
@@ -269,7 +301,7 @@ jobs:
                       if file_path in {"docker-compose.platform.yml", "docker-compose.domain-a.yml", "docker-compose.domain-b.yml", "docker-compose.delivery.yml", "docker-compose.monitoring.yml"}:
                           mirror_promtail = True
 
-                  if file_path.startswith("scripts/gcp/") or file_path.startswith("infra/gcp/scripts/") or file_path == ".github/workflows/gcp-cicd.yml":
+                  if file_path.startswith("scripts/gcp/") or file_path.startswith("infra/gcp/scripts/"):
                       add_all_app_roles_full(skip_ensure=False)
                       add_full_role("data", skip_ensure=False)
                       add_full_role("monitoring", skip_ensure=False)
@@ -332,6 +364,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: detect-changes
     if: needs.detect-changes.outputs.services_json != '[]'
+    outputs:
+      image_tag: ${{ steps.resolve-image-tag.outputs.image_tag }}
     env:
       # GitHub Secrets 기준 Registry 주소
       GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
@@ -346,6 +380,23 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.deploy_scope == 'delivery-replay' && inputs.delivery_source_ref || github.sha }}
+          fetch-depth: 0
+
+      - name: Resolve image tag
+        id: resolve-image-tag
+        shell: bash
+        run: echo "image_tag=$(git rev-parse HEAD)" >> "${GITHUB_OUTPUT}"
+
+      - name: Show replay image source
+        if: github.event_name == 'workflow_dispatch' && inputs.deploy_scope == 'delivery-replay'
+        env:
+          DELIVERY_SOURCE_REF: ${{ inputs.delivery_source_ref }}
+          DELIVERY_SOURCE_SHA: ${{ steps.resolve-image-tag.outputs.image_tag }}
+        run: |
+          echo "delivery replay source_ref=${DELIVERY_SOURCE_REF}"
+          echo "delivery replay source_sha=${DELIVERY_SOURCE_SHA}"
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
@@ -366,6 +417,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build and push ${{ matrix.service }}
+        if: github.event_name != 'workflow_dispatch' || inputs.deploy_scope != 'delivery-replay'
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -375,10 +427,24 @@ jobs:
             SERVICE_NAME=${{ matrix.service }}
           # 커밋 SHA 태그와 latest 태그 동시 push
           tags: |
-            ${{ env.IMAGE_REGISTRY }}/hublink-${{ matrix.service }}:${{ github.sha }}
+            ${{ env.IMAGE_REGISTRY }}/hublink-${{ matrix.service }}:${{ steps.resolve-image-tag.outputs.image_tag }}
             ${{ env.IMAGE_REGISTRY }}/hublink-${{ matrix.service }}:latest
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+      - name: Build and push replay delivery image
+        if: github.event_name == 'workflow_dispatch' && inputs.deploy_scope == 'delivery-replay'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          push: true
+          build-args: |
+            SERVICE_NAME=${{ matrix.service }}
+          tags: |
+            ${{ env.IMAGE_REGISTRY }}/hublink-${{ matrix.service }}:${{ steps.resolve-image-tag.outputs.image_tag }}
+          cache-from: type=gha,scope=delivery-replay-${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=delivery-replay-${{ matrix.service }}
 
   mirror-external-images:
     name: Mirror external images
@@ -447,7 +513,9 @@ jobs:
       KAKAO_ENABLED: ${{ vars.KAKAO_ENABLED }}
       LOG_LEVEL_ROOT: ${{ vars.LOG_LEVEL_ROOT }}
       DELIVERY_ASSIGNMENT_MAX_ACTIVE_PER_MANAGER: ${{ vars.DELIVERY_ASSIGNMENT_MAX_ACTIVE_PER_MANAGER }}
-      DELIVERY_OUTBOX_FIXED_DELAY_MS: ${{ vars.DELIVERY_OUTBOX_FIXED_DELAY_MS }}
+      DELIVERY_DB_MAX_POOL_SIZE: ${{ vars.DELIVERY_DB_MAX_POOL_SIZE }}
+      DELIVERY_OUTBOX_FIXED_DELAY_MS: ${{ inputs.deploy_scope == 'delivery-replay' && inputs.delivery_outbox_fixed_delay_ms || vars.DELIVERY_OUTBOX_FIXED_DELAY_MS }}
+      BUILD_IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
 
     steps:
       - name: Checkout
@@ -479,6 +547,7 @@ jobs:
           AI_ENABLED="${AI_ENABLED:-false}"
           KAKAO_ENABLED="${KAKAO_ENABLED:-false}"
           DELIVERY_ASSIGNMENT_MAX_ACTIVE_PER_MANAGER="${DELIVERY_ASSIGNMENT_MAX_ACTIVE_PER_MANAGER:-60}"
+          DELIVERY_DB_MAX_POOL_SIZE="${DELIVERY_DB_MAX_POOL_SIZE:-60}"
           DELIVERY_OUTBOX_FIXED_DELAY_MS="${DELIVERY_OUTBOX_FIXED_DELAY_MS:-100}"
 
           # platform 외부 IP 조회
@@ -535,6 +604,7 @@ jobs:
 
           LOG_LEVEL_ROOT=${LOG_LEVEL_ROOT}
           DELIVERY_ASSIGNMENT_MAX_ACTIVE_PER_MANAGER=${DELIVERY_ASSIGNMENT_MAX_ACTIVE_PER_MANAGER}
+          DELIVERY_DB_MAX_POOL_SIZE=${DELIVERY_DB_MAX_POOL_SIZE}
           DELIVERY_OUTBOX_FIXED_DELAY_MS=${DELIVERY_OUTBOX_FIXED_DELAY_MS}
           EOF
 
@@ -562,10 +632,10 @@ jobs:
               "ai-service",
           ]
           built_services = set(json.loads(os.environ.get("SERVICES_JSON") or "[]"))
-          sha = os.environ["GITHUB_SHA"]
+          image_tag = os.environ.get("BUILD_IMAGE_TAG") or os.environ["GITHUB_SHA"]
           for service in services:
               variable = service.upper().replace("-", "_") + "_IMAGE_TAG"
-              tag = sha if service in built_services else "latest"
+              tag = image_tag if service in built_services else "latest"
               print(f"{variable}={tag}")
           PY
 
