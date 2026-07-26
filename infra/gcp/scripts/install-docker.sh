@@ -17,6 +17,9 @@ case "$ROLE" in
   domain-b)
     echo "docker-compose.domain-b.yml" >/etc/hublink-compose-file
     ;;
+  delivery)
+    echo "docker-compose.delivery.yml" >/etc/hublink-compose-file
+    ;;
   data|data-monitor)
     echo "docker-compose.data.yml" >/etc/hublink-compose-file
     ;;

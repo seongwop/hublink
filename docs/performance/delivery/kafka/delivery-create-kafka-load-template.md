@@ -201,7 +201,7 @@ delivery internal bottleneck
 | Kafka broker network 최대값 | 미기록 |
 | PostgreSQL write 부하 특이점 | 미기록 |
 | DB wait event 특이점 | 미기록 |
-| domain-b VM CPU 최대값 | 미기록 |
+| delivery VM CPU 최대값 | 미기록 |
 | 에러 로그 특이점 | 미기록 |
 
 ### 7. 결과 기록

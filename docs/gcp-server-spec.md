@@ -26,7 +26,8 @@
 | --- | --- | ---: | ---: | ---: | --- | --- | --- |
 | `hublink-platform-vm` | `e2-standard-2` | 2 | 8 GB | 30 GB | `10.10.0.10` | `34.50.50.207` | Eureka, Config Server, API Gateway |
 | `hublink-domain-a-vm` | `e2-standard-2` | 2 | 8 GB | 30 GB | `10.10.0.20` | 없음 | user, company, hub, product |
-| `hublink-domain-b-vm` | `e2-standard-2` | 2 | 8 GB | 30 GB | `10.10.0.30` | 없음 | order, stock, delivery, slack, ai |
+| `hublink-domain-b-vm` | `e2-standard-2` | 2 | 8 GB | 30 GB | `10.10.0.30` | 없음 | order, stock, slack, ai |
+| `hublink-delivery-vm` | `e2-standard-2` | 2 | 8 GB | 30 GB | `10.10.0.70` | 없음 | delivery |
 | `hublink-data-vm` | `e2-standard-4` | 4 | 16 GB | 50 GB | `10.10.0.40` | 없음 | PostgreSQL, Redis, Kafka |
 | `hublink-monitoring-vm` | `e2-standard-2` | 2 | 8 GB | 50 GB | `10.10.0.60` | `8.230.17.44` | Kafka UI, Zipkin, Prometheus, Loki, Grafana |
 | `hublink-load-test-vm` | `e2-medium` | 2 | 4 GB | 20 GB | `10.10.0.50` | `34.64.86.22` | k6 부하 발생 |
@@ -48,8 +49,8 @@
 | 서비스 | 포트 | 용도 |
 | --- | ---: | --- |
 | user-service | 19093 | 사용자 도메인 |
-| company-service | 19095 | 업체 도메인 |
-| hub-service | 19096 | 허브 도메인 |
+| company-service | 19096 | 업체 도메인 |
+| hub-service | 19095 | 허브 도메인 |
 | product-service | 19097 | 상품 도메인 |
 
 ### domain-b
@@ -58,9 +59,14 @@
 | --- | ---: | --- |
 | order-service | 19094 | 주문 도메인 |
 | stock-service | 19098 | 재고 도메인 |
-| delivery-service | 19099 | 배송 도메인 |
 | slack-service | 19100 | Slack 알림 |
 | ai-service | 19101 | AI 마감 생성 |
+
+### delivery
+
+| 서비스 | 포트 | 용도 |
+| --- | ---: | --- |
+| delivery-service | 19099 | 배송 도메인 |
 
 ### data
 
@@ -93,7 +99,8 @@
 | --- | --- |
 | platform | 모든 요청의 진입점과 서비스 디스커버리를 담당하므로 기본 서비스 VM과 같은 `e2-standard-2` 사용 |
 | domain-a | 4개 도메인 서비스를 함께 실행하므로 `e2-standard-2` 사용 |
-| domain-b | 배송, 주문, 재고, AI, Slack 등 부하 테스트 대상 서비스가 함께 실행되므로 `e2-standard-2` 사용 |
+| domain-b | 주문, 재고, AI, Slack 서비스를 함께 실행하므로 `e2-standard-2` 사용 |
+| delivery | 배송 부하가 다른 도메인 서비스 CPU에 영향을 주지 않도록 전용 `e2-standard-2` 사용 |
 | data | 부하 테스트 대상 데이터 경로인 DB, Redis, Kafka만 실행하도록 유지 |
 | monitoring | Prometheus, Grafana, Loki, Zipkin, Kafka UI를 분리해 data VM 자원 경합 완화 |
 | load-test | k6 부하 발생 전용 VM이므로 `e2-medium`과 20 GB 디스크 사용 |

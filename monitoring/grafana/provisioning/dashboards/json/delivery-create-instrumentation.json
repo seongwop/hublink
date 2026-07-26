@@ -59,7 +59,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "sum(increase(delivery_assignment_lock_timeout_total{instance=\"10.10.0.30:19099\"}[5m]))",
+          "expr": "sum(increase(delivery_assignment_lock_timeout_total{instance=\"10.10.0.70:19099\"}[5m]))",
           "range": true,
           "refId": "A"
         }
@@ -106,7 +106,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "sum(rate(http_server_requests_seconds_count{instance=\"10.10.0.30:19099\",uri=\"/internal/deliveries\"}[1m]))",
+          "expr": "sum(rate(http_server_requests_seconds_count{instance=\"10.10.0.70:19099\",uri=\"/internal/deliveries\"}[1m]))",
           "range": true,
           "refId": "A"
         }
@@ -154,7 +154,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "sum by (stage) (rate(delivery_create_stage_seconds_sum{instance=\"10.10.0.30:19099\"}[1m])) / sum by (stage) (rate(delivery_create_stage_seconds_count{instance=\"10.10.0.30:19099\"}[1m]))",
+          "expr": "sum by (stage) (rate(delivery_create_stage_seconds_sum{instance=\"10.10.0.70:19099\"}[1m])) / sum by (stage) (rate(delivery_create_stage_seconds_count{instance=\"10.10.0.70:19099\"}[1m]))",
           "legendFormat": "{{stage}} avg",
           "range": true,
           "refId": "A"
@@ -203,7 +203,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "max by (stage) (delivery_create_stage_seconds_max{instance=\"10.10.0.30:19099\"})",
+          "expr": "max by (stage) (delivery_create_stage_seconds_max{instance=\"10.10.0.70:19099\"})",
           "legendFormat": "{{stage}} max",
           "range": true,
           "refId": "A"
@@ -252,7 +252,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "sum by (lock_type, result) (rate(delivery_assignment_lock_wait_seconds_sum{instance=\"10.10.0.30:19099\"}[1m])) / sum by (lock_type, result) (rate(delivery_assignment_lock_wait_seconds_count{instance=\"10.10.0.30:19099\"}[1m]))",
+          "expr": "sum by (lock_type, result) (rate(delivery_assignment_lock_wait_seconds_sum{instance=\"10.10.0.70:19099\"}[1m])) / sum by (lock_type, result) (rate(delivery_assignment_lock_wait_seconds_count{instance=\"10.10.0.70:19099\"}[1m]))",
           "legendFormat": "{{lock_type}} {{result}} wait avg",
           "range": true,
           "refId": "A"
@@ -301,7 +301,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "sum by (lock_scope, result) (rate(delivery_assignment_lock_hold_seconds_sum{instance=\"10.10.0.30:19099\"}[1m])) / sum by (lock_scope, result) (rate(delivery_assignment_lock_hold_seconds_count{instance=\"10.10.0.30:19099\"}[1m]))",
+          "expr": "sum by (lock_scope, result) (rate(delivery_assignment_lock_hold_seconds_sum{instance=\"10.10.0.70:19099\"}[1m])) / sum by (lock_scope, result) (rate(delivery_assignment_lock_hold_seconds_count{instance=\"10.10.0.70:19099\"}[1m]))",
           "legendFormat": "{{lock_scope}} {{result}} hold avg",
           "range": true,
           "refId": "A"
@@ -350,7 +350,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "sum by (assignment_type, operation) (rate(delivery_assignment_count_operation_seconds_sum{instance=\"10.10.0.30:19099\"}[1m])) / sum by (assignment_type, operation) (rate(delivery_assignment_count_operation_seconds_count{instance=\"10.10.0.30:19099\"}[1m]))",
+          "expr": "sum by (assignment_type, operation) (rate(delivery_assignment_count_operation_seconds_sum{instance=\"10.10.0.70:19099\"}[1m])) / sum by (assignment_type, operation) (rate(delivery_assignment_count_operation_seconds_count{instance=\"10.10.0.70:19099\"}[1m]))",
           "legendFormat": "{{assignment_type}} {{operation}} avg",
           "range": true,
           "refId": "A"
@@ -399,7 +399,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "sum by (stage) (rate(delivery_outbox_stage_seconds_sum{instance=\"10.10.0.30:19099\"}[1m])) / sum by (stage) (rate(delivery_outbox_stage_seconds_count{instance=\"10.10.0.30:19099\"}[1m]))",
+          "expr": "sum by (stage) (rate(delivery_outbox_stage_seconds_sum{instance=\"10.10.0.70:19099\"}[1m])) / sum by (stage) (rate(delivery_outbox_stage_seconds_count{instance=\"10.10.0.70:19099\"}[1m]))",
           "legendFormat": "{{stage}} avg",
           "range": true,
           "refId": "A"
@@ -448,7 +448,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "hikaricp_connections_active{instance=\"10.10.0.30:19099\"}",
+          "expr": "hikaricp_connections_active{instance=\"10.10.0.70:19099\"}",
           "legendFormat": "active",
           "range": true,
           "refId": "A"
@@ -459,7 +459,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "hikaricp_connections_pending{instance=\"10.10.0.30:19099\"}",
+          "expr": "hikaricp_connections_pending{instance=\"10.10.0.70:19099\"}",
           "legendFormat": "pending",
           "range": true,
           "refId": "B"
@@ -470,7 +470,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "hikaricp_connections_max{instance=\"10.10.0.30:19099\"}",
+          "expr": "hikaricp_connections_max{instance=\"10.10.0.70:19099\"}",
           "legendFormat": "max",
           "range": true,
           "refId": "C"

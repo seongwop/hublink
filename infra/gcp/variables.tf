@@ -165,6 +165,13 @@ variable "vm_specs" {
       internal_ip  = "10.10.0.30"
       tags         = ["hublink", "hublink-ssh", "hublink-domain"]
     }
+    delivery = {
+      role         = "delivery"
+      machine_type = "e2-standard-2"
+      disk_size_gb = 30
+      internal_ip  = "10.10.0.70"
+      tags         = ["hublink", "hublink-ssh", "hublink-delivery"]
+    }
     data = {
       role         = "data"
       machine_type = "e2-standard-4"

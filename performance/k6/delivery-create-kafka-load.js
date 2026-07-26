@@ -36,7 +36,7 @@ export const options = {
 
 // 호출 대상 설정
 // Gateway rate limit과 주문/재고 흐름을 제외하기 위해 delivery-service 직접 호출
-const DELIVERY_BASE_URL = (__ENV.DELIVERY_BASE_URL || 'http://10.10.0.30:19099').replace(/\/$/, '');
+const DELIVERY_BASE_URL = (__ENV.DELIVERY_BASE_URL || 'http://10.10.0.70:19099').replace(/\/$/, '');
 const TARGET_PATH = __ENV.TARGET_PATH || '/api/v1/deliveries/test/delivery-create';
 
 // 필수 seed 목록 로딩

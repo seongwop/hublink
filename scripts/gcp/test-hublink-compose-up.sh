@@ -19,7 +19,8 @@ touch \
   "${REMOTE_DIR}/.env.gcp" \
   "${REMOTE_DIR}/docker-compose.platform.yml" \
   "${REMOTE_DIR}/docker-compose.domain-a.yml" \
-  "${REMOTE_DIR}/docker-compose.domain-b.yml"
+  "${REMOTE_DIR}/docker-compose.domain-b.yml" \
+  "${REMOTE_DIR}/docker-compose.delivery.yml"
 
 cat >"${MOCK_BIN}/cat" <<'EOF'
 #!/usr/bin/env bash
@@ -98,9 +99,9 @@ assert_count() {
 }
 
 # 배송 서비스 부분 배포 검증
-run_compose "docker-compose.domain-b.yml" "image" "delivery-service"
+run_compose "docker-compose.delivery.yml" "image" "delivery-service"
 
-grep -Fq 'docker compose --env-file .env.gcp -f docker-compose.domain-b.yml up -d --no-deps promtail' "${LOG_FILE}"
+grep -Fq 'docker compose --env-file .env.gcp -f docker-compose.delivery.yml up -d --no-deps promtail' "${LOG_FILE}"
 grep -Fq 'curl -fsS http://10.10.0.10:19092/delivery-service/default' "${LOG_FILE}"
 grep -Fq '/eureka/apps/COMPANY-SERVICE' "${LOG_FILE}"
 grep -Fq '/eureka/apps/HUB-SERVICE' "${LOG_FILE}"
@@ -109,13 +110,24 @@ if grep -Fq '/eureka/apps/PRODUCT-SERVICE' "${LOG_FILE}"; then
   echo '배송 서비스 부분 배포에서 불필요한 상품 서비스 대기 발생' >&2
   exit 1
 fi
-grep -Fq 'docker compose --env-file .env.gcp -f docker-compose.domain-b.yml up -d --no-deps delivery-service' "${LOG_FILE}"
+grep -Fq 'docker compose --env-file .env.gcp -f docker-compose.delivery.yml up -d --no-deps delivery-service' "${LOG_FILE}"
 grep -Fq 'curl -fsS http://localhost:19099/actuator/health' "${LOG_FILE}"
 grep -Fq 'docker inspect --format {{.Config.Hostname}} mock-container' "${LOG_FILE}"
-if grep -Fq 'docker compose --env-file .env.gcp -f docker-compose.domain-b.yml stop' "${LOG_FILE}"; then
-  echo '부분 배포에서 전체 Compose 중지 발생' >&2
-  exit 1
-fi
+
+# 배송 VM 전체 재기동 순서 검증
+run_compose "docker-compose.delivery.yml" "full" ""
+
+grep -Fq 'docker compose --env-file .env.gcp -f docker-compose.delivery.yml up -d --no-deps promtail' "${LOG_FILE}"
+grep -Fq 'docker compose --env-file .env.gcp -f docker-compose.delivery.yml up -d --remove-orphans' "${LOG_FILE}"
+assert_before \
+  'docker compose --env-file .env.gcp -f docker-compose.delivery.yml up -d --no-deps promtail' \
+  'curl -fsS http://10.10.0.10:19090/actuator/health'
+assert_before \
+  'curl -fsS http://10.10.0.10:19092/delivery-service/default' \
+  'docker compose --env-file .env.gcp -f docker-compose.delivery.yml up -d --remove-orphans'
+assert_before \
+  'docker compose --env-file .env.gcp -f docker-compose.delivery.yml up -d --remove-orphans' \
+  'curl -fsS http://localhost:19099/actuator/health'
 
 # domain-b 전체 재기동 순서 검증
 run_compose "docker-compose.domain-b.yml" "full" ""
@@ -123,17 +135,12 @@ run_compose "docker-compose.domain-b.yml" "full" ""
 grep -Fq 'docker compose --env-file .env.gcp -f docker-compose.domain-b.yml up -d --no-deps promtail' "${LOG_FILE}"
 grep -Fq '/eureka/apps/PRODUCT-SERVICE' "${LOG_FILE}"
 grep -Fq 'docker compose --env-file .env.gcp -f docker-compose.domain-b.yml up -d --remove-orphans' "${LOG_FILE}"
-assert_before \
-  'docker compose --env-file .env.gcp -f docker-compose.domain-b.yml up -d --no-deps promtail' \
-  'curl -fsS http://10.10.0.10:19090/actuator/health'
-assert_before \
-  'curl -fsS http://10.10.0.10:19092/delivery-service/default' \
-  'docker compose --env-file .env.gcp -f docker-compose.domain-b.yml up -d --remove-orphans'
-assert_before \
-  'docker compose --env-file .env.gcp -f docker-compose.domain-b.yml up -d --remove-orphans' \
-  'curl -fsS http://localhost:19099/actuator/health'
-if grep -Fq 'docker compose --env-file .env.gcp -f docker-compose.domain-b.yml stop' "${LOG_FILE}"; then
-  echo '전체 재기동에서 준비 상태 확인 전 서비스 중지 발생' >&2
+if grep -Fq 'delivery-service/default' "${LOG_FILE}"; then
+  echo 'domain-b 재기동에서 배송 서비스 설정 대기 발생' >&2
+  exit 1
+fi
+if grep -Fq 'localhost:19099/actuator/health' "${LOG_FILE}"; then
+  echo 'domain-b 재기동에서 배송 서비스 상태 확인 발생' >&2
   exit 1
 fi
 
@@ -147,13 +154,15 @@ assert_before \
   'docker compose --env-file .env.gcp -f docker-compose.domain-a.yml up -d --remove-orphans' \
   'curl -fsS http://localhost:19096/actuator/health'
 
-# Docker 선기동 차단과 Config Server 필수 연결 검증
+# Docker 조기 종료 차단과 Config Server 필수 연결 검증
 assert_count 3 'restart: on-failure' "${REPO_ROOT}/docker-compose.platform.yml"
 assert_count 4 'restart: on-failure' "${REPO_ROOT}/docker-compose.domain-a.yml"
-assert_count 5 'restart: on-failure' "${REPO_ROOT}/docker-compose.domain-b.yml"
+assert_count 4 'restart: on-failure' "${REPO_ROOT}/docker-compose.domain-b.yml"
+assert_count 1 'restart: on-failure' "${REPO_ROOT}/docker-compose.delivery.yml"
 assert_count 1 'SPRING_CONFIG_IMPORT: configserver:${CONFIG_SERVER_URL}' "${REPO_ROOT}/docker-compose.platform.yml"
 assert_count 4 'SPRING_CONFIG_IMPORT: configserver:${CONFIG_SERVER_URL}' "${REPO_ROOT}/docker-compose.domain-a.yml"
-assert_count 5 'SPRING_CONFIG_IMPORT: configserver:${CONFIG_SERVER_URL}' "${REPO_ROOT}/docker-compose.domain-b.yml"
+assert_count 4 'SPRING_CONFIG_IMPORT: configserver:${CONFIG_SERVER_URL}' "${REPO_ROOT}/docker-compose.domain-b.yml"
+assert_count 1 'SPRING_CONFIG_IMPORT: configserver:${CONFIG_SERVER_URL}' "${REPO_ROOT}/docker-compose.delivery.yml"
 grep -Fq '/usr/local/bin/hublink-compose-up' "${SCRIPT_DIR}/deploy-vm.sh"
 config_branch="$(sed -n '/^  config)/,/^    ;;/p' "${SCRIPT_DIR}/deploy-vm.sh")"
 grep -Fq "pull \${DEPLOY_SERVICES}" <<<"${config_branch}"

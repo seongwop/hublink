@@ -138,9 +138,10 @@ data-vm
 -> platform-vm
 -> domain-a-vm
 -> domain-b-vm
+-> delivery-vm
 ```
 
-DB, Redis, Kafka가 먼저 떠야 하고, 그 다음 모니터링 계층과 Eureka/Config Server가 떠야 도메인 서비스들이 설정을 읽고 Eureka에 등록된다.
+DB, Redis, Kafka가 먼저 떠야 하고, 그 다음 모니터링 계층과 Eureka/Config Server가 떠야 도메인 서비스와 배송 전용 서비스가 설정을 읽고 Eureka에 등록된다.
 
 배포와 VM 재기동에서는 다음 조건을 모두 확인한다.
 

@@ -109,7 +109,12 @@ Wait-GcpSshCommand `
     -TimeoutSeconds $PlatformWaitSeconds `
     -RemoteCommand "curl -fsS http://localhost:19090/actuator/health >/dev/null && curl -fsS http://localhost:19092/actuator/health >/dev/null"
 
-$appVms = @("hublink-domain-a-vm", "hublink-domain-b-vm", "hublink-monitoring-vm")
+$appVms = @(
+    "hublink-domain-a-vm",
+    "hublink-domain-b-vm",
+    "hublink-delivery-vm",
+    "hublink-monitoring-vm"
+)
 if ($IncludeLoadTest) {
     $appVms += "hublink-load-test-vm"
 }
@@ -127,6 +132,12 @@ if ($Deploy) {
     Wait-GcpSshCommand `
         -Name "hublink-domain-b-vm" `
         -Description "domain-b Docker" `
+        -TimeoutSeconds $AppWaitSeconds `
+        -RemoteCommand "sudo docker info >/dev/null 2>&1"
+
+    Wait-GcpSshCommand `
+        -Name "hublink-delivery-vm" `
+        -Description "delivery Docker" `
         -TimeoutSeconds $AppWaitSeconds `
         -RemoteCommand "sudo docker info >/dev/null 2>&1"
 
@@ -148,7 +159,13 @@ if ($Deploy) {
         -Name "hublink-platform-vm" `
         -Description "domain-b Eureka apps" `
         -TimeoutSeconds $AppWaitSeconds `
-        -RemoteCommand "curl -fsS http://localhost:19090/eureka/apps/DELIVERY-SERVICE >/dev/null && curl -fsS http://localhost:19090/eureka/apps/ORDER-SERVICE >/dev/null && curl -fsS http://localhost:19090/eureka/apps/STOCK-SERVICE >/dev/null"
+        -RemoteCommand "curl -fsS http://localhost:19090/eureka/apps/ORDER-SERVICE >/dev/null && curl -fsS http://localhost:19090/eureka/apps/STOCK-SERVICE >/dev/null"
+
+    Wait-GcpSshCommand `
+        -Name "hublink-platform-vm" `
+        -Description "delivery Eureka app" `
+        -TimeoutSeconds $AppWaitSeconds `
+        -RemoteCommand "curl -fsS http://localhost:19090/eureka/apps/DELIVERY-SERVICE >/dev/null"
 
     Wait-GcpSshCommand `
         -Name "hublink-monitoring-vm" `

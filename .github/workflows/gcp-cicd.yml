@@ -54,11 +54,13 @@ env:
   PLATFORM_VM: hublink-platform-vm
   DOMAIN_A_VM: hublink-domain-a-vm
   DOMAIN_B_VM: hublink-domain-b-vm
+  DELIVERY_VM: hublink-delivery-vm
   DATA_VM: hublink-data-vm
   MONITORING_VM: hublink-monitoring-vm
   PLATFORM_VM_IP: 10.10.0.10
   DOMAIN_A_VM_IP: 10.10.0.20
   DOMAIN_B_VM_IP: 10.10.0.30
+  DELIVERY_VM_IP: 10.10.0.70
   DATA_VM_IP: 10.10.0.40
   MONITORING_VM_IP: 10.10.0.60
 
@@ -71,6 +73,7 @@ jobs:
       deploy_platform: ${{ steps.detect.outputs.deploy_platform }}
       deploy_domain_a: ${{ steps.detect.outputs.deploy_domain_a }}
       deploy_domain_b: ${{ steps.detect.outputs.deploy_domain_b }}
+      deploy_delivery: ${{ steps.detect.outputs.deploy_delivery }}
       deploy_data: ${{ steps.detect.outputs.deploy_data }}
       deploy_monitoring: ${{ steps.detect.outputs.deploy_monitoring }}
       mirror_promtail: ${{ steps.detect.outputs.mirror_promtail }}
@@ -128,7 +131,7 @@ jobs:
               "product-service": "domain_a",
               "order-service": "domain_b",
               "stock-service": "domain_b",
-              "delivery-service": "domain_b",
+              "delivery-service": "delivery",
               "slack-service": "domain_b",
               "ai-service": "domain_b",
           }
@@ -137,6 +140,7 @@ jobs:
               "platform": "hublink-platform-vm",
               "domain_a": "hublink-domain-a-vm",
               "domain_b": "hublink-domain-b-vm",
+              "delivery": "hublink-delivery-vm",
               "data": "hublink-data-vm",
               "monitoring": "hublink-monitoring-vm",
           }
@@ -144,6 +148,7 @@ jobs:
               "platform": "docker-compose.platform.yml",
               "domain_a": "docker-compose.domain-a.yml",
               "domain_b": "docker-compose.domain-b.yml",
+              "delivery": "docker-compose.delivery.yml",
               "data": "docker-compose.data.yml",
               "monitoring": "docker-compose.monitoring.yml",
           }
@@ -151,6 +156,7 @@ jobs:
               "platform": ["config-repo", "monitoring/promtail.yml"],
               "domain_a": ["monitoring/promtail.yml"],
               "domain_b": ["monitoring/promtail.yml"],
+              "delivery": ["monitoring/promtail.yml"],
               "data": ["db"],
               "monitoring": ["monitoring"],
           }
@@ -158,6 +164,7 @@ jobs:
               "docker-compose.platform.yml": "platform",
               "docker-compose.domain-a.yml": "domain_a",
               "docker-compose.domain-b.yml": "domain_b",
+              "docker-compose.delivery.yml": "delivery",
               "docker-compose.data.yml": "data",
               "docker-compose.monitoring.yml": "monitoring",
           }
@@ -166,7 +173,7 @@ jobs:
           all_services = list(service_to_role.keys())
           role_service_order = {
               role: [service for service in all_services if service_to_role[service] == role]
-              for role in {"platform", "domain_a", "domain_b"}
+              for role in {"platform", "domain_a", "domain_b", "delivery"}
           }
           services = set()
           targets = {}
@@ -212,7 +219,7 @@ jobs:
                   add_image_service(service)
 
           def add_all_app_roles_full(skip_ensure=True):
-              for role in ("platform", "domain_a", "domain_b"):
+              for role in ("platform", "domain_a", "domain_b", "delivery"):
                   add_full_role(role, skip_ensure=skip_ensure)
 
           if mode == "all":
@@ -220,6 +227,7 @@ jobs:
               add_full_role("platform", skip_ensure=False)
               add_full_role("domain_a", skip_ensure=False)
               add_full_role("domain_b", skip_ensure=False)
+              add_full_role("delivery", skip_ensure=False)
               add_full_role("data", skip_ensure=False)
               add_full_role("monitoring", skip_ensure=False)
               mirror_promtail = True
@@ -250,7 +258,7 @@ jobs:
                       add_full_role("data")
 
                   if file_path == "monitoring/promtail.yml":
-                      for role in ("platform", "domain_a", "domain_b", "monitoring"):
+                      for role in ("platform", "domain_a", "domain_b", "delivery", "monitoring"):
                           add_target(role, "config", ["promtail"], extras=["monitoring/promtail.yml"], force_recreate=True)
                       mirror_promtail = True
                   elif file_path.startswith("monitoring/"):
@@ -258,7 +266,7 @@ jobs:
 
                   if file_path in compose_to_role:
                       add_full_role(compose_to_role[file_path])
-                      if file_path in {"docker-compose.platform.yml", "docker-compose.domain-a.yml", "docker-compose.domain-b.yml", "docker-compose.monitoring.yml"}:
+                      if file_path in {"docker-compose.platform.yml", "docker-compose.domain-a.yml", "docker-compose.domain-b.yml", "docker-compose.delivery.yml", "docker-compose.monitoring.yml"}:
                           mirror_promtail = True
 
                   if file_path.startswith("scripts/gcp/") or file_path.startswith("infra/gcp/scripts/") or file_path == ".github/workflows/gcp-cicd.yml":
@@ -292,7 +300,7 @@ jobs:
           ]
           app_targets = [
               target_to_json(role)
-              for role in ("domain_a", "domain_b")
+              for role in ("domain_a", "domain_b", "delivery")
               if role in targets
           ]
           foundation_targets_json = json.dumps(foundation_targets)
@@ -304,6 +312,7 @@ jobs:
               output.write(f"deploy_platform={str('platform' in targets).lower()}\n")
               output.write(f"deploy_domain_a={str('domain_a' in targets).lower()}\n")
               output.write(f"deploy_domain_b={str('domain_b' in targets).lower()}\n")
+              output.write(f"deploy_delivery={str('delivery' in targets).lower()}\n")
               output.write(f"deploy_data={str('data' in targets).lower()}\n")
               output.write(f"deploy_monitoring={str('monitoring' in targets).lower()}\n")
               output.write(f"mirror_promtail={str(mirror_promtail).lower()}\n")
@@ -491,6 +500,7 @@ jobs:
           PLATFORM_VM_IP=${PLATFORM_VM_IP}
           DOMAIN_A_VM_IP=${DOMAIN_A_VM_IP}
           DOMAIN_B_VM_IP=${DOMAIN_B_VM_IP}
+          DELIVERY_VM_IP=${DELIVERY_VM_IP}
           DATA_VM_IP=${DATA_VM_IP}
           MONITORING_VM_IP=${MONITORING_VM_IP}
 
