@@ -218,7 +218,7 @@
                                                               "uid":  "PBFA97CFB590B2093"
                                                           },
                                            "editorMode":  "code",
-                                           "expr":  "sum(rate(kafka_consumer_fetch_manager_records_consumed_total{instance=\"10.10.0.30:19099\"}[1m]))",
+                                           "expr":  "sum(rate(kafka_consumer_fetch_manager_records_consumed_total{instance=\"10.10.0.70:19099\"}[1m]))",
                                            "range":  true,
                                            "refId":  "A"
                                        }
@@ -289,7 +289,7 @@
                                                               "uid":  "PBFA97CFB590B2093"
                                                           },
                                            "editorMode":  "code",
-                                           "expr":  "sum(hikaricp_connections_pending{instance=\"10.10.0.30:19099\"})",
+                                           "expr":  "sum(hikaricp_connections_pending{instance=\"10.10.0.70:19099\"})",
                                            "range":  true,
                                            "refId":  "A"
                                        }
@@ -362,7 +362,7 @@
                                                               "uid":  "PBFA97CFB590B2093"
                                                           },
                                            "editorMode":  "code",
-                                           "expr":  "sum(jvm_memory_used_bytes{instance=\"10.10.0.30:19099\", area=\"heap\"}) / sum(jvm_memory_max_bytes{instance=\"10.10.0.30:19099\", area=\"heap\", id=\"G1 Old Gen\"})",
+                                           "expr":  "sum(jvm_memory_used_bytes{instance=\"10.10.0.70:19099\", area=\"heap\"}) / sum(jvm_memory_max_bytes{instance=\"10.10.0.70:19099\", area=\"heap\", id=\"G1 Old Gen\"})",
                                            "range":  true,
                                            "refId":  "A"
                                        }
@@ -433,7 +433,7 @@
                                                               "uid":  "PBFA97CFB590B2093"
                                                           },
                                            "editorMode":  "code",
-                                           "expr":  "max(max_over_time(jvm_gc_pause_seconds_max{instance=\"10.10.0.30:19099\"}[$__range]))",
+                                           "expr":  "max(max_over_time(jvm_gc_pause_seconds_max{instance=\"10.10.0.70:19099\"}[$__range]))",
                                            "range":  true,
                                            "refId":  "A"
                                        }
@@ -558,7 +558,7 @@
                                                               "uid":  "PBFA97CFB590B2093"
                                                           },
                                            "editorMode":  "code",
-                                           "expr":  "process_cpu_usage{instance=\"10.10.0.30:19099\"}",
+                                           "expr":  "process_cpu_usage{instance=\"10.10.0.70:19099\"}",
                                            "legendFormat":  "process cpu",
                                            "range":  true,
                                            "refId":  "A"
@@ -569,7 +569,7 @@
                                                               "uid":  "PBFA97CFB590B2093"
                                                           },
                                            "editorMode":  "code",
-                                           "expr":  "system_cpu_usage{instance=\"10.10.0.30:19099\"}",
+                                           "expr":  "system_cpu_usage{instance=\"10.10.0.70:19099\"}",
                                            "legendFormat":  "system cpu",
                                            "range":  true,
                                            "refId":  "B"
@@ -580,7 +580,7 @@
                                                               "uid":  "PBFA97CFB590B2093"
                                                           },
                                            "editorMode":  "code",
-                                           "expr":  "max(jvm_gc_pause_seconds_max{instance=\"10.10.0.30:19099\"})",
+                                           "expr":  "max(jvm_gc_pause_seconds_max{instance=\"10.10.0.70:19099\"})",
                                            "legendFormat":  "gc pause",
                                            "range":  true,
                                            "refId":  "C"
@@ -681,7 +681,7 @@
                                                               "uid":  "PBFA97CFB590B2093"
                                                           },
                                            "editorMode":  "code",
-                                           "expr":  "sum(rate(kafka_consumer_fetch_manager_records_consumed_total{instance=\"10.10.0.30:19099\"}[1m]))",
+                                           "expr":  "sum(rate(kafka_consumer_fetch_manager_records_consumed_total{instance=\"10.10.0.70:19099\"}[1m]))",
                                            "legendFormat":  "records/s",
                                            "range":  true,
                                            "refId":  "A"
@@ -692,7 +692,7 @@
                                                               "uid":  "PBFA97CFB590B2093"
                                                           },
                                            "editorMode":  "code",
-                                           "expr":  "max(kafka_consumer_time_between_poll_max{instance=\"10.10.0.30:19099\"}) / 1000",
+                                           "expr":  "max(kafka_consumer_time_between_poll_max{instance=\"10.10.0.70:19099\"}) / 1000",
                                            "legendFormat":  "poll gap max sec",
                                            "range":  true,
                                            "refId":  "B"
@@ -793,7 +793,7 @@
                                                               "uid":  "PBFA97CFB590B2093"
                                                           },
                                            "editorMode":  "code",
-                                           "expr":  "sum by (area) (jvm_memory_used_bytes{instance=\"10.10.0.30:19099\"})",
+                                           "expr":  "sum by (area) (jvm_memory_used_bytes{instance=\"10.10.0.70:19099\"})",
                                            "legendFormat":  "{{area}} used",
                                            "range":  true,
                                            "refId":  "A"
@@ -1061,7 +1061,7 @@
                                                               "uid":  "PBFA97CFB590B2093"
                                                           },
                                            "editorMode":  "code",
-                                           "expr":  "hikaricp_connections_active{instance=\"10.10.0.30:19099\"}",
+                                           "expr":  "hikaricp_connections_active{instance=\"10.10.0.70:19099\"}",
                                            "legendFormat":  "active",
                                            "range":  true,
                                            "refId":  "A"
@@ -1072,7 +1072,7 @@
                                                               "uid":  "PBFA97CFB590B2093"
                                                           },
                                            "editorMode":  "code",
-                                           "expr":  "hikaricp_connections_pending{instance=\"10.10.0.30:19099\"}",
+                                           "expr":  "hikaricp_connections_pending{instance=\"10.10.0.70:19099\"}",
                                            "legendFormat":  "pending",
                                            "range":  true,
                                            "refId":  "B"
@@ -1083,7 +1083,7 @@
                                                               "uid":  "PBFA97CFB590B2093"
                                                           },
                                            "editorMode":  "code",
-                                           "expr":  "hikaricp_connections_max{instance=\"10.10.0.30:19099\"}",
+                                           "expr":  "hikaricp_connections_max{instance=\"10.10.0.70:19099\"}",
                                            "legendFormat":  "max",
                                            "range":  true,
                                            "refId":  "C"
@@ -1202,7 +1202,7 @@
                                                               "uid":  "PBFA97CFB590B2093"
                                                           },
                                            "editorMode":  "code",
-                                           "expr":  "rate(http_server_requests_seconds_count{instance=\"10.10.0.30:19099\"}[1m])",
+                                           "expr":  "rate(http_server_requests_seconds_count{instance=\"10.10.0.70:19099\"}[1m])",
                                            "legendFormat":  "{{method}} {{uri}} (request api)",
                                            "range":  true,
                                            "refId":  "A"
@@ -1213,7 +1213,7 @@
                                                               "uid":  "PBFA97CFB590B2093"
                                                           },
                                            "editorMode":  "code",
-                                           "expr":  "sum(tomcat_threads_busy_threads{instance=\"10.10.0.30:19099\"}) / sum(tomcat_threads_config_max_threads{instance=\"10.10.0.30:19099\"})",
+                                           "expr":  "sum(tomcat_threads_busy_threads{instance=\"10.10.0.70:19099\"}) / sum(tomcat_threads_config_max_threads{instance=\"10.10.0.70:19099\"})",
                                            "legendFormat":  "tomcat busy ratio (busy/max)",
                                            "range":  true,
                                            "refId":  "B"
@@ -1460,7 +1460,7 @@
                                                               "uid":  "PBFA97CFB590B2093"
                                                           },
                                            "editorMode":  "code",
-                                           "expr":  "sum by (client_name, method, status) (rate(http_client_requests_seconds_sum{instance=\"10.10.0.30:19099\", client_name!=\"10.10.0.10\"}[5m])) / sum by (client_name, method, status) (rate(http_client_requests_seconds_count{instance=\"10.10.0.30:19099\", client_name!=\"10.10.0.10\"}[5m]))",
+                                           "expr":  "sum by (client_name, method, status) (rate(http_client_requests_seconds_sum{instance=\"10.10.0.70:19099\", client_name!=\"10.10.0.10\"}[5m])) / sum by (client_name, method, status) (rate(http_client_requests_seconds_count{instance=\"10.10.0.70:19099\", client_name!=\"10.10.0.10\"}[5m]))",
                                            "legendFormat":  "{{client_name}} {{method}} {{status}}",
                                            "range":  true,
                                            "refId":  "A"
@@ -1561,7 +1561,7 @@
                                                               "uid":  "PBFA97CFB590B2093"
                                                           },
                                            "editorMode":  "code",
-                                           "expr":  "sum by (repository, method) (rate(spring_data_repository_invocations_seconds_sum{instance=\"10.10.0.30:19099\", state=\"SUCCESS\", repository!=\"DeliveryOutboxRepository\"}[5m])) / sum by (repository, method) (rate(spring_data_repository_invocations_seconds_count{instance=\"10.10.0.30:19099\", state=\"SUCCESS\", repository!=\"DeliveryOutboxRepository\"}[5m]))",
+                                           "expr":  "sum by (repository, method) (rate(spring_data_repository_invocations_seconds_sum{instance=\"10.10.0.70:19099\", state=\"SUCCESS\", repository!=\"DeliveryOutboxRepository\"}[5m])) / sum by (repository, method) (rate(spring_data_repository_invocations_seconds_count{instance=\"10.10.0.70:19099\", state=\"SUCCESS\", repository!=\"DeliveryOutboxRepository\"}[5m]))",
                                            "legendFormat":  "{{repository}}.{{method}}",
                                            "range":  true,
                                            "refId":  "A"
@@ -1663,7 +1663,7 @@
                                                               "type":  "prometheus",
                                                               "uid":  "PBFA97CFB590B2093"
                                                           },
-                                           "expr":  "resilience4j_circuitbreaker_state{instance=\"10.10.0.30:19099\", name=~\"hub-service|user-service\", state=~\"closed|open|half_open\"}",
+                                           "expr":  "resilience4j_circuitbreaker_state{instance=\"10.10.0.70:19099\", name=~\"hub-service|user-service\", state=~\"closed|open|half_open\"}",
                                            "legendFormat":  "{{name}} {{state}}",
                                            "refId":  "A"
                                        }
@@ -1770,7 +1770,7 @@
                                                               "type":  "prometheus",
                                                               "uid":  "PBFA97CFB590B2093"
                                                           },
-                                           "expr":  "resilience4j_circuitbreaker_failure_rate{instance=\"10.10.0.30:19099\", name=~\"hub-service|user-service\"}",
+                                           "expr":  "resilience4j_circuitbreaker_failure_rate{instance=\"10.10.0.70:19099\", name=~\"hub-service|user-service\"}",
                                            "legendFormat":  "{{name}} failure %",
                                            "refId":  "A"
                                        }
@@ -1879,7 +1879,7 @@
                                                               "uid":  "PBFA97CFB590B2093"
                                                           },
                                            "editorMode":  "code",
-                                           "expr":  "sum(increase(delivery_create_skipped_total{instance=\"10.10.0.30:19099\",reason=\"duplicate_order\"}[5m]))",
+                                           "expr":  "sum(increase(delivery_create_skipped_total{instance=\"10.10.0.70:19099\",reason=\"duplicate_order\"}[5m]))",
                                            "legendFormat":  "duplicate skipped (5m increase)",
                                            "range":  true,
                                            "refId":  "A"

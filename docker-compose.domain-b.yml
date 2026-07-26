@@ -36,24 +36,6 @@ services:
     ports:
       - "19098:19098"
 
-  # 배송 서비스
-  delivery-service:
-    image: ${IMAGE_REGISTRY}/hublink-delivery-service:${DELIVERY_SERVICE_IMAGE_TAG:-latest}
-    container_name: hublink-delivery-service
-    restart: on-failure
-    env_file:
-      - ${HUBLINK_ENV_FILE:-.env.gcp}
-    environment:
-      SERVER_PORT: "19099"
-      SPRING_CONFIG_IMPORT: configserver:${CONFIG_SERVER_URL}
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: ${EUREKA_URL}
-      EUREKA_INSTANCE_HOSTNAME: ${DOMAIN_B_VM_IP}
-      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
-      EUREKA_INSTANCE_IP_ADDRESS: ${DOMAIN_B_VM_IP}
-      EUREKA_INSTANCE_NON_SECURE_PORT: "19099"
-    ports:
-      - "19099:19099"
-
   # Slack 알림 서비스
   slack-service:
     image: ${IMAGE_REGISTRY}/hublink-slack-service:${SLACK_SERVICE_IMAGE_TAG:-latest}

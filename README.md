@@ -6,7 +6,7 @@
 
 ## 배포 구조
 
-GCP VM 6개를 기준으로 서비스를 나누어 배포한다.
+GCP VM 7개를 기준으로 서비스를 나누어 배포한다.
 
 서버별 CPU, 메모리, 디스크, IP 세부 스펙은 [GCP 서버 스펙](docs/gcp-server-spec.md)에서 확인한다.
 
@@ -25,9 +25,11 @@ domain-a-vm
 domain-b-vm
   - order-service
   - stock-service
-  - delivery-service
   - slack-service
   - ai-service
+
+delivery-vm
+  - delivery-service
 
 data-vm
   - PostgreSQL
@@ -54,7 +56,8 @@ load-test-vm
 | --- | --- | --- |
 | platform-vm | 서비스 디스커버리, 설정 서버, API 진입점 | 19090, 19091, 19092 |
 | domain-a-vm | 사용자, 업체, 허브, 상품 도메인 서비스 | 19093, 19095, 19096, 19097 |
-| domain-b-vm | 주문, 재고, 배송, 알림, AI 도메인 서비스 | 19094, 19098, 19099, 19100, 19101 |
+| domain-b-vm | 주문, 재고, 알림, AI 도메인 서비스 | 19094, 19098, 19100, 19101 |
+| delivery-vm | 배송 전용 서비스 | 19099 |
 | data-vm | 데이터 저장소, 메시지 브로커 | 5432, 6379, 9092 |
 | monitoring-vm | 모니터링, 로그, Kafka UI, 분산 추적 | 8082, 9411, 9090, 3100, 3000 |
 | load-test-vm | GCP 내부 부하 발생 | 없음 |
@@ -66,6 +69,7 @@ load-test-vm
 | platform-vm | `10.10.0.10` | `34.50.50.207` |
 | domain-a-vm | `10.10.0.20` | 없음 |
 | domain-b-vm | `10.10.0.30` | 없음 |
+| delivery-vm | `10.10.0.70` | 없음 |
 | data-vm | `10.10.0.40` | 없음 |
 | monitoring-vm | `10.10.0.60` | `8.230.17.44` |
 | load-test-vm | `10.10.0.50` | `34.64.86.22` |

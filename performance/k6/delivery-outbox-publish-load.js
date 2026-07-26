@@ -36,7 +36,7 @@ export const options = {
 
 // 호출 대상 설정
 // 배송 생성 성공 이벤트 outbox를 만들기 위해 내부 생성 API 사용
-const DELIVERY_BASE_URL = (__ENV.DELIVERY_BASE_URL || 'http://10.10.0.30:19099').replace(/\/$/, '');
+const DELIVERY_BASE_URL = (__ENV.DELIVERY_BASE_URL || 'http://10.10.0.70:19099').replace(/\/$/, '');
 const TARGET_PATH = __ENV.TARGET_PATH || '/internal/deliveries';
 
 // 필수 seed 목록 로딩

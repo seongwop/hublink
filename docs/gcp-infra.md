@@ -1,6 +1,6 @@
 # GCP 인프라 구성 문서
 
-이 문서는 HubLink 프로젝트를 GCP Compute Engine VM 6대로 실행하기 위한 인프라 구성을 정리한다.
+이 문서는 HubLink 프로젝트를 GCP Compute Engine VM 7대로 실행하기 위한 인프라 구성을 정리한다.
 
 ## 구성 요약
 
@@ -31,12 +31,13 @@ infra/gcp
 | --- | --- | --- | --- |
 | hublink-platform-vm | `10.10.0.10` | `34.50.50.207` | Eureka, Config Server, API Gateway |
 | hublink-domain-a-vm | `10.10.0.20` | 없음 | user, company, hub, product |
-| hublink-domain-b-vm | `10.10.0.30` | 없음 | order, stock, delivery, slack, ai |
+| hublink-domain-b-vm | `10.10.0.30` | 없음 | order, stock, slack, ai |
+| hublink-delivery-vm | `10.10.0.70` | 없음 | delivery |
 | hublink-data-vm | `10.10.0.40` | 없음 | PostgreSQL, Redis, Kafka |
 | hublink-monitoring-vm | `10.10.0.60` | `8.230.17.44` | Kafka UI, Zipkin, Prometheus, Loki, Grafana |
 | hublink-load-test-vm | `10.10.0.50` | `34.64.86.22` | k6 부하 발생 |
 
-외부 IP는 `platform`, `monitoring`, `load-test`에만 고정 IP로 연결한다. `domain-a`, `domain-b`, `data`는 외부 IP 없이 Cloud NAT로 Docker 설치와 이미지 pull에 필요한 egress만 사용한다. 서비스 간 통신과 부하 테스트 트래픽은 외부 IP가 아니라 내부 IP를 기준으로 유지한다.
+외부 IP는 `platform`, `monitoring`, `load-test`에만 고정 IP로 연결한다. `domain-a`, `domain-b`, `delivery`, `data`는 외부 IP 없이 Cloud NAT로 Docker 설치와 이미지 pull에 필요한 egress만 사용한다. 서비스 간 통신과 부하 테스트 트래픽은 외부 IP가 아니라 내부 IP를 기준으로 유지한다.
 
 `load-test`는 외부 IP로 접속하더라도 실제 부하는 `platform` 내부 IP인 `10.10.0.10:19091`로 전송한다.
 
@@ -107,7 +108,8 @@ VM 역할별로 Compose 파일을 분리한다.
 | `docker-compose.monitoring.yml` | monitoring | Kafka UI, Zipkin, Prometheus, Loki, Grafana |
 | `docker-compose.platform.yml` | platform | Eureka, Config Server, API Gateway |
 | `docker-compose.domain-a.yml` | domain-a | user, company, hub, product |
-| `docker-compose.domain-b.yml` | domain-b | order, stock, delivery, slack, ai |
+| `docker-compose.domain-b.yml` | domain-b | order, stock, slack, ai |
+| `docker-compose.delivery.yml` | delivery | delivery |
 
 공통 환경값은 `.env.gcp`로 주입한다. 실제 배포 시에는 GitHub Actions가 Secrets/Variables를 기준으로 `.env.gcp`를 생성한다.
 
@@ -149,6 +151,7 @@ Promtail 기동
 -> 서비스별 Config 응답 확인
 -> domain-a 기동 및 현재 컨테이너 Eureka 등록 확인
 -> domain-b 기동 및 현재 컨테이너 Eureka 등록 확인
+-> delivery 기동 및 현재 컨테이너 Eureka 등록 확인
 -> monitoring 준비 확인
 ```
 

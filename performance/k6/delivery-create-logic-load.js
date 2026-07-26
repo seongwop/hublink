@@ -37,7 +37,7 @@ export const options = {
 
 // 호출 대상 설정
 // Gateway에 internal route가 없어서 delivery-service 직접 호출
-const DELIVERY_BASE_URL = (__ENV.DELIVERY_BASE_URL || 'http://10.10.0.30:19099').replace(/\/$/, '');
+const DELIVERY_BASE_URL = (__ENV.DELIVERY_BASE_URL || 'http://10.10.0.70:19099').replace(/\/$/, '');
 const TARGET_PATH = __ENV.TARGET_PATH || '/internal/deliveries';
 
 // 필수 seed 목록 로딩

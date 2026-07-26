@@ -24,6 +24,9 @@ case "${COMPOSE_FILE}" in
   docker-compose.domain-b.yml)
     ROLE="domain-b"
     ;;
+  docker-compose.delivery.yml)
+    ROLE="delivery"
+    ;;
   docker-compose.data.yml)
     ROLE="data"
     ;;
@@ -196,19 +199,6 @@ wait_compose_service() {
   esac
 }
 
-is_target_service() {
-  local expected="$1"
-  local service
-
-  for service in "${target_services[@]}"; do
-    if [ "${service}" = "${expected}" ]; then
-      return 0
-    fi
-  done
-
-  return 1
-}
-
 wait_target_services() {
   for service in "${target_services[@]}"; do
     wait_compose_service "${service}"
@@ -217,7 +207,7 @@ wait_target_services() {
 
 start_promtail_before_wait() {
   case "${ROLE}" in
-    platform|domain-a|domain-b)
+    platform|domain-a|domain-b|delivery)
       echo "starting promtail before readiness checks"
       docker compose --env-file .env.gcp -f "${COMPOSE_FILE}" up -d --no-deps promtail
       ;;
@@ -243,21 +233,26 @@ case "${ROLE}" in
     wait_http "Config Server" "${CONFIG_URL}/actuator/health"
     wait_config_service "order-service"
     wait_config_service "stock-service"
-    wait_config_service "delivery-service"
     wait_config_service "slack-service"
     wait_config_service "ai-service"
     wait_tcp "PostgreSQL" "${DATA_HOST}" 5432
     wait_tcp "Redis" "${DATA_HOST}" 6379
     wait_tcp "Kafka" "${DATA_HOST}" 9092
-    if [ "${#target_services[@]}" -eq 0 ] || is_target_service "delivery-service"; then
-      # 배송 서비스 선행 등록 상태 확인
-      wait_eureka_app "COMPANY-SERVICE"
-      wait_eureka_app "HUB-SERVICE"
-      wait_eureka_app "USER-SERVICE"
-    fi
     if [ "${#target_services[@]}" -eq 0 ]; then
       wait_eureka_app "PRODUCT-SERVICE"
     fi
+    ;;
+  delivery)
+    wait_http "Eureka" "${EUREKA_URL}/actuator/health"
+    wait_http "Config Server" "${CONFIG_URL}/actuator/health"
+    wait_config_service "delivery-service"
+    wait_tcp "PostgreSQL" "${DATA_HOST}" 5432
+    wait_tcp "Redis" "${DATA_HOST}" 6379
+    wait_tcp "Kafka" "${DATA_HOST}" 9092
+    # 배송 서비스 선행 등록 상태 확인
+    wait_eureka_app "COMPANY-SERVICE"
+    wait_eureka_app "HUB-SERVICE"
+    wait_eureka_app "USER-SERVICE"
     ;;
   monitoring)
     wait_tcp "PostgreSQL" "${DATA_HOST}" 5432
@@ -292,9 +287,13 @@ case "${ROLE}" in
     wait_compose_service "product-service"
     ;;
   domain-b)
-    wait_compose_service "delivery-service"
     wait_compose_service "order-service"
     wait_compose_service "stock-service"
+    wait_compose_service "slack-service"
+    wait_compose_service "ai-service"
+    ;;
+  delivery)
+    wait_compose_service "delivery-service"
     ;;
   monitoring)
     wait_http "Prometheus" "http://localhost:9090/-/healthy"

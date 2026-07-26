@@ -236,7 +236,7 @@ POST /internal/deliveries
 k6 script:
 
 ```bash
-DELIVERY_BASE_URL=http://10.10.0.30:19099 ./run-k6.sh delivery-create-logic-load.js
+DELIVERY_BASE_URL=http://10.10.0.70:19099 ./run-k6.sh delivery-create-logic-load.js
 ```
 
 테스트 의도:
@@ -335,7 +335,7 @@ Grafana/Zipkin 확인:
 - Redisson lock timeout 로그
 - Feign client span duration
 - delivery-service heap/GC pause
-- domain-b VM CPU
+- delivery VM CPU
 
 트러블슈팅 방향:
 
@@ -396,7 +396,7 @@ route history row 생성량
 k6 script:
 
 ```bash
-DELIVERY_BASE_URL=http://10.10.0.30:19099 ./run-k6.sh delivery-outbox-publish-load.js
+DELIVERY_BASE_URL=http://10.10.0.70:19099 ./run-k6.sh delivery-outbox-publish-load.js
 ```
 
 목적:

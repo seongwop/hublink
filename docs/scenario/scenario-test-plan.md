@@ -218,11 +218,11 @@ delivery-service가 중지된 동안 delivery.create 메시지가 쌓이고, 복
 장애 유도:
 
 ```bash
-gcloud compute ssh hublink-domain-b-vm \
+gcloud compute ssh hublink-delivery-vm \
   --zone asia-northeast3-a \
   --project hublink-500805 \
   --tunnel-through-iap \
-  --command "cd /opt/hublink && sudo docker compose -f docker-compose.domain-b.yml stop delivery-service"
+  --command "cd /opt/hublink && sudo docker compose -f docker-compose.delivery.yml stop delivery-service"
 ```
 
 부하 요청:
@@ -241,11 +241,11 @@ Body: db/seed/orders/01-success-order.json
 복구:
 
 ```bash
-gcloud compute ssh hublink-domain-b-vm \
+gcloud compute ssh hublink-delivery-vm \
   --zone asia-northeast3-a \
   --project hublink-500805 \
   --tunnel-through-iap \
-  --command "cd /opt/hublink && sudo docker compose -f docker-compose.domain-b.yml start delivery-service"
+  --command "cd /opt/hublink && sudo docker compose -f docker-compose.delivery.yml start delivery-service"
 ```
 
 복구 후 확인:

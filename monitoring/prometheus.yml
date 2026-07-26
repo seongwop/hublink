@@ -27,8 +27,14 @@ scrape_configs:
       - targets:
           - '10.10.0.30:19094'
           - '10.10.0.30:19098'
-          - '10.10.0.30:19099'
           - '10.10.0.30:19100'
+
+  # 배송 전용 VM 서비스 메트릭
+  - job_name: 'hublink-delivery'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets:
+          - '10.10.0.70:19099'
 
   # AI Service 1초 수집
   - job_name: 'hublink-ai-service'

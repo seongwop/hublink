@@ -9,7 +9,7 @@
 ```text
 load-test-vm: 10.10.0.50
 api-gateway: http://10.10.0.10:19091
-delivery-service: http://10.10.0.30:19099
+delivery-service: http://10.10.0.70:19099
 ```
 
 ## ì¤€ë¹„
@@ -174,7 +174,7 @@ DB active/pending connection
 ### 2. ë°°ì†¡ ìƒì„± DB/ë½ ë³‘ëª©
 
 ```bash
-DELIVERY_BASE_URL=http://10.10.0.30:19099 ./run-k6.sh delivery-create-logic-load.js
+DELIVERY_BASE_URL=http://10.10.0.70:19099 ./run-k6.sh delivery-create-logic-load.js
 ```
 
 `POST /internal/deliveries`ë¥¼ ì§ì ‘ í˜¸ì¶œí•´ ê°™ì€ ëª©ì ì§€ í—ˆë¸Œ ê¸°ì¤€ ë°°ì†¡ ìƒì„± ìš”ì²­ì„ ëª°ì•„ DB connection ëŒ€ê¸°ì™€ Redisson lock ê²½í•©ì„ í™•ì¸í•œë‹¤. Gateway routeì— `/internal/deliveries`ê°€ ì—†ìœ¼ë¯€ë¡œ delivery-service ì§ì ‘ ì£¼ì†Œë¥¼ ì‚¬ìš©í•œë‹¤.
@@ -196,7 +196,7 @@ Feign hub/user span duration
 ### 3. Delivery Outbox ë°œí–‰ ë³‘ëª©
 
 ```bash
-DELIVERY_BASE_URL=http://10.10.0.30:19099 ./run-k6.sh delivery-outbox-publish-load.js
+DELIVERY_BASE_URL=http://10.10.0.70:19099 ./run-k6.sh delivery-outbox-publish-load.js
 ```
 
 ë°°ì†¡ ìƒì„± ì„±ê³µ í›„ `p_delivery_outboxes`ì— ìŒ“ì´ëŠ” `delivery.create.succeed` ì´ë²¤íŠ¸ì™€ outbox workerì˜ Kafka ë°œí–‰ ì†ë„ë¥¼ í™•ì¸í•œë‹¤. í…ŒìŠ¤íŠ¸ ì „í›„ë¡œ outbox backlog, Kafka ë°œí–‰ ì§€ì—°, publish ì‹¤íŒ¨ìœ¨ì„ ë¹„êµí•œë‹¤.
@@ -268,34 +268,34 @@ Redis Stream TPS = ì²˜ë¦¬ ì™„ë£Œ stream message ìˆ˜ / test_duration_seconds
 
 ## Delivery Query Baseline
 
-´ë¿ë·® Äõ¸® ½ÇÇè°ú `EXPLAIN ANALYZE` ¿ëµµ¿¡¼­´Â ¾Æ·¡ SQLÀ» »ç¿ëÇÑ´Ù.
+ï¿½ï¿½ë·® ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ `EXPLAIN ANALYZE` ï¿½ëµµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Æ·ï¿½ SQLï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Ñ´ï¿½.
 
 ```text
 db/seed/12-reset-delivery-query-baseline.sql
 db/seed/13-explain-delivery-query-baseline.sql
 ```
 
-`12-reset-delivery-query-baseline.sql`Àº delivery, route history, outbox ´ë·® µ¥ÀÌÅÍ¸¦ ´Ù½Ã Ã¤¿ì´Â baseline SQLÀÌ´Ù.
-`13-explain-delivery-query-baseline.sql`Àº active assignment Áı°è, outbox polling, managerº° delivery Á¶È¸ Äõ¸®¸¦ ¹Ù·Î Á¡°ËÇÒ ¼ö ÀÖ´Â explain ¸ğÀ½ÀÌ´Ù.
+`12-reset-delivery-query-baseline.sql`ï¿½ï¿½ delivery, route history, outbox ï¿½ë·® ï¿½ï¿½ï¿½ï¿½ï¿½Í¸ï¿½ ï¿½Ù½ï¿½ Ã¤ï¿½ï¿½ï¿½ baseline SQLï¿½Ì´ï¿½.
+`13-explain-delivery-query-baseline.sql`ï¿½ï¿½ active assignment ï¿½ï¿½ï¿½ï¿½, outbox polling, managerï¿½ï¿½ delivery ï¿½ï¿½È¸ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ù·ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½Ö´ï¿½ explain ï¿½ï¿½ï¿½ï¿½ï¿½Ì´ï¿½.
 
 ## Reset Policy
 
-±âº» µ¿ÀÛÀº `pre reset`¸¸ ¼öÇàÇÑ´Ù.
-Å×½ºÆ® ½ÃÀÛ Àü¿¡¸¸ baseline SQLÀ» ½ÇÇàÇÏ°í, Å×½ºÆ® Á¾·á ÈÄ¿¡´Â ÀÚµ¿ resetÀ» ÇÏÁö ¾Ê´Â´Ù.
+ï¿½âº» ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ `pre reset`ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ñ´ï¿½.
+ï¿½×½ï¿½Æ® ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ baseline SQLï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï°ï¿½, ï¿½×½ï¿½Æ® ï¿½ï¿½ï¿½ï¿½ ï¿½Ä¿ï¿½ï¿½ï¿½ ï¿½Úµï¿½ resetï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½Ê´Â´ï¿½.
 
 ```text
 default PRE_TEST_SQL_FILE = db/seed/11-reset-delivery-loadtest-baseline.sql
 default POST_TEST_SQL_FILE = empty
 ```
 
-Å×½ºÆ® ÈÄ DB ºñ±³°¡ ÇÊ¿äÇÏ¸é ±×´ë·Î ½ÇÇàÇÏ¸é µÈ´Ù.
+ï¿½×½ï¿½Æ® ï¿½ï¿½ DB ï¿½ñ±³°ï¿½ ï¿½Ê¿ï¿½ï¿½Ï¸ï¿½ ï¿½×´ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï¸ï¿½ ï¿½È´ï¿½.
 
 ```bash
 STAGES='[{"duration":"1m","target":20},{"duration":"5m","target":20},{"duration":"2m","target":0}]' \
 ./run-k6.sh delivery-create-logic-load.js
 ```
 
-Å×½ºÆ® ÈÄ¿¡µµ baseline º¹¿øÀ» ¹Ù·Î ÇÏ°í ½ÍÀ» ¶§¸¸ `POST_TEST_SQL_FILE`À» ¸í½ÃÇÑ´Ù.
+ï¿½×½ï¿½Æ® ï¿½Ä¿ï¿½ï¿½ï¿½ baseline ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ù·ï¿½ ï¿½Ï°ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ `POST_TEST_SQL_FILE`ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Ñ´ï¿½.
 
 ```bash
 POST_TEST_SQL_FILE=db/seed/11-reset-delivery-loadtest-baseline.sql \
