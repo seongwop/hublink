@@ -130,10 +130,10 @@ AI 서비스가 생성 후 발행하는 결과 이벤트다.
 
 | 도구           | URL 또는 위치                                        | 확인 항목                                     |
 | ------------ | ------------------------------------------------ | ----------------------------------------- |
-| Swagger      | `http://34.50.50.207:19091/swagger-ui/index.html` | 테스트 전용 API 호출                             |
-| Eureka       | `http://34.50.50.207:19090`                       | ai-service, delivery-service 등록 여부        |
-| Grafana      | `http://8.230.17.44:3000`                         | ai-service CPU, heap, HTTP, JVM 지표        |
-| Zipkin       | `http://8.230.17.44:9411`                         | AI 처리 trace                               |
+| Swagger      | `http://34.50.55.18:19091/swagger-ui/index.html` | 테스트 전용 API 호출                             |
+| Eureka       | `http://34.50.55.18:19090`                       | ai-service, delivery-service 등록 여부        |
+| Grafana      | platform VM IAP 터널의 `http://localhost:3000`    | ai-service CPU, heap, HTTP, JVM 지표        |
+| Zipkin       | platform VM IAP 터널의 `http://localhost:9411`    | AI 처리 trace                               |
 | PostgreSQL   | `hublink` database                               | AI 메시지 저장 결과                              |
 | Redis        | Redis Stream                                     | requested/generated stream, pending entry |
 | service logs | `domain-b-vm`                                    | ai-service consume, 처리 성공/실패 로그           |

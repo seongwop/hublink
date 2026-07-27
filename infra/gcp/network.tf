@@ -15,6 +15,13 @@ resource "google_compute_subnetwork" "main" {
   region                   = var.region
   network                  = google_compute_network.main.id
   private_ip_google_access = true
+
+  # 침해 사고 분석을 위한 VPC 흐름 로그
+  log_config {
+    aggregation_interval = "INTERVAL_30_SEC"
+    flow_sampling        = 0.5
+    metadata             = "INCLUDE_ALL_METADATA"
+  }
 }
 
 # HubLink VM 간 TCP, UDP, ICMP 허용
@@ -38,7 +45,7 @@ resource "google_compute_firewall" "internal" {
   }
 }
 
-# 외부 IP 직접 SSH 접근 허용
+# IAP 터널 SSH 접근 허용
 resource "google_compute_firewall" "ssh" {
   name    = "${var.name_prefix}-allow-ssh"
   network = google_compute_network.main.name
@@ -50,19 +57,9 @@ resource "google_compute_firewall" "ssh" {
     protocol = "tcp"
     ports    = ["22"]
   }
-}
 
-# GitHub Actions IAP 터널 SSH 허용
-resource "google_compute_firewall" "ssh_iap" {
-  name    = "${var.name_prefix}-allow-iap-ssh"
-  network = google_compute_network.main.name
-
-  source_ranges = ["35.235.240.0/20"]
-  target_tags   = ["hublink-ssh"]
-
-  allow {
-    protocol = "tcp"
-    ports    = ["22"]
+  log_config {
+    metadata = "INCLUDE_ALL_METADATA"
   }
 }
 
@@ -76,20 +73,10 @@ resource "google_compute_firewall" "platform_public" {
 
   allow {
     protocol = "tcp"
-    ports    = ["19090", "19091"]
+    ports    = ["19091"]
   }
-}
 
-# 모니터링 VM 공개 확인 포트
-resource "google_compute_firewall" "monitor_public" {
-  name    = "${var.name_prefix}-allow-monitoring-public"
-  network = google_compute_network.main.name
-
-  source_ranges = var.public_source_ranges
-  target_tags   = ["hublink-monitoring"]
-
-  allow {
-    protocol = "tcp"
-    ports    = ["3000", "8082", "9090", "9411"]
+  log_config {
+    metadata = "INCLUDE_ALL_METADATA"
   }
 }

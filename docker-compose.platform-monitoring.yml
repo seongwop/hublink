@@ -1,0 +1,4 @@
+# 플랫폼 VM 통합 서비스 묶음
+include:
+  - path: docker-compose.platform.yml
+  - path: docker-compose.monitoring.yml

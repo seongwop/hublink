@@ -64,3 +64,45 @@ resource "google_project_iam_member" "github_actions_service_account_user" {
   role    = "roles/iam.serviceAccountUser"
   member  = "serviceAccount:${google_service_account.github_actions.email}"
 }
+
+# Cloud Run 부하 테스트 실행 계정
+resource "google_service_account" "load_test" {
+  account_id   = "${var.name_prefix}-load-test"
+  display_name = "HubLink Cloud Run load test service account"
+
+  depends_on = [google_project_service.required]
+}
+
+# 부하 테스트 DB 비밀번호 저장소
+resource "google_secret_manager_secret" "load_test_db_password" {
+  secret_id = "${var.name_prefix}-load-test-db-password"
+
+  replication {
+    auto {}
+  }
+
+  depends_on = [google_project_service.required]
+}
+
+# Cloud Run Job의 DB 비밀번호 조회 권한
+resource "google_secret_manager_secret_iam_member" "load_test_secret_accessor" {
+  project   = var.project_id
+  secret_id = google_secret_manager_secret.load_test_db_password.secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.load_test.email}"
+}
+
+# GitHub Actions의 Cloud Run Job 배포 권한
+resource "google_project_iam_member" "github_actions_run_admin" {
+  project = var.project_id
+  role    = "roles/run.admin"
+  member  = "serviceAccount:${google_service_account.github_actions.email}"
+}
+
+# GitHub Actions의 부하 테스트 비밀번호 버전 추가 권한
+resource "google_secret_manager_secret_iam_member" "github_actions_secret_version_adder" {
+  project   = var.project_id
+  secret_id = google_secret_manager_secret.load_test_db_password.secret_id
+  role      = "roles/secretmanager.secretVersionAdder"
+  member    = "serviceAccount:${google_service_account.github_actions.email}"
+}

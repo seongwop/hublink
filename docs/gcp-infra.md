@@ -1,6 +1,6 @@
 # GCP 인프라 구성 문서
 
-이 문서는 HubLink 프로젝트를 GCP Compute Engine VM 7대로 실행하기 위한 인프라 구성을 정리한다.
+이 문서는 HubLink 프로젝트를 Compute Engine VM 5대와 Cloud Run Job으로 실행하기 위한 인프라 구성을 정리한다.
 
 ## 구성 요약
 
@@ -13,6 +13,8 @@ Terraform
   -> Firewall
   -> Cloud NAT
   -> Compute Engine VM
+  -> Cloud Run Job 실행 계정
+  -> Secret Manager
   -> Artifact Registry
   -> Service Account
   -> Workload Identity Federation
@@ -29,17 +31,15 @@ infra/gcp
 
 | VM | 내부 IP | 외부 IP | 역할 |
 | --- | --- | --- | --- |
-| hublink-platform-vm | `10.10.0.10` | `34.50.50.207` | Eureka, Config Server, API Gateway |
+| hublink-platform-vm | `10.10.0.10` | `34.50.55.18` | Eureka, Config Server, API Gateway, 모니터링 |
 | hublink-domain-a-vm | `10.10.0.20` | 없음 | user, company, hub, product |
 | hublink-domain-b-vm | `10.10.0.30` | 없음 | order, stock, slack, ai |
 | hublink-delivery-vm | `10.10.0.70` | 없음 | delivery |
 | hublink-data-vm | `10.10.0.40` | 없음 | PostgreSQL, Redis, Kafka |
-| hublink-monitoring-vm | `10.10.0.60` | `8.230.17.44` | Kafka UI, Zipkin, Prometheus, Loki, Grafana |
-| hublink-load-test-vm | `10.10.0.50` | `34.64.86.22` | k6 부하 발생 |
 
-외부 IP는 `platform`, `monitoring`, `load-test`에만 고정 IP로 연결한다. `domain-a`, `domain-b`, `delivery`, `data`는 외부 IP 없이 Cloud NAT로 Docker 설치와 이미지 pull에 필요한 egress만 사용한다. 서비스 간 통신과 부하 테스트 트래픽은 외부 IP가 아니라 내부 IP를 기준으로 유지한다.
+외부 IP는 공개 API 진입점인 `platform`에만 연결한다. 나머지 VM은 외부 IP 없이 Cloud NAT로 Docker 설치와 이미지 pull에 필요한 egress만 사용한다. 서비스 간 통신과 부하 테스트 트래픽은 내부 IP를 기준으로 유지한다.
 
-`load-test`는 외부 IP로 접속하더라도 실제 부하는 `platform` 내부 IP인 `10.10.0.10:19091`로 전송한다.
+부하 테스트는 1 vCPU, 4 GiB Cloud Run Job을 Direct VPC로 연결해 실행한다. 배송 로직 테스트는 `10.10.0.70:19099`, Gateway 테스트는 `10.10.0.10:19091`로 전송한다.
 
 현재 IP 확인:
 
@@ -52,9 +52,7 @@ terraform output vm_external_ips
 현재 고정 외부 IP:
 
 ```text
-platform:    34.50.50.207
-monitoring:  8.230.17.44
-load-test:   34.64.86.22
+platform:    34.50.55.18
 ```
 
 ## 네트워크
@@ -67,6 +65,8 @@ load-test:   34.64.86.22
 | Region | `asia-northeast3` |
 | Zone | `asia-northeast3-a` |
 | NAT | `hublink-cloud-nat` |
+| SSH ingress | IAP `35.235.240.0/20`만 허용 |
+| VPC Flow Logs | 30초 간격, 50% 샘플링 |
 
 서비스 간 통신은 외부 IP가 아니라 내부 IP를 사용한다.
 
@@ -76,27 +76,34 @@ Config Server: http://10.10.0.10:19092
 PostgreSQL:    10.10.0.40:5432
 Redis:         10.10.0.40:6379
 Kafka:         10.10.0.40:9092
-Zipkin:        http://10.10.0.60:9411/api/v2/spans
-Load Test:     10.10.0.50
+Zipkin:        http://10.10.0.10:9411/api/v2/spans
+Load Test:     Cloud Run Job -> Direct VPC
 ```
 
 ## 공개 접속 주소
 
 | 항목 | URL |
 | --- | --- |
-| Swagger/API Gateway | `http://34.50.50.207:19091/swagger-ui/index.html` |
-| Eureka Dashboard | `http://34.50.50.207:19090` |
-| Kafka UI | `http://8.230.17.44:8082` |
-| Grafana | `http://8.230.17.44:3000` |
-| Prometheus | `http://8.230.17.44:9090` |
-| Zipkin | `http://8.230.17.44:9411` |
+| Swagger/API Gateway | `http://34.50.55.18:19091/swagger-ui/index.html` |
 
 Swagger에서 직접 요청을 보내려면 배포 환경의 `SWAGGER_GATEWAY_URL`, `CORS_ALLOWED_ORIGIN`이 `platform` 외부 IP를 바라봐야 한다.
 
 ```text
-SWAGGER_GATEWAY_URL=http://34.50.50.207:19091
-CORS_ALLOWED_ORIGIN=http://34.50.50.207:19091
+SWAGGER_GATEWAY_URL=http://34.50.55.18:19091
+CORS_ALLOWED_ORIGIN=http://34.50.55.18:19091
 ```
+
+Eureka와 모니터링 도구는 공개하지 않는다. Grafana, Prometheus, Kafka UI는 loopback 주소에만 바인딩하고 IAP SSH 포트 포워딩으로 접근한다. Kafka UI는 기본 Compose 기동 대상에서 제외하고, 관리 작업이 필요할 때만 `admin` 프로필로 실행한다.
+
+```powershell
+gcloud compute ssh hublink@hublink-platform-vm `
+  --project=hublink-503802 `
+  --zone=asia-northeast3-a `
+  --tunnel-through-iap `
+  -- -L 3000:localhost:3000 -L 9090:localhost:9090 -L 9411:localhost:9411
+```
+
+터널을 연 뒤 Grafana는 `http://localhost:3000`으로 접속한다.
 
 ## Docker Compose 분리
 
@@ -105,8 +112,9 @@ VM 역할별로 Compose 파일을 분리한다.
 | 파일 | 실행 VM | 포함 항목 |
 | --- | --- | --- |
 | `docker-compose.data.yml` | data | PostgreSQL, Redis, Kafka |
-| `docker-compose.monitoring.yml` | monitoring | Kafka UI, Zipkin, Prometheus, Loki, Grafana |
-| `docker-compose.platform.yml` | platform | Eureka, Config Server, API Gateway |
+| `docker-compose.platform-monitoring.yml` | platform | 플랫폼과 모니터링 Compose 통합 |
+| `docker-compose.platform.yml` | platform include | Eureka, Config Server, API Gateway |
+| `docker-compose.monitoring.yml` | platform include | Kafka UI, Zipkin, Prometheus, Loki, Grafana |
 | `docker-compose.domain-a.yml` | domain-a | user, company, hub, product |
 | `docker-compose.domain-b.yml` | domain-b | order, stock, slack, ai |
 | `docker-compose.delivery.yml` | delivery | delivery |
@@ -208,7 +216,7 @@ terraform apply
 VM 상태 확인:
 
 ```bash
-gcloud compute instances list --project hublink-500805
+gcloud compute instances list --project hublink-503802
 ```
 
 IAP SSH 접속:
@@ -216,7 +224,7 @@ IAP SSH 접속:
 ```bash
 gcloud compute ssh hublink-domain-a-vm \
   --zone asia-northeast3-a \
-  --project hublink-500805 \
+  --project hublink-503802 \
   --tunnel-through-iap
 ```
 
@@ -225,43 +233,12 @@ gcloud compute ssh hublink-domain-a-vm \
 ```bash
 gcloud compute ssh hublink-platform-vm \
   --zone asia-northeast3-a \
-  --project hublink-500805 \
+  --project hublink-503802 \
   --tunnel-through-iap \
-  --command "cd /opt/hublink && sudo docker compose -f docker-compose.platform.yml ps"
+  --command "cd /opt/hublink && sudo docker compose -f docker-compose.platform-monitoring.yml ps"
 ```
 
-서비스 등록 확인:
-
-```text
-http://34.50.50.207:19090
-```
-
-메시지 흐름 확인:
-
-```text
-http://8.230.17.44:8082
-```
-
-부하 테스트 VM 접속:
-
-```bash
-gcloud compute ssh hublink-load-test-vm \
-  --zone asia-northeast3-a \
-  --project hublink-500805
-```
-
-k6 smoke 테스트:
-
-```bash
-hublink-k6-smoke http://10.10.0.10:19091/actuator/health
-```
-
-모니터링 확인:
-
-```text
-http://8.230.17.44:3000
-http://8.230.17.44:9090
-```
+부하 테스트는 GitHub Actions의 `GCP Cloud Run Load Test`에서 조건을 선택해 실행한다. Job 로그는 workflow artifact와 Cloud Logging에 남는다.
 
 ## CI/CD
 

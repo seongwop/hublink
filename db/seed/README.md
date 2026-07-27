@@ -33,16 +33,16 @@ This directory contains SQL seed files and sample payloads for scenario runs, lo
 Run the base scenario after the services have created the tables.
 
 ```powershell
-$project = "hublink-498115"
+$project = "hublink-503802"
 $zone = "asia-northeast3-a"
 
-gcloud compute scp db/seed/01-base-scenarios.sql hublink-data-monitor-vm:/tmp/01-base-scenarios.sql --zone $zone --project $project
-gcloud compute ssh hublink-data-monitor-vm --zone $zone --project $project --command "sudo docker exec -i hublink-postgres psql -U hublink -d hublink < /tmp/01-base-scenarios.sql"
+gcloud compute scp db/seed/01-base-scenarios.sql hublink-data-vm:/tmp/01-base-scenarios.sql --zone $zone --project $project
+gcloud compute ssh hublink-data-vm --zone $zone --project $project --command "sudo docker exec -i hublink-postgres psql -U hublink -d hublink < /tmp/01-base-scenarios.sql"
 ```
 
 Use the reset scenario before rerunning from a clean state.
 
 ```powershell
-gcloud compute scp db/seed/00-reset-scenarios.sql hublink-data-monitor-vm:/tmp/00-reset-scenarios.sql --zone $zone --project $project
-gcloud compute ssh hublink-data-monitor-vm --zone $zone --project $project --command "sudo docker exec -i hublink-postgres psql -U hublink -d hublink < /tmp/00-reset-scenarios.sql"
+gcloud compute scp db/seed/00-reset-scenarios.sql hublink-data-vm:/tmp/00-reset-scenarios.sql --zone $zone --project $project
+gcloud compute ssh hublink-data-vm --zone $zone --project $project --command "sudo docker exec -i hublink-postgres psql -U hublink -d hublink < /tmp/00-reset-scenarios.sql"
 ```

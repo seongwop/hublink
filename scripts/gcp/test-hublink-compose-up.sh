@@ -17,6 +17,7 @@ trap cleanup EXIT
 mkdir -p "${MOCK_BIN}" "${REMOTE_DIR}"
 touch \
   "${REMOTE_DIR}/.env.gcp" \
+  "${REMOTE_DIR}/docker-compose.platform-monitoring.yml" \
   "${REMOTE_DIR}/docker-compose.platform.yml" \
   "${REMOTE_DIR}/docker-compose.domain-a.yml" \
   "${REMOTE_DIR}/docker-compose.domain-b.yml" \
@@ -153,6 +154,20 @@ grep -Fq 'docker compose --env-file .env.gcp -f docker-compose.domain-a.yml up -
 assert_before \
   'docker compose --env-file .env.gcp -f docker-compose.domain-a.yml up -d --remove-orphans' \
   'curl -fsS http://localhost:19096/actuator/health'
+
+# 플랫폼과 모니터링 통합 재기동 순서 검증
+run_compose "docker-compose.platform-monitoring.yml" "full" ""
+
+grep -Fq 'docker compose --env-file .env.gcp -f docker-compose.platform-monitoring.yml up -d --no-deps promtail' "${LOG_FILE}"
+grep -Fq 'timeout 1 bash -c :</dev/tcp/10.10.0.40/5432' "${LOG_FILE}"
+grep -Fq 'timeout 1 bash -c :</dev/tcp/10.10.0.40/9092' "${LOG_FILE}"
+grep -Fq 'docker compose --env-file .env.gcp -f docker-compose.platform-monitoring.yml up -d --remove-orphans' "${LOG_FILE}"
+grep -Fq 'curl -fsS http://localhost:9090/-/healthy' "${LOG_FILE}"
+grep -Fq 'curl -fsS http://localhost:3100/ready' "${LOG_FILE}"
+grep -Fq 'curl -fsS http://localhost:3000/api/health' "${LOG_FILE}"
+assert_before \
+  'timeout 1 bash -c :</dev/tcp/10.10.0.40/5432' \
+  'docker compose --env-file .env.gcp -f docker-compose.platform-monitoring.yml up -d --remove-orphans'
 
 # Docker 조기 종료 차단과 Config Server 필수 연결 검증
 assert_count 3 'restart: on-failure' "${REPO_ROOT}/docker-compose.platform.yml"

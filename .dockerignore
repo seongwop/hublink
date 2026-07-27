@@ -14,6 +14,16 @@ monitoring
 db
 scripts
 
+# Cloud Run k6 이미지 입력
+!performance/
+performance/*
+!performance/k6/
+!performance/k6/**
+!db/
+db/*
+!db/seed/
+!db/seed/**
+
 README.md
 Dockerfile.cd
 docker-compose.*.yml

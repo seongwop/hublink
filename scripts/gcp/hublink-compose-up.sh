@@ -15,6 +15,9 @@ if [ -z "${COMPOSE_FILE}" ]; then
 fi
 
 case "${COMPOSE_FILE}" in
+  docker-compose.platform-monitoring.yml)
+    ROLE="platform-monitoring"
+    ;;
   docker-compose.platform.yml)
     ROLE="platform"
     ;;
@@ -29,9 +32,6 @@ case "${COMPOSE_FILE}" in
     ;;
   docker-compose.data.yml)
     ROLE="data"
-    ;;
-  docker-compose.monitoring.yml)
-    ROLE="monitoring"
     ;;
   *)
     ROLE=""
@@ -207,7 +207,7 @@ wait_target_services() {
 
 start_promtail_before_wait() {
   case "${ROLE}" in
-    platform|domain-a|domain-b|delivery)
+    platform|platform-monitoring|domain-a|domain-b|delivery)
       echo "starting promtail before readiness checks"
       docker compose --env-file .env.gcp -f "${COMPOSE_FILE}" up -d --no-deps promtail
       ;;
@@ -217,6 +217,10 @@ start_promtail_before_wait() {
 start_promtail_before_wait
 
 case "${ROLE}" in
+  platform-monitoring)
+    wait_tcp "PostgreSQL" "${DATA_HOST}" 5432
+    wait_tcp "Kafka" "${DATA_HOST}" 9092
+    ;;
   domain-a)
     wait_http "Eureka" "${EUREKA_URL}/actuator/health"
     wait_http "Config Server" "${CONFIG_URL}/actuator/health"
@@ -254,10 +258,6 @@ case "${ROLE}" in
     wait_eureka_app "HUB-SERVICE"
     wait_eureka_app "USER-SERVICE"
     ;;
-  monitoring)
-    wait_tcp "PostgreSQL" "${DATA_HOST}" 5432
-    wait_tcp "Kafka" "${DATA_HOST}" 9092
-    ;;
 esac
 
 if [ "${#target_services[@]}" -gt 0 ]; then
@@ -274,6 +274,15 @@ fi
 docker compose --env-file .env.gcp -f "${COMPOSE_FILE}" up -d --remove-orphans
 
 case "${ROLE}" in
+  platform-monitoring)
+    wait_http "Eureka" "${EUREKA_URL}/actuator/health"
+    wait_http "Config Server" "${CONFIG_URL}/actuator/health"
+    wait_config_service "api-gateway"
+    wait_compose_service "api-gateway"
+    wait_http "Prometheus" "http://localhost:9090/-/healthy"
+    wait_http "Loki" "http://localhost:3100/ready"
+    wait_http "Grafana" "http://localhost:3000/api/health"
+    ;;
   platform)
     wait_http "Eureka" "${EUREKA_URL}/actuator/health"
     wait_http "Config Server" "${CONFIG_URL}/actuator/health"
@@ -294,10 +303,5 @@ case "${ROLE}" in
     ;;
   delivery)
     wait_compose_service "delivery-service"
-    ;;
-  monitoring)
-    wait_http "Prometheus" "http://localhost:9090/-/healthy"
-    wait_http "Loki" "http://localhost:3100/ready"
-    wait_http "Grafana" "http://localhost:3000/api/health"
     ;;
 esac

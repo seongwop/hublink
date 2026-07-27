@@ -31,7 +31,7 @@ k6
 | 대상 API | `POST /api/v1/deliveries/test/delivery-create` |
 | 대상 topic | `delivery.create`, `delivery.create.succeed`, `delivery.create.failed`, `delivery.create.dlq` |
 | k6 script | `delivery-create-kafka-load.js` |
-| 실행 위치 | `hublink-load-test-vm` |
+| 실행 위치 | `hublink-k6-load-test` Cloud Run Job |
 | 실행 명령어 | 미기록 |
 | VU / duration | 미기록 |
 | 부하 패턴 | 미기록 |

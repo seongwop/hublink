@@ -10,8 +10,7 @@ locals {
   address_name_suffix = {
     for name, spec in var.vm_specs :
     name => lookup({
-      data       = "data-monitor"
-      monitoring = "monitor"
+      data = "data-monitor"
     }, name, name)
   }
 }
@@ -49,7 +48,7 @@ resource "google_compute_instance" "vm" {
   machine_type = each.value.machine_type
   zone         = var.zone
   tags         = each.value.tags
-  resource_policies = var.vm_schedule_enabled ? [
+  resource_policies = var.vm_schedule_enabled && contains(var.scheduled_vm_names, each.key) ? [
     google_compute_resource_policy.vm_schedule.self_link
   ] : []
 
@@ -101,6 +100,13 @@ resource "google_compute_instance" "vm" {
     scopes = [
       "https://www.googleapis.com/auth/cloud-platform",
     ]
+  }
+
+  # 외부 노출 이력이 있는 VM의 부팅 무결성 검증
+  shielded_instance_config {
+    enable_secure_boot          = contains(var.secure_boot_vm_names, each.key)
+    enable_vtpm                 = true
+    enable_integrity_monitoring = true
   }
 
   # 머신 타입 변경 시 stop/start 허용
