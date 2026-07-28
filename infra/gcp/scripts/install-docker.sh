@@ -9,7 +9,7 @@ echo "$ROLE" >/etc/hublink-role
 
 case "$ROLE" in
   platform)
-    echo "docker-compose.platform.yml" >/etc/hublink-compose-file
+    echo "docker-compose.platform-monitoring.yml" >/etc/hublink-compose-file
     ;;
   domain-a)
     echo "docker-compose.domain-a.yml" >/etc/hublink-compose-file
@@ -22,9 +22,6 @@ case "$ROLE" in
     ;;
   data|data-monitor)
     echo "docker-compose.data.yml" >/etc/hublink-compose-file
-    ;;
-  monitoring|monitor)
-    echo "docker-compose.monitoring.yml" >/etc/hublink-compose-file
     ;;
 esac
 
@@ -87,28 +84,3 @@ EOF
 systemctl daemon-reload
 systemctl enable hublink-compose.service
 systemctl start hublink-compose.service || true
-
-if [ "${role}" = "load-test" ]; then
-  cat >/usr/local/bin/hublink-k6-smoke <<'SCRIPT'
-#!/usr/bin/env bash
-set -euo pipefail
-
-TARGET_URL="$${1:-http://10.10.0.10:19091/actuator/health}"
-
-docker run --rm -i grafana/k6:latest run -e TARGET_URL="$TARGET_URL" - <<'K6'
-import http from 'k6/http';
-import { sleep } from 'k6';
-
-export const options = {
-  vus: 10,
-  duration: '30s',
-};
-
-export default function () {
-  http.get(__ENV.TARGET_URL);
-  sleep(1);
-}
-K6
-SCRIPT
-  chmod +x /usr/local/bin/hublink-k6-smoke
-fi

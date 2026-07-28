@@ -110,12 +110,12 @@ ai-service 로그의 ACK 완료 여부
 
 | 도구           | URL 또는 위치                             | 확인 항목                                                     |
 | ------------ | ------------------------------------- | --------------------------------------------------------- |
-| Grafana      | `http://8.230.17.44:3000`             | ai-service CPU, memory, JVM, DB, Redis 지표                 |
-| Prometheus   | `http://8.230.17.44:9090`             | raw metric query                                          |
+| Grafana      | platform VM IAP 터널의 `http://localhost:3000` | ai-service CPU, memory, JVM, DB, Redis 지표                 |
+| Prometheus   | platform VM IAP 터널의 `http://localhost:9090` | raw metric query                                          |
 | Redis        | data-vm                               | stream length, lag, pending entry, consumer group, ACK 상태 |
-| Zipkin       | `http://8.230.17.44:9411`             | ai-service 처리 trace                                       |
+| Zipkin       | platform VM IAP 터널의 `http://localhost:9411` | ai-service 처리 trace                                       |
 | PostgreSQL   | hublink database                      | AI 메시지 처리량, 처리 상태, DB connection                          |
-| k6           | load-test-vm                          | 이벤트 주입 요청 수, TPS, p95, p99, 실패율                           |
+| k6           | `hublink-k6-load-test` Cloud Run Job | 이벤트 주입 요청 수, TPS, p95, p99, 실패율                           |
 | service logs | domain-b-vm                           | ai-service consume, 처리 지연, ACK, 예외 로그                     |
 | service logs | domain-b-vm 또는 delivery-service 실행 VM | delivery-service 테스트 API 호출, requested stream 발행 로그       |
 
@@ -477,7 +477,7 @@ ai-service가 중지된 동안에도 delivery-service 테스트 전용 API는 �
 ```bash
 gcloud compute ssh hublink-domain-b-vm \
   --zone asia-northeast3-a \
-  --project hublink-500805 \
+  --project hublink-503802 \
   --tunnel-through-iap \
   --command "cd /opt/hublink && sudo docker compose -f docker-compose.domain-b.yml stop ai-service"
 ```
@@ -497,7 +497,7 @@ POST /api/v1/deliveries/test/deadline-requested
 ```bash
 gcloud compute ssh hublink-domain-b-vm \
   --zone asia-northeast3-a \
-  --project hublink-500805 \
+  --project hublink-503802 \
   --tunnel-through-iap \
   --command "cd /opt/hublink && sudo docker compose -f docker-compose.domain-b.yml start ai-service"
 ```

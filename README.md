@@ -6,7 +6,7 @@
 
 ## 배포 구조
 
-GCP VM 7개를 기준으로 서비스를 나누어 배포한다.
+Compute Engine VM 5개와 Cloud Run Job으로 서비스를 나누어 배포한다.
 
 서버별 CPU, 메모리, 디스크, IP 세부 스펙은 [GCP 서버 스펙](docs/gcp-server-spec.md)에서 확인한다.
 
@@ -15,6 +15,11 @@ platform-vm
   - eureka-server
   - config-server
   - api-gateway
+  - Kafka UI (필요할 때만 실행)
+  - Zipkin
+  - Prometheus
+  - Loki
+  - Grafana
 
 domain-a-vm
   - user-service
@@ -36,14 +41,7 @@ data-vm
   - Redis
   - Kafka
 
-monitoring-vm
-  - Kafka UI
-  - Zipkin
-  - Prometheus
-  - Loki
-  - Grafana
-
-load-test-vm
+Cloud Run Job
   - k6
   - load test scripts
 ```
@@ -54,35 +52,33 @@ load-test-vm
 
 | VM | 역할 | 주요 포트 |
 | --- | --- | --- |
-| platform-vm | 서비스 디스커버리, 설정 서버, API 진입점 | 19090, 19091, 19092 |
+| platform-vm | 서비스 디스커버리, 설정 서버, API 진입점, 모니터링 | 19090, 19091, 19092, 3000, 9090, 9411 |
 | domain-a-vm | 사용자, 업체, 허브, 상품 도메인 서비스 | 19093, 19095, 19096, 19097 |
 | domain-b-vm | 주문, 재고, 알림, AI 도메인 서비스 | 19094, 19098, 19100, 19101 |
 | delivery-vm | 배송 전용 서비스 | 19099 |
 | data-vm | 데이터 저장소, 메시지 브로커 | 5432, 6379, 9092 |
-| monitoring-vm | 모니터링, 로그, Kafka UI, 분산 추적 | 8082, 9411, 9090, 3100, 3000 |
-| load-test-vm | GCP 내부 부하 발생 | 없음 |
 
 ## 고정 IP
 
 | VM | Internal IP | External IP |
 | --- | --- | --- |
-| platform-vm | `10.10.0.10` | `34.50.50.207` |
+| platform-vm | `10.10.0.10` | `34.50.55.18` |
 | domain-a-vm | `10.10.0.20` | 없음 |
 | domain-b-vm | `10.10.0.30` | 없음 |
 | delivery-vm | `10.10.0.70` | 없음 |
 | data-vm | `10.10.0.40` | 없음 |
-| monitoring-vm | `10.10.0.60` | `8.230.17.44` |
-| load-test-vm | `10.10.0.50` | `34.64.86.22` |
 
 ## 모니터링 도구
 
 | 도구 | 주소 | 용도 |
 | --- | --- | --- |
-| Grafana | `http://8.230.17.44:3000` | 메트릭, 로그 통합 조회 |
-| Prometheus | `http://8.230.17.44:9090` | JVM, HTTP, 시스템 메트릭 조회 |
-| Zipkin | `http://8.230.17.44:9411` | 분산 추적 |
-| Kafka UI | `http://8.230.17.44:8082` | topic, message, consumer lag 확인 |
+| Grafana | IAP 터널의 `http://localhost:3000` | 메트릭, 로그 통합 조회 |
+| Prometheus | IAP 터널의 `http://localhost:9090` | JVM, HTTP, 시스템 메트릭 조회 |
+| Zipkin | IAP 터널의 `http://localhost:9411` | 분산 추적 |
+| Kafka UI | 필요할 때만 실행 후 IAP 터널의 `http://localhost:8082` | topic, message, consumer lag 확인 |
 | Loki | Grafana datasource | Docker 로그 검색 |
+
+Grafana, Prometheus, Kafka UI는 platform VM의 loopback 주소에만 바인딩하고 IAP SSH 포트 포워딩으로 접근한다. k6는 Direct VPC가 연결된 Cloud Run Job에서 내부 배송 주소로 부하를 전송한다.
 
 ## 문서
 

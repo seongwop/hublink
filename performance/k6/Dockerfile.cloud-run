@@ -1,0 +1,14 @@
+FROM grafana/k6:latest
+
+USER root
+
+RUN apk add --no-cache bash ca-certificates postgresql-client
+
+WORKDIR /opt/hublink
+
+COPY performance/k6 /opt/hublink/performance/k6
+COPY db/seed /opt/hublink/db/seed
+
+RUN chmod +x /opt/hublink/performance/k6/run-cloud-run-k6.sh
+
+ENTRYPOINT ["/opt/hublink/performance/k6/run-cloud-run-k6.sh"]

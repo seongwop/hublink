@@ -21,11 +21,11 @@
 
 | 도구 | URL 또는 위치 | 확인 항목 |
 | --- | --- | --- |
-| Swagger | `http://34.50.50.207:19091/swagger-ui/index.html` | 주문 요청과 배송 API 확인 |
-| Eureka | `http://34.50.50.207:19090` | delivery, ai, slack 서비스 등록 |
-| Kafka UI | `http://8.230.17.44:8082` | delivery topic, consumer lag, DLT |
-| Grafana | `http://8.230.17.44:3000` | delivery-service CPU, heap, HTTP, JVM 지표 |
-| Zipkin | `http://8.230.17.44:9411` | 배송 생성 trace, Feign 호출 trace |
+| Swagger | `http://34.50.55.18:19091/swagger-ui/index.html` | 주문 요청과 배송 API 확인 |
+| Eureka | `http://34.50.55.18:19090` | delivery, ai, slack 서비스 등록 |
+| Kafka UI | 필요할 때 platform VM에서 실행 후 IAP 터널의 `http://localhost:8082` | delivery topic, consumer lag, DLT |
+| Grafana | platform VM IAP 터널의 `http://localhost:3000` | delivery-service CPU, heap, HTTP, JVM 지표 |
+| Zipkin | platform VM IAP 터널의 `http://localhost:9411` | 배송 생성 trace, Feign 호출 trace |
 | PostgreSQL | `hublink` database | delivery, delivery manager, route row |
 | Redis | Redis Stream | AI/Slack 이벤트, pending entry |
 
@@ -220,7 +220,7 @@ delivery-service가 중지된 동안 delivery.create 메시지가 쌓이고, 복
 ```bash
 gcloud compute ssh hublink-delivery-vm \
   --zone asia-northeast3-a \
-  --project hublink-500805 \
+  --project hublink-503802 \
   --tunnel-through-iap \
   --command "cd /opt/hublink && sudo docker compose -f docker-compose.delivery.yml stop delivery-service"
 ```
@@ -243,7 +243,7 @@ Body: db/seed/orders/01-success-order.json
 ```bash
 gcloud compute ssh hublink-delivery-vm \
   --zone asia-northeast3-a \
-  --project hublink-500805 \
+  --project hublink-503802 \
   --tunnel-through-iap \
   --command "cd /opt/hublink && sudo docker compose -f docker-compose.delivery.yml start delivery-service"
 ```
@@ -297,7 +297,7 @@ Redis 장애가 배송 생성 본 흐름까지 영향을 주는지, 또는 알�
 ```bash
 gcloud compute ssh hublink-data-vm \
   --zone asia-northeast3-a \
-  --project hublink-500805 \
+  --project hublink-503802 \
   --tunnel-through-iap \
   --command "cd /opt/hublink && sudo docker compose -f docker-compose.data.yml stop redis"
 ```
@@ -315,7 +315,7 @@ gcloud compute ssh hublink-data-vm \
 ```bash
 gcloud compute ssh hublink-data-vm \
   --zone asia-northeast3-a \
-  --project hublink-500805 \
+  --project hublink-503802 \
   --tunnel-through-iap \
   --command "cd /opt/hublink && sudo docker compose -f docker-compose.data.yml start redis"
 ```

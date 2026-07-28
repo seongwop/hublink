@@ -24,15 +24,17 @@
 
 | VM | Machine Type | vCPU | Memory | Boot Disk | Internal IP | External IP | 역할 |
 | --- | --- | ---: | ---: | ---: | --- | --- | --- |
-| `hublink-platform-vm` | `e2-standard-2` | 2 | 8 GB | 30 GB | `10.10.0.10` | `34.50.50.207` | Eureka, Config Server, API Gateway |
+| `hublink-platform-vm` | `e2-highmem-2` | 2 | 16 GB | 30 GB | `10.10.0.10` | `34.50.55.18` | Eureka, Config Server, API Gateway, 모니터링 |
 | `hublink-domain-a-vm` | `e2-standard-2` | 2 | 8 GB | 30 GB | `10.10.0.20` | 없음 | user, company, hub, product |
 | `hublink-domain-b-vm` | `e2-standard-2` | 2 | 8 GB | 30 GB | `10.10.0.30` | 없음 | order, stock, slack, ai |
 | `hublink-delivery-vm` | `e2-standard-2` | 2 | 8 GB | 30 GB | `10.10.0.70` | 없음 | delivery |
 | `hublink-data-vm` | `e2-standard-4` | 4 | 16 GB | 50 GB | `10.10.0.40` | 없음 | PostgreSQL, Redis, Kafka |
-| `hublink-monitoring-vm` | `e2-standard-2` | 2 | 8 GB | 50 GB | `10.10.0.60` | `8.230.17.44` | Kafka UI, Zipkin, Prometheus, Loki, Grafana |
-| `hublink-load-test-vm` | `e2-medium` | 2 | 4 GB | 20 GB | `10.10.0.50` | `34.64.86.22` | k6 부하 발생 |
 
-메모리와 vCPU는 GCP E2 machine type 기준이다.
+Compute Engine 합계는 12 vCPU다. 메모리와 vCPU는 GCP E2 machine type 기준이다.
+
+| 서버리스 실행 환경 | CPU | Memory | 연결 | 역할 |
+| --- | ---: | ---: | --- | --- |
+| `hublink-k6-load-test` Cloud Run Job | 1 | 4 GiB | Direct VPC | k6 부하 발생 |
 
 ## VM별 서비스 구성
 
@@ -43,6 +45,11 @@
 | Eureka Server | 19090 | 서비스 디스커버리 |
 | API Gateway | 19091 | 외부 API 진입점 |
 | Config Server | 19092 | 서비스 설정 제공 |
+| Kafka UI | 8082 | 필요할 때만 실행해 Kafka topic, lag 확인 |
+| Zipkin | 9411 | 분산 추적 |
+| Prometheus | 9090 | 메트릭 수집 |
+| Loki | 3100 | 로그 저장 |
+| Grafana | 3000 | 메트릭, 로그 대시보드 |
 
 ### domain-a
 
@@ -76,34 +83,24 @@
 | Redis | 6379 | Redis Stream, cache, lock |
 | Kafka | 9092 | 도메인 이벤트 |
 
-### monitoring
-
-| 서비스 | 포트 | 용도 |
-| --- | ---: | --- |
-| Kafka UI | 8082 | Kafka topic, lag 확인 |
-| Zipkin | 9411 | 분산 추적 |
-| Prometheus | 9090 | 메트릭 수집 |
-| Loki | 3100 | 로그 저장 |
-| Grafana | 3000 | 메트릭, 로그 대시보드 |
-
 ### load-test
 
 | 구성 | 용도 |
 | --- | --- |
-| k6 | 부하 테스트 실행 |
-| `performance/k6` | 부하 테스트 스크립트 |
+| Cloud Run Job | Compute Engine vCPU 쿼터와 분리된 부하 테스트 실행 |
+| Direct VPC | 내부 배송 서비스와 DB 연결 |
+| Secret Manager | DB 초기화 비밀번호 주입 |
 
 ## 스펙 배치 기준
 
 | VM | 기준 |
 | --- | --- |
-| platform | 모든 요청의 진입점과 서비스 디스커버리를 담당하므로 기본 서비스 VM과 같은 `e2-standard-2` 사용 |
+| platform | 플랫폼과 모니터링의 기존 합산 메모리 16 GB를 유지하는 `e2-highmem-2` 사용 |
 | domain-a | 4개 도메인 서비스를 함께 실행하므로 `e2-standard-2` 사용 |
 | domain-b | 주문, 재고, AI, Slack 서비스를 함께 실행하므로 `e2-standard-2` 사용 |
 | delivery | 배송 부하가 다른 도메인 서비스 CPU에 영향을 주지 않도록 전용 `e2-standard-2` 사용 |
 | data | 부하 테스트 대상 데이터 경로인 DB, Redis, Kafka만 실행하도록 유지 |
-| monitoring | Prometheus, Grafana, Loki, Zipkin, Kafka UI를 분리해 data VM 자원 경합 완화 |
-| load-test | k6 부하 발생 전용 VM이므로 `e2-medium`과 20 GB 디스크 사용 |
+| load-test | Compute Engine 12 vCPU를 서비스에 유지하기 위해 Cloud Run Job으로 분리 |
 
 ## 스케줄 상태
 
@@ -134,6 +131,6 @@ GCP에서 VM machine type과 상태를 확인한다.
 
 ```bash
 gcloud compute instances list \
-  --project hublink-500805 \
+  --project hublink-503802 \
   --zones asia-northeast3-a
 ```

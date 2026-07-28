@@ -35,14 +35,15 @@ PR 검증은 GCP 인증과 VM 배포를 수행하지 않는다. 실제 이미지
 .github/workflows/gcp-cicd.yml
 .github/workflows/gcp-load-test-sync.yml
 scripts/gcp/deploy-vm.sh
-scripts/gcp/deploy-load-test.sh
+performance/k6/Dockerfile.cloud-run
+performance/k6/run-cloud-run-k6.sh
 ```
 
 `gcp-cicd.yml`은 서비스 이미지 빌드와 VM 배포를 담당한다.
 
-워크플로우 또는 `scripts/gcp/**` 변경 시 새 Artifact Registry 초기 배포를 위해 전체 서비스 이미지를 다시 빌드한다. 앱 VM 또는 monitoring VM 배포가 잡히면 promtail 이미지를 Artifact Registry에 mirror한다.
+워크플로우 또는 `scripts/gcp/**` 변경 시 새 Artifact Registry 초기 배포를 위해 전체 서비스 이미지를 다시 빌드한다. 앱 VM 배포가 잡히면 promtail 이미지를 Artifact Registry에 mirror한다.
 
-`gcp-load-test-sync.yml`은 `performance/k6` 스크립트를 `load-test-vm`으로 동기화한다.
+`gcp-load-test-sync.yml`은 k6 이미지를 빌드하고 Direct VPC가 연결된 Cloud Run Job을 배포한다. 수동 실행에서 `execute_test`를 선택한 경우에만 부하를 발생시킨다.
 
 `deploy-vm.sh`는 GitHub Actions runner에서 실행되는 VM 배포 보조 스크립트다. VM에 필요한 파일을 복사하고 해당 VM에서 Docker Compose를 실행한다.
 
@@ -62,8 +63,8 @@ GitHub 저장소에서 `Settings` -> `Secrets and variables` -> `Actions` -> `Se
 | `SLACK_BOT_TOKEN` | Slack Bot token |
 | `AI_API_KEY` | AI API key |
 | `KAKAO_REST_API_KEY` | Kakao REST API key |
-| `CORS_ALLOWED_ORIGIN` | `http://34.50.50.207:19091` |
-| `SWAGGER_GATEWAY_URL` | `http://34.50.50.207:19091` |
+| `CORS_ALLOWED_ORIGIN` | `http://34.50.55.18:19091` |
+| `SWAGGER_GATEWAY_URL` | `http://34.50.55.18:19091` |
 
 ## 선택 GitHub Variables
 
@@ -109,6 +110,8 @@ Artifact Registry Writer
 Compute Admin
 IAP-secured Tunnel User
 Service Account User
+Cloud Run Admin
+Secret Manager Secret Version Adder
 ```
 
 ## JSON key 미사용
@@ -134,14 +137,13 @@ GitHub 저장소
 
 ```text
 data-vm
--> monitoring-vm
--> platform-vm
+-> platform-vm + monitoring
 -> domain-a-vm
 -> domain-b-vm
 -> delivery-vm
 ```
 
-DB, Redis, Kafka가 먼저 떠야 하고, 그 다음 모니터링 계층과 Eureka/Config Server가 떠야 도메인 서비스와 배송 전용 서비스가 설정을 읽고 Eureka에 등록된다.
+DB, Redis, Kafka가 먼저 떠야 하고, 그 다음 플랫폼과 모니터링 통합 Compose가 떠야 도메인 서비스와 배송 전용 서비스가 설정을 읽고 Eureka에 등록된다.
 
 배포와 VM 재기동에서는 다음 조건을 모두 확인한다.
 
@@ -161,14 +163,15 @@ VM 재기동에서는 Promtail을 먼저 기동하고 선행 서비스 준비 �
 외부 IP는 아래 명령으로 확인한다.
 
 ```powershell
-gcloud compute instances list --project hublink-500805
+gcloud compute instances list --project hublink-503802
 ```
 
 ```text
-Eureka:     http://platform-vm-외부IP:19090
 Gateway:    http://platform-vm-외부IP:19091
-Grafana:    http://monitoring-vm-외부IP:3000
-Prometheus: http://monitoring-vm-외부IP:9090
-Kafka UI:   http://monitoring-vm-외부IP:8082
-Zipkin:     http://monitoring-vm-외부IP:9411
+Grafana:    IAP 터널의 http://localhost:3000
+Prometheus: IAP 터널의 http://localhost:9090
+Kafka UI:   필요할 때만 실행 후 IAP 터널의 http://localhost:8082
+Zipkin:     IAP 터널의 http://localhost:9411
 ```
+
+Eureka와 모니터링 도구는 외부에 공개하지 않는다. SSH는 `35.235.240.0/20`에서 들어오는 IAP 연결만 허용한다.

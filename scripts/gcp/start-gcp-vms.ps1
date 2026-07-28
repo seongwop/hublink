@@ -1,11 +1,10 @@
 param(
-    [string]$ProjectId = "hublink-500805",
+    [string]$ProjectId = "hublink-503802",
     [string]$Zone = "asia-northeast3-a",
     [string]$Branch = "develop",
     [int]$DataWaitSeconds = 600,
     [int]$PlatformWaitSeconds = 600,
     [int]$AppWaitSeconds = 600,
-    [switch]$IncludeLoadTest,
     [switch]$Deploy
 )
 
@@ -112,12 +111,8 @@ Wait-GcpSshCommand `
 $appVms = @(
     "hublink-domain-a-vm",
     "hublink-domain-b-vm",
-    "hublink-delivery-vm",
-    "hublink-monitoring-vm"
+    "hublink-delivery-vm"
 )
-if ($IncludeLoadTest) {
-    $appVms += "hublink-load-test-vm"
-}
 
 Start-GcpInstances -Names $appVms
 Show-GcpInstances
@@ -168,7 +163,7 @@ if ($Deploy) {
         -RemoteCommand "curl -fsS http://localhost:19090/eureka/apps/DELIVERY-SERVICE >/dev/null"
 
     Wait-GcpSshCommand `
-        -Name "hublink-monitoring-vm" `
+        -Name "hublink-platform-vm" `
         -Description "monitoring services" `
         -TimeoutSeconds $AppWaitSeconds `
         -RemoteCommand "curl -fsS http://localhost:9090/-/healthy >/dev/null && curl -fsS http://localhost:3100/ready >/dev/null && curl -fsS http://localhost:3000/api/health >/dev/null"

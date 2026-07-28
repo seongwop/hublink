@@ -43,7 +43,6 @@ output "env_gcp_values" {
     DOMAIN_B_VM_IP   = try(google_compute_instance.vm["domain-b"].network_interface[0].network_ip, null)
     DELIVERY_VM_IP   = try(google_compute_instance.vm["delivery"].network_interface[0].network_ip, null)
     DATA_VM_IP       = try(google_compute_instance.vm["data"].network_interface[0].network_ip, null)
-    MONITORING_VM_IP = try(google_compute_instance.vm["monitoring"].network_interface[0].network_ip, null)
-    LOAD_TEST_VM_IP  = try(google_compute_instance.vm["load-test"].network_interface[0].network_ip, null)
+    MONITORING_VM_IP = try(google_compute_instance.vm["platform"].network_interface[0].network_ip, null)
   }
 }

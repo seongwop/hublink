@@ -97,11 +97,11 @@ variable "ssh_public_key" {
   default     = ""
 }
 
-# 외부 IP 직접 SSH 허용 CIDR 목록
+# IAP 터널 SSH 허용 CIDR 목록
 variable "ssh_source_ranges" {
   description = "SSH 접근 허용 CIDR 목록"
   type        = list(string)
-  default     = ["0.0.0.0/0"]
+  default     = ["35.235.240.0/20"]
 }
 
 # 공개 확인 포트 접근 허용 CIDR 목록
@@ -115,7 +115,21 @@ variable "public_source_ranges" {
 variable "external_ip_vm_names" {
   description = "고정 외부 IP를 연결할 VM 이름 목록"
   type        = set(string)
-  default     = ["platform", "monitoring", "load-test"]
+  default     = ["platform"]
+}
+
+# 자동 시작과 종료를 적용할 VM 목록
+variable "scheduled_vm_names" {
+  description = "자동 시작과 종료를 적용할 VM 이름 목록"
+  type        = set(string)
+  default     = ["platform", "domain-a", "domain-b", "delivery", "data"]
+}
+
+# Secure Boot를 적용할 VM 목록
+variable "secure_boot_vm_names" {
+  description = "Secure Boot를 적용할 VM 이름 목록"
+  type        = set(string)
+  default     = ["platform"]
 }
 
 # Docker 이미지 저장소 ID
@@ -146,10 +160,10 @@ variable "vm_specs" {
   default = {
     platform = {
       role         = "platform"
-      machine_type = "e2-standard-2"
+      machine_type = "e2-highmem-2"
       disk_size_gb = 30
       internal_ip  = "10.10.0.10"
-      tags         = ["hublink", "hublink-ssh", "hublink-platform"]
+      tags         = ["hublink", "hublink-ssh", "hublink-platform", "hublink-monitoring"]
     }
     domain-a = {
       role         = "domain-a"
@@ -178,20 +192,6 @@ variable "vm_specs" {
       disk_size_gb = 50
       internal_ip  = "10.10.0.40"
       tags         = ["hublink", "hublink-ssh", "hublink-data"]
-    }
-    monitoring = {
-      role         = "monitoring"
-      machine_type = "e2-standard-2"
-      disk_size_gb = 50
-      internal_ip  = "10.10.0.60"
-      tags         = ["hublink", "hublink-ssh", "hublink-monitoring"]
-    }
-    load-test = {
-      role         = "load-test"
-      machine_type = "e2-medium"
-      disk_size_gb = 20
-      internal_ip  = "10.10.0.50"
-      tags         = ["hublink", "hublink-ssh", "hublink-load-test"]
     }
   }
 }

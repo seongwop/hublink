@@ -73,13 +73,12 @@ env:
   DOMAIN_B_VM: hublink-domain-b-vm
   DELIVERY_VM: hublink-delivery-vm
   DATA_VM: hublink-data-vm
-  MONITORING_VM: hublink-monitoring-vm
   PLATFORM_VM_IP: 10.10.0.10
   DOMAIN_A_VM_IP: 10.10.0.20
   DOMAIN_B_VM_IP: 10.10.0.30
   DELIVERY_VM_IP: 10.10.0.70
   DATA_VM_IP: 10.10.0.40
-  MONITORING_VM_IP: 10.10.0.60
+  MONITORING_VM_IP: 10.10.0.10
 
 jobs:
   detect-changes:
@@ -92,7 +91,6 @@ jobs:
       deploy_domain_b: ${{ steps.detect.outputs.deploy_domain_b }}
       deploy_delivery: ${{ steps.detect.outputs.deploy_delivery }}
       deploy_data: ${{ steps.detect.outputs.deploy_data }}
-      deploy_monitoring: ${{ steps.detect.outputs.deploy_monitoring }}
       mirror_promtail: ${{ steps.detect.outputs.mirror_promtail }}
       should_deploy: ${{ steps.detect.outputs.should_deploy }}
       foundation_targets_json: ${{ steps.detect.outputs.foundation_targets_json }}
@@ -172,31 +170,29 @@ jobs:
               "domain_b": "hublink-domain-b-vm",
               "delivery": "hublink-delivery-vm",
               "data": "hublink-data-vm",
-              "monitoring": "hublink-monitoring-vm",
           }
           role_to_compose = {
-              "platform": "docker-compose.platform.yml",
+              "platform": "docker-compose.platform-monitoring.yml",
               "domain_a": "docker-compose.domain-a.yml",
               "domain_b": "docker-compose.domain-b.yml",
               "delivery": "docker-compose.delivery.yml",
               "data": "docker-compose.data.yml",
-              "monitoring": "docker-compose.monitoring.yml",
           }
           full_extras = {
-              "platform": ["config-repo", "monitoring/promtail.yml"],
+              "platform": ["docker-compose.platform.yml", "docker-compose.monitoring.yml", "config-repo", "monitoring"],
               "domain_a": ["monitoring/promtail.yml"],
               "domain_b": ["monitoring/promtail.yml"],
               "delivery": ["monitoring/promtail.yml"],
               "data": ["db"],
-              "monitoring": ["monitoring"],
           }
           compose_to_role = {
               "docker-compose.platform.yml": "platform",
+              "docker-compose.platform-monitoring.yml": "platform",
               "docker-compose.domain-a.yml": "domain_a",
               "docker-compose.domain-b.yml": "domain_b",
               "docker-compose.delivery.yml": "delivery",
               "docker-compose.data.yml": "data",
-              "docker-compose.monitoring.yml": "monitoring",
+              "docker-compose.monitoring.yml": "platform",
           }
           mode_rank = {"sync": 0, "config": 1, "image": 2, "full": 3}
 
@@ -204,6 +200,9 @@ jobs:
           role_service_order = {
               role: [service for service in all_services if service_to_role[service] == role]
               for role in {"platform", "domain_a", "domain_b", "delivery"}
+          }
+          role_base_extras = {
+              "platform": {"docker-compose.platform.yml", "docker-compose.monitoring.yml"},
           }
           services = set()
           targets = {}
@@ -216,7 +215,7 @@ jobs:
                   "compose": role_to_compose[role],
                   "mode": "sync",
                   "services": set(),
-                  "extras": set(),
+                  "extras": set(role_base_extras.get(role, set())),
                   "force_recreate": False,
                   "skip_ensure": True,
               })
@@ -259,7 +258,6 @@ jobs:
               add_full_role("domain_b", skip_ensure=False)
               add_full_role("delivery", skip_ensure=False)
               add_full_role("data", skip_ensure=False)
-              add_full_role("monitoring", skip_ensure=False)
               mirror_promtail = True
           elif mode == "delivery-replay":
               add_image_service("delivery-service")
@@ -290,21 +288,21 @@ jobs:
                       add_full_role("data")
 
                   if file_path == "monitoring/promtail.yml":
-                      for role in ("platform", "domain_a", "domain_b", "delivery", "monitoring"):
+                      add_full_role("platform")
+                      for role in ("domain_a", "domain_b", "delivery"):
                           add_target(role, "config", ["promtail"], extras=["monitoring/promtail.yml"], force_recreate=True)
                       mirror_promtail = True
                   elif file_path.startswith("monitoring/"):
-                      add_full_role("monitoring")
+                      add_full_role("platform")
 
                   if file_path in compose_to_role:
                       add_full_role(compose_to_role[file_path])
-                      if file_path in {"docker-compose.platform.yml", "docker-compose.domain-a.yml", "docker-compose.domain-b.yml", "docker-compose.delivery.yml", "docker-compose.monitoring.yml"}:
+                      if file_path in {"docker-compose.platform.yml", "docker-compose.platform-monitoring.yml", "docker-compose.domain-a.yml", "docker-compose.domain-b.yml", "docker-compose.delivery.yml", "docker-compose.monitoring.yml"}:
                           mirror_promtail = True
 
                   if file_path.startswith("scripts/gcp/") or file_path.startswith("infra/gcp/scripts/"):
                       add_all_app_roles_full(skip_ensure=False)
                       add_full_role("data", skip_ensure=False)
-                      add_full_role("monitoring", skip_ensure=False)
 
           def target_to_json(role):
               target = targets[role]
@@ -327,7 +325,7 @@ jobs:
           services_json = json.dumps([service for service in all_services if service in services])
           foundation_targets = [
               target_to_json(role)
-              for role in ("data", "monitoring", "platform")
+              for role in ("data", "platform")
               if role in targets
           ]
           app_targets = [
@@ -346,7 +344,6 @@ jobs:
               output.write(f"deploy_domain_b={str('domain_b' in targets).lower()}\n")
               output.write(f"deploy_delivery={str('delivery' in targets).lower()}\n")
               output.write(f"deploy_data={str('data' in targets).lower()}\n")
-              output.write(f"deploy_monitoring={str('monitoring' in targets).lower()}\n")
               output.write(f"mirror_promtail={str(mirror_promtail).lower()}\n")
               output.write(f"should_deploy={str(should_deploy).lower()}\n")
               output.write(f"foundation_targets_json={foundation_targets_json}\n")
@@ -655,7 +652,6 @@ jobs:
           DEPLOY_TARGETS_JSON: ${{ needs.detect-changes.outputs.foundation_targets_json }}
         run: |
           python - <<'PY'
-          import concurrent.futures
           import json
           import os
           import subprocess
@@ -679,17 +675,11 @@ jobs:
               result = subprocess.run(command, env=env)
               return target, result.returncode
 
-          failures = []
-          with concurrent.futures.ThreadPoolExecutor(max_workers=max(1, len(targets))) as executor:
-              futures = [executor.submit(deploy, target) for target in targets]
-              for future in concurrent.futures.as_completed(futures):
-                  target, code = future.result()
-                  if code != 0:
-                      failures.append((target["role"], code))
-
-          if failures:
-              print(f"deploy failures={failures}", file=sys.stderr)
-              sys.exit(1)
+          for target in targets:
+              target, code = deploy(target)
+              if code != 0:
+                  print(f"deploy failure={(target['role'], code)}", file=sys.stderr)
+                  sys.exit(1)
           PY
 
       - name: Deploy app targets
@@ -738,7 +728,5 @@ jobs:
 
       - name: Show service registry hints
         run: |
-          echo "Eureka: http://<platform-external-ip>:19090"
           echo "Gateway: http://<platform-external-ip>:19091"
-          echo "Grafana: http://<monitoring-external-ip>:3000"
-          echo "Prometheus: http://<monitoring-external-ip>:9090"
+          echo "Monitoring: connect with IAP SSH local port forwarding"

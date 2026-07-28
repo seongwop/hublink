@@ -17,8 +17,8 @@ github_repository = "seongwop/hublink"
 ssh_source_ranges    = ["35.235.240.0/20"]
 public_source_ranges = ["0.0.0.0/0"]
 
-# 고정 외부 IP 대상 VM
-external_ip_vm_names = ["platform", "monitoring", "load-test"]
+# 외부 IP는 공개 Gateway VM에만 연결
+external_ip_vm_names = ["platform"]
 
 # 외부 IP 없는 VM의 Docker 설치와 이미지 pull용 egress
 cloud_nat_enabled = true
@@ -31,10 +31,10 @@ cloud_nat_enabled = true
 # vm_specs = {
 #   platform = {
 #     role         = "platform"
-#     machine_type = "e2-standard-2"
+#     machine_type = "e2-highmem-2"
 #     disk_size_gb = 30
 #     internal_ip  = "10.10.0.10"
-#     tags         = ["hublink", "hublink-ssh", "hublink-platform"]
+#     tags         = ["hublink", "hublink-ssh", "hublink-platform", "hublink-monitoring"]
 #   }
 #   domain-a = {
 #     role         = "domain-a"
@@ -57,20 +57,6 @@ cloud_nat_enabled = true
 #     internal_ip  = "10.10.0.40"
 #     tags         = ["hublink", "hublink-ssh", "hublink-data"]
 #   }
-#   monitoring = {
-#     role         = "monitoring"
-#     machine_type = "e2-standard-2"
-#     disk_size_gb = 50
-#     internal_ip  = "10.10.0.60"
-#     tags         = ["hublink", "hublink-ssh", "hublink-monitoring"]
-#   }
-#   load-test = {
-#     role         = "load-test"
-#     machine_type = "e2-medium"
-#     disk_size_gb = 20
-#     internal_ip  = "10.10.0.50"
-#     tags         = ["hublink", "hublink-ssh", "hublink-load-test"]
-#   }
 # }
 
 # VM 자동 시작/종료 스케줄
@@ -78,3 +64,9 @@ vm_schedule_enabled   = true
 vm_start_schedule     = "30 9 * * *"
 vm_stop_schedule      = "0 3 * * *"
 vm_schedule_time_zone = "Asia/Seoul"
+
+# Compute Engine VM 자동 시작 대상
+scheduled_vm_names = ["platform", "domain-a", "domain-b", "delivery", "data"]
+
+# 플랫폼과 모니터링 통합 VM의 부팅 무결성 검증
+secure_boot_vm_names = ["platform"]

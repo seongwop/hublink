@@ -30,13 +30,13 @@
 
 | 도구 | URL 또는 위치 | 확인 항목 |
 | --- | --- | --- |
-| Grafana | `http://8.230.17.44:3000` | CPU, memory, JVM, HTTP, DB, Kafka 지표 |
-| Prometheus | `http://8.230.17.44:9090` | raw metric query |
-| Kafka UI | `http://8.230.17.44:8082` | topic, consumer lag, DLT |
-| Zipkin | `http://8.230.17.44:9411` | delivery-service, Feign, Gateway trace |
+| Grafana | platform VM IAP 터널의 `http://localhost:3000` | CPU, memory, JVM, HTTP, DB, Kafka 지표 |
+| Prometheus | platform VM IAP 터널의 `http://localhost:9090` | raw metric query |
+| Kafka UI | 필요할 때 platform VM에서 실행 후 IAP 터널의 `http://localhost:8082` | topic, consumer lag, DLT |
+| Zipkin | platform VM IAP 터널의 `http://localhost:9411` | delivery-service, Feign, Gateway trace |
 | PostgreSQL | `hublink` database | delivery, route history, outbox, connection, wait event, `EXPLAIN ANALYZE` |
 | Redis | `10.10.0.40:6379` | stream length, lag, pending, consumer group |
-| k6 | `hublink-load-test-vm` | TPS, p95, p99, 실패율 |
+| k6 | `hublink-k6-load-test` Cloud Run Job | TPS, p95, p99, 실패율 |
 
 ## k6 핵심 지표
 

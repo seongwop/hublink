@@ -2,15 +2,17 @@
 
 이 디렉터리는 배송 도메인 개선 이력 도출을 위한 k6 스크립트를 관리한다.
 
-부하는 GCP `hublink-load-test-vm`에서 발생시킨다.
+GCP 부하는 Direct VPC가 연결된 `hublink-k6-load-test` Cloud Run Job에서 발생시킨다.
 
-`load-test-vm`에는 GitHub Actions 동기화로 `performance/k6`와 `db/seed`가 함께 반영된다.
+GitHub Actions가 `performance/k6`와 `db/seed`를 k6 이미지에 포함해 배포한다. 수동 실행에서 `execute_test`를 선택한 경우에만 실제 부하가 시작된다.
 
 ```text
-load-test-vm: 10.10.0.50
+load-test: Cloud Run Job 1 vCPU, 4 GiB
 api-gateway: http://10.10.0.10:19091
 delivery-service: http://10.10.0.70:19099
 ```
+
+대표 100VU 조건은 `1분 상승 + 5분 유지 + 2분 하강`, `SLEEP_SECONDS=0`이다. 실행 로그는 GitHub Actions artifact와 Cloud Logging에 남는다.
 
 ## 준비
 
@@ -79,7 +81,7 @@ db/seed/11-reset-delivery-loadtest-baseline.sql
 `11-reset-delivery-loadtest-baseline.sql`은 런타임 테이블 초기화 후 배송 로직 부하테스트에 필요한 허브, 경로, 업체, 허브 매니저, 배송 담당자 풀까지 다시 채운다.
 
 `run-k6.sh`는 종료 후에는 기본으로 baseline 복원 SQL을 실행하고, 필요하면 실행 전에도 SQL 파일을 추가로 실행할 수 있다.
-load-test-vm 기준 기본 reset DB 접속값은 `10.10.0.40:5432`, `user`, `0000`, `hublink` 이다.
+Cloud Run Job 기준 기본 reset DB 접속값은 `10.10.0.40:5432`, `user`, Secret Manager 비밀번호, `hublink`다.
 
 ```bash
 STAGES='[{"duration":"1m","target":20},{"duration":"5m","target":20},{"duration":"2m","target":0}]' \
@@ -101,7 +103,7 @@ STAGES='[{"duration":"1m","target":20},{"duration":"5m","target":20},{"duration"
 ```
 
 정상 종료뿐 아니라 `Ctrl+C`로 중단한 경우에도 종료 시 reset을 시도한다.
-로컬 Docker 환경에서는 `hublink-postgres` 컨테이너에 직접 `psql`을 실행하고, load-test-vm 에서는 `postgres:16` 클라이언트 컨테이너로 data-vm PostgreSQL에 직접 접속한다.
+로컬 Docker 환경에서는 `hublink-postgres` 컨테이너에 직접 `psql`을 실행하고, Cloud Run Job에서는 이미지에 포함된 `psql`로 data VM PostgreSQL에 직접 접속한다.
 공용 테스트 환경에서는 reset 대상 SQL과 접속 대상을 명확히 확인한 뒤 사용한다.
 
 Gateway 포함 테스트에서 429가 발생하면 배송 병목이 아니라 Gateway rate limit에 먼저 걸린 것으로 기록한다. 배송 Kafka와 DB/락 테스트는 `DELIVERY_BASE_URL`로 delivery-service를 직접 호출해 Gateway rate limit을 분리한다.
