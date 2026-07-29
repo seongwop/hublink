@@ -18,11 +18,14 @@ if [ ! -f "${SCRIPT_DIR}/${SCRIPT_NAME}" ]; then
 fi
 
 # 기존 100VU 대표 조건
-K6_VUS="${K6_VUS:-100}"
+TARGET_VUS="${K6_VUS:-100}"
 K6_RAMP_UP="${K6_RAMP_UP:-1m}"
 K6_STEADY="${K6_STEADY:-5m}"
 K6_RAMP_DOWN="${K6_RAMP_DOWN:-2m}"
-STAGES="${STAGES:-[{\"duration\":\"${K6_RAMP_UP}\",\"target\":${K6_VUS}},{\"duration\":\"${K6_STEADY}\",\"target\":${K6_VUS}},{\"duration\":\"${K6_RAMP_DOWN}\",\"target\":0}]}"
+if [ -z "${STAGES:-}" ]; then
+  STAGES="[{\"duration\":\"${K6_RAMP_UP}\",\"target\":${TARGET_VUS}},{\"duration\":\"${K6_STEADY}\",\"target\":${TARGET_VUS}},{\"duration\":\"${K6_RAMP_DOWN}\",\"target\":0}]"
+fi
+unset K6_VUS
 
 # 배송 생성 테스트 고정 입력
 DELIVERY_BASE_URL="${DELIVERY_BASE_URL:-http://10.10.0.70:19099}"
@@ -92,6 +95,6 @@ trap run_post_test_sql EXIT
 
 run_sql_file "pre-test reset" "${PRE_TEST_SQL_FILE}"
 
-echo "[cloud-run-k6] script=${SCRIPT_NAME} vus=${K6_VUS} stages=${STAGES} sleep=${SLEEP_SECONDS}"
+echo "[cloud-run-k6] script=${SCRIPT_NAME} vus=${TARGET_VUS} stages=${STAGES} sleep=${SLEEP_SECONDS}"
 cd "${SCRIPT_DIR}"
 k6 run "${SCRIPT_NAME}"
