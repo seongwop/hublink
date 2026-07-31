@@ -12,6 +12,8 @@ Outbox 중심 문서 구성은 이 패키지의 실험 기간에만 적용한다
 | 02 | `results/02-polling-interval` | polling 간격 단축 |
 | 03 | `results/03-parallel-kafka-publish` | Kafka 발행 병렬화 |
 | 04 | `results/04-batch-status-update` | Outbox 상태 UPDATE 배치화 |
+| 05 | `results/05-delivery-vm-isolation` | 공유 VM CPU 경합 제거 |
+| 06 | `results/06-final-pipeline-validation` | 최종 누적 상태 100VU 검증 |
 
 각 단계는 직전 단계가 적용된 상태를 기준으로 100VU Run을 수행한다. 한 번에 하나의 변수만 변경하고 나머지 조건은 동일하게 유지한다.
 

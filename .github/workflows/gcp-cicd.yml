@@ -16,6 +16,16 @@ on:
         description: 배송 이미지 소스 브랜치, 태그 또는 커밋 SHA
         required: false
         type: string
+      delivery_manager_cache_overlay:
+        description: 과거 배송 이미지에 동일한 담당자 Caffeine Cache 적용
+        required: true
+        default: false
+        type: boolean
+      delivery_manager_cache_ttl_seconds:
+        description: 배송 재현 테스트 담당자 캐시 TTL
+        required: true
+        default: '3600'
+        type: string
       delivery_outbox_fixed_delay_ms:
         description: 재현 시작 1000, 폴링 단축 이후 100
         required: true
@@ -79,6 +89,8 @@ env:
   DELIVERY_VM_IP: 10.10.0.70
   DATA_VM_IP: 10.10.0.40
   MONITORING_VM_IP: 10.10.0.10
+  # 배송 담당자 캐시 통제 실험 기준 커밋
+  DELIVERY_MANAGER_CACHE_OVERLAY_SHA: 0bcc78b268ba1b000316ab05ce6049d229ab9d5f
 
 jobs:
   detect-changes:
@@ -384,16 +396,47 @@ jobs:
       - name: Resolve image tag
         id: resolve-image-tag
         shell: bash
-        run: echo "image_tag=$(git rev-parse HEAD)" >> "${GITHUB_OUTPUT}"
+        env:
+          DELIVERY_MANAGER_CACHE_OVERLAY: ${{ inputs.delivery_manager_cache_overlay }}
+        run: |
+          source_sha="$(git rev-parse HEAD)"
+          image_tag="${source_sha}"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] \
+              && [ "${{ inputs.deploy_scope }}" = "delivery-replay" ] \
+              && [ "${DELIVERY_MANAGER_CACHE_OVERLAY}" = "true" ]; then
+            image_tag="${source_sha}-manager-cache"
+          fi
+
+          echo "source_sha=${source_sha}" >> "${GITHUB_OUTPUT}"
+          echo "image_tag=${image_tag}" >> "${GITHUB_OUTPUT}"
 
       - name: Show replay image source
         if: github.event_name == 'workflow_dispatch' && inputs.deploy_scope == 'delivery-replay'
         env:
           DELIVERY_SOURCE_REF: ${{ inputs.delivery_source_ref }}
-          DELIVERY_SOURCE_SHA: ${{ steps.resolve-image-tag.outputs.image_tag }}
+          DELIVERY_SOURCE_SHA: ${{ steps.resolve-image-tag.outputs.source_sha }}
+          DELIVERY_IMAGE_TAG: ${{ steps.resolve-image-tag.outputs.image_tag }}
+          DELIVERY_MANAGER_CACHE_OVERLAY: ${{ inputs.delivery_manager_cache_overlay }}
         run: |
           echo "delivery replay source_ref=${DELIVERY_SOURCE_REF}"
           echo "delivery replay source_sha=${DELIVERY_SOURCE_SHA}"
+          echo "delivery replay image_tag=${DELIVERY_IMAGE_TAG}"
+          echo "delivery replay manager_cache_overlay=${DELIVERY_MANAGER_CACHE_OVERLAY}"
+
+      - name: Apply manager cache replay overlay
+        if: >
+          github.event_name == 'workflow_dispatch'
+          && inputs.deploy_scope == 'delivery-replay'
+          && inputs.delivery_manager_cache_overlay == true
+        shell: bash
+        run: |
+          git cat-file -e "${DELIVERY_MANAGER_CACHE_OVERLAY_SHA}^{commit}"
+          git checkout "${DELIVERY_MANAGER_CACHE_OVERLAY_SHA}" -- \
+            delivery-service/build.gradle \
+            delivery-service/src/main/java/com/msa/delivery_service/client/DeliveryExternalService.java \
+            delivery-service/src/main/java/com/msa/delivery_service/client/user/DeliveryManagerCache.java \
+            delivery-service/src/main/java/com/msa/delivery_service/config/DeliveryManagerCacheConfig.java
+          git diff --cached --stat
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
@@ -511,6 +554,8 @@ jobs:
       LOG_LEVEL_ROOT: ${{ vars.LOG_LEVEL_ROOT }}
       DELIVERY_ASSIGNMENT_MAX_ACTIVE_PER_MANAGER: ${{ vars.DELIVERY_ASSIGNMENT_MAX_ACTIVE_PER_MANAGER }}
       DELIVERY_DB_MAX_POOL_SIZE: ${{ vars.DELIVERY_DB_MAX_POOL_SIZE }}
+      DELIVERY_MANAGER_CACHE_TTL_SECONDS: ${{ inputs.deploy_scope == 'delivery-replay' && inputs.delivery_manager_cache_ttl_seconds || vars.DELIVERY_MANAGER_CACHE_TTL_SECONDS }}
+      DELIVERY_MANAGER_CACHE_MAXIMUM_HUBS: ${{ vars.DELIVERY_MANAGER_CACHE_MAXIMUM_HUBS }}
       DELIVERY_OUTBOX_FIXED_DELAY_MS: ${{ inputs.deploy_scope == 'delivery-replay' && inputs.delivery_outbox_fixed_delay_ms || vars.DELIVERY_OUTBOX_FIXED_DELAY_MS }}
       BUILD_IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
 
@@ -545,6 +590,8 @@ jobs:
           KAKAO_ENABLED="${KAKAO_ENABLED:-false}"
           DELIVERY_ASSIGNMENT_MAX_ACTIVE_PER_MANAGER="${DELIVERY_ASSIGNMENT_MAX_ACTIVE_PER_MANAGER:-60}"
           DELIVERY_DB_MAX_POOL_SIZE="${DELIVERY_DB_MAX_POOL_SIZE:-60}"
+          DELIVERY_MANAGER_CACHE_TTL_SECONDS="${DELIVERY_MANAGER_CACHE_TTL_SECONDS:-60}"
+          DELIVERY_MANAGER_CACHE_MAXIMUM_HUBS="${DELIVERY_MANAGER_CACHE_MAXIMUM_HUBS:-32}"
           DELIVERY_OUTBOX_FIXED_DELAY_MS="${DELIVERY_OUTBOX_FIXED_DELAY_MS:-100}"
 
           # platform 외부 IP 조회
@@ -602,6 +649,8 @@ jobs:
           LOG_LEVEL_ROOT=${LOG_LEVEL_ROOT}
           DELIVERY_ASSIGNMENT_MAX_ACTIVE_PER_MANAGER=${DELIVERY_ASSIGNMENT_MAX_ACTIVE_PER_MANAGER}
           DELIVERY_DB_MAX_POOL_SIZE=${DELIVERY_DB_MAX_POOL_SIZE}
+          DELIVERY_MANAGER_CACHE_TTL_SECONDS=${DELIVERY_MANAGER_CACHE_TTL_SECONDS}
+          DELIVERY_MANAGER_CACHE_MAXIMUM_HUBS=${DELIVERY_MANAGER_CACHE_MAXIMUM_HUBS}
           DELIVERY_OUTBOX_FIXED_DELAY_MS=${DELIVERY_OUTBOX_FIXED_DELAY_MS}
           EOF
 

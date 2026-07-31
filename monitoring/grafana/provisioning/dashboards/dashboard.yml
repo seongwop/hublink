@@ -10,3 +10,13 @@ providers:
     allowUiUpdates: true
     options:
       path: /etc/grafana/provisioning/dashboards/json
+
+  - name: hublink-delivery-portfolio-comparisons
+    orgId: 1
+    folder: 'Delivery Portfolio Comparisons'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 10
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards/portfolio
