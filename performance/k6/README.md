@@ -61,6 +61,17 @@ SLEEP_SECONDS=1 \
 ./run-k6.sh delivery-create-kafka-load.js
 ```
 
+고정 RPS 비교 테스트는 `ramping-arrival-rate`를 사용한다. RPS 모드에서는 `SLEEP_SECONDS`를 적용하지 않는다.
+
+```bash
+LOAD_MODEL=rps \
+TARGET_RPS=40 \
+PRE_ALLOCATED_VUS=180 \
+MAX_VUS=250 \
+RPS_STAGES='[{"duration":"30s","target":40},{"duration":"3m","target":40}]' \
+./run-k6.sh delivery-create-logic-load.js
+```
+
 ## 테스트 전후 DB 자동 초기화
 
 배송 부하테스트를 같은 DB 상태에서 반복하려면 reset SQL을 실행한다.

@@ -17,15 +17,37 @@ if [ ! -f "${SCRIPT_DIR}/${SCRIPT_NAME}" ]; then
   exit 1
 fi
 
-# 기존 100VU 대표 조건
+# 부하 모델 선택
+LOAD_MODEL="${K6_LOAD_MODEL:-vu}"
 TARGET_VUS="${K6_VUS:-100}"
+TARGET_RPS="${K6_TARGET_RPS:-40}"
+PRE_ALLOCATED_VUS="${K6_PRE_ALLOCATED_VUS:-180}"
+MAX_VUS="${K6_MAX_VUS:-250}"
 K6_RAMP_UP="${K6_RAMP_UP:-1m}"
 K6_STEADY="${K6_STEADY:-5m}"
 K6_RAMP_DOWN="${K6_RAMP_DOWN:-2m}"
-if [ -z "${STAGES:-}" ]; then
-  STAGES="[{\"duration\":\"${K6_RAMP_UP}\",\"target\":${TARGET_VUS}},{\"duration\":\"${K6_STEADY}\",\"target\":${TARGET_VUS}},{\"duration\":\"${K6_RAMP_DOWN}\",\"target\":0}]"
-fi
-unset K6_VUS
+
+case "${LOAD_MODEL}" in
+  vu|vus)
+    if [ -z "${STAGES:-}" ]; then
+      STAGES="[{\"duration\":\"${K6_RAMP_UP}\",\"target\":${TARGET_VUS}},{\"duration\":\"${K6_STEADY}\",\"target\":${TARGET_VUS}},{\"duration\":\"${K6_RAMP_DOWN}\",\"target\":0}]"
+    fi
+    ;;
+  rps)
+    if [ "${SCRIPT_NAME}" != "delivery-create-logic-load.js" ]; then
+      echo "[cloud-run-k6] RPS 모드는 delivery-create-logic-load.js만 지원" >&2
+      exit 1
+    fi
+    if [ -z "${RPS_STAGES:-}" ]; then
+      RPS_STAGES="[{\"duration\":\"${K6_RAMP_UP}\",\"target\":${TARGET_RPS}},{\"duration\":\"${K6_STEADY}\",\"target\":${TARGET_RPS}}]"
+    fi
+    ;;
+  *)
+    echo "[cloud-run-k6] 지원하지 않는 부하 모델: ${LOAD_MODEL}" >&2
+    exit 1
+    ;;
+esac
+unset K6_LOAD_MODEL K6_VUS K6_TARGET_RPS K6_PRE_ALLOCATED_VUS K6_MAX_VUS
 
 # 배송 생성 테스트 고정 입력
 DELIVERY_BASE_URL="${DELIVERY_BASE_URL:-http://10.10.0.70:19099}"
@@ -41,11 +63,16 @@ RESET_DB_USER="${RESET_DB_USER:-user}"
 RESET_DB_NAME="${RESET_DB_NAME:-hublink}"
 
 export DELIVERY_BASE_URL
+export LOAD_MODEL
+export MAX_VUS
+export PRE_ALLOCATED_VUS
 export PRODUCT_NAME
 export RECEIVER_COMPANY_IDS
+export RPS_STAGES
 export SLEEP_SECONDS
 export STAGES
 export SUPPLIER_COMPANY_ID
+export TARGET_RPS
 export USER_ROLE
 
 run_sql_file() {
@@ -95,6 +122,10 @@ trap run_post_test_sql EXIT
 
 run_sql_file "pre-test reset" "${PRE_TEST_SQL_FILE}"
 
-echo "[cloud-run-k6] script=${SCRIPT_NAME} vus=${TARGET_VUS} stages=${STAGES} sleep=${SLEEP_SECONDS}"
+if [ "${LOAD_MODEL}" = "rps" ]; then
+  echo "[cloud-run-k6] script=${SCRIPT_NAME} model=rps target_rps=${TARGET_RPS} stages=${RPS_STAGES} preallocated_vus=${PRE_ALLOCATED_VUS} max_vus=${MAX_VUS}"
+else
+  echo "[cloud-run-k6] script=${SCRIPT_NAME} model=vu vus=${TARGET_VUS} stages=${STAGES} sleep=${SLEEP_SECONDS}"
+fi
 cd "${SCRIPT_DIR}"
 k6 run "${SCRIPT_NAME}"
