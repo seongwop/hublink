@@ -1,6 +1,7 @@
 /*
  * 배송 생성 DB/락 병목 테스트
  * - 대상: delivery-service 내부 배송 생성 API POST /internal/deliveries
+ * - 부하 모델: LOAD_MODEL=vu 또는 LOAD_MODEL=rps 선택
  * - 기본 부하: 1분 동안 5 VU까지 증가, 3분 동안 5 VU 유지, 1분 동안 0 VU로 감소
  * - 요청 간격: 각 VU가 배송 생성 요청 1회 전송 후 SLEEP_SECONDS 만큼 대기, 기본값 1초
  * - 부하 증가: STAGES target 증가 또는 SLEEP_SECONDS 감소로 동시 배송 생성 요청 증가
@@ -20,20 +21,68 @@ import {
   uuidv4,
 } from './lib/common.js';
 
-// 부하 옵션 설정
-// 배송 생성 로직과 DB/락/Feign 병목 확인
-export const options = {
-  stages: JSON.parse(__ENV.STAGES || JSON.stringify([
-    { duration: '1m', target: 5 },
-    { duration: '3m', target: 5 },
-    { duration: '1m', target: 0 },
-  ])),
-  thresholds: {
+const loadModel = (__ENV.LOAD_MODEL || 'vu').toLowerCase();
+const rpsLoadModel = loadModel === 'rps';
+
+function positiveInteger(name, defaultValue) {
+  const value = Number(__ENV[name] || defaultValue);
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new Error(`${name}은 양의 정수여야 함`);
+  }
+  return value;
+}
+
+function loadOptions() {
+  const thresholds = {
     http_req_failed: ['rate<0.10'],
     http_req_duration: ['p(95)<3000', 'p(99)<6000'],
     checks: ['rate>0.90'],
-  },
-};
+  };
+
+  if (rpsLoadModel) {
+    const targetRps = positiveInteger('TARGET_RPS', 40);
+    const preAllocatedVUs = positiveInteger('PRE_ALLOCATED_VUS', 180);
+    const maxVUs = positiveInteger('MAX_VUS', 250);
+    if (maxVUs < preAllocatedVUs) {
+      throw new Error('MAX_VUS는 PRE_ALLOCATED_VUS 이상이어야 함');
+    }
+
+    thresholds.dropped_iterations = ['count==0'];
+    return {
+      scenarios: {
+        delivery_create_rps: {
+          executor: 'ramping-arrival-rate',
+          startRate: 0,
+          timeUnit: '1s',
+          preAllocatedVUs,
+          maxVUs,
+          stages: JSON.parse(__ENV.RPS_STAGES || JSON.stringify([
+            { duration: '30s', target: targetRps },
+            { duration: '3m', target: targetRps },
+          ])),
+          gracefulStop: __ENV.GRACEFUL_STOP || '30s',
+        },
+      },
+      thresholds,
+    };
+  }
+
+  if (loadModel !== 'vu' && loadModel !== 'vus') {
+    throw new Error(`지원하지 않는 LOAD_MODEL: ${loadModel}`);
+  }
+
+  return {
+    stages: JSON.parse(__ENV.STAGES || JSON.stringify([
+      { duration: '1m', target: 5 },
+      { duration: '3m', target: 5 },
+      { duration: '1m', target: 0 },
+    ])),
+    thresholds,
+  };
+}
+
+// VU와 고정 RPS 부하 모델 선택
+export const options = loadOptions();
 
 // 호출 대상 설정
 // Gateway에 internal route가 없어서 delivery-service 직접 호출
@@ -126,6 +175,8 @@ export default function () {
     console.error(`status=${response.status}, body=${response.body}`);
   }
 
-  // 반복 간격 제어
-  sleep(sleepSeconds());
+  // VU 부하 반복 간격 제어
+  if (!rpsLoadModel) {
+    sleep(sleepSeconds());
+  }
 }
