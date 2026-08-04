@@ -38,7 +38,12 @@ on:
       preallocated_vus:
         description: RPS 모드 사전 할당 VU
         required: true
-        default: '180'
+        default: '400'
+        type: string
+      max_vus:
+        description: RPS 모드 최대 VU
+        required: true
+        default: '600'
         type: string
       ramp_up:
         description: 상승 구간
@@ -116,6 +121,7 @@ jobs:
           INPUT_VUS: ${{ inputs.vus }}
           INPUT_TARGET_RPS: ${{ inputs.target_rps }}
           INPUT_PREALLOCATED_VUS: ${{ inputs.preallocated_vus }}
+          INPUT_MAX_VUS: ${{ inputs.max_vus }}
           INPUT_RAMP_UP: ${{ inputs.ramp_up }}
           INPUT_STEADY: ${{ inputs.steady }}
           INPUT_RAMP_DOWN: ${{ inputs.ramp_down }}
@@ -125,7 +131,8 @@ jobs:
           echo "K6_LOAD_MODEL=${INPUT_LOAD_MODEL:-vu}" >> "${GITHUB_ENV}"
           echo "K6_VUS=${INPUT_VUS:-100}" >> "${GITHUB_ENV}"
           echo "K6_TARGET_RPS=${INPUT_TARGET_RPS:-40}" >> "${GITHUB_ENV}"
-          echo "K6_PREALLOCATED_VUS=${INPUT_PREALLOCATED_VUS:-180}" >> "${GITHUB_ENV}"
+          echo "K6_PREALLOCATED_VUS=${INPUT_PREALLOCATED_VUS:-400}" >> "${GITHUB_ENV}"
+          echo "K6_MAX_VUS=${INPUT_MAX_VUS:-600}" >> "${GITHUB_ENV}"
           echo "K6_RAMP_UP=${INPUT_RAMP_UP:-1m}" >> "${GITHUB_ENV}"
           echo "K6_STEADY=${INPUT_STEADY:-5m}" >> "${GITHUB_ENV}"
           echo "K6_RAMP_DOWN=${INPUT_RAMP_DOWN:-2m}" >> "${GITHUB_ENV}"
@@ -168,7 +175,7 @@ jobs:
             --subnet hublink-subnet \
             --vpc-egress private-ranges-only \
             --set-secrets "RESET_DB_PASSWORD=${GCP_LOAD_TEST_DB_SECRET}:latest" \
-            --set-env-vars "K6_SCRIPT=${K6_SCRIPT},K6_LOAD_MODEL=${K6_LOAD_MODEL},K6_VUS=${K6_VUS},K6_TARGET_RPS=${K6_TARGET_RPS},K6_PRE_ALLOCATED_VUS=${K6_PREALLOCATED_VUS},K6_RAMP_UP=${K6_RAMP_UP},K6_STEADY=${K6_STEADY},K6_RAMP_DOWN=${K6_RAMP_DOWN},SLEEP_SECONDS=${K6_SLEEP_SECONDS}" \
+            --set-env-vars "K6_SCRIPT=${K6_SCRIPT},K6_LOAD_MODEL=${K6_LOAD_MODEL},K6_VUS=${K6_VUS},K6_TARGET_RPS=${K6_TARGET_RPS},K6_PRE_ALLOCATED_VUS=${K6_PREALLOCATED_VUS},K6_MAX_VUS=${K6_MAX_VUS},K6_RAMP_UP=${K6_RAMP_UP},K6_STEADY=${K6_STEADY},K6_RAMP_DOWN=${K6_RAMP_DOWN},SLEEP_SECONDS=${K6_SLEEP_SECONDS}" \
             --quiet
 
       - name: Execute load test
