@@ -57,6 +57,8 @@ logging:
     root: ${LOG_LEVEL_ROOT:WARN}
 
 delivery:
+  test-api:
+    enabled: ${DELIVERY_TEST_API_ENABLED:false}
   kafka:
     outbox:
       fixed-delay-ms: ${DELIVERY_OUTBOX_FIXED_DELAY_MS:100}

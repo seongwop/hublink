@@ -22,9 +22,9 @@ on:
         default: false
         type: boolean
       delivery_manager_cache_ttl_seconds:
-        description: 배송 재현 테스트 담당자 캐시 TTL
+        description: 배송 재현 테스트 담당자 캐시 TTL, 운영 기본값 60초
         required: true
-        default: '3600'
+        default: '60'
         type: string
       delivery_outbox_fixed_delay_ms:
         description: 재현 시작 1000, 폴링 단축 이후 100
@@ -552,6 +552,7 @@ jobs:
       AI_ENABLED: ${{ vars.AI_ENABLED }}
       KAKAO_ENABLED: ${{ vars.KAKAO_ENABLED }}
       LOG_LEVEL_ROOT: ${{ vars.LOG_LEVEL_ROOT }}
+      DELIVERY_TEST_API_ENABLED: ${{ vars.DELIVERY_TEST_API_ENABLED }}
       DELIVERY_ASSIGNMENT_MAX_ACTIVE_PER_MANAGER: ${{ vars.DELIVERY_ASSIGNMENT_MAX_ACTIVE_PER_MANAGER }}
       DELIVERY_DB_MAX_POOL_SIZE: ${{ vars.DELIVERY_DB_MAX_POOL_SIZE }}
       DELIVERY_MANAGER_CACHE_TTL_SECONDS: ${{ inputs.deploy_scope == 'delivery-replay' && inputs.delivery_manager_cache_ttl_seconds || vars.DELIVERY_MANAGER_CACHE_TTL_SECONDS }}
@@ -588,6 +589,7 @@ jobs:
           SLACK_ENABLED="${SLACK_ENABLED:-false}"
           AI_ENABLED="${AI_ENABLED:-false}"
           KAKAO_ENABLED="${KAKAO_ENABLED:-false}"
+          DELIVERY_TEST_API_ENABLED="${DELIVERY_TEST_API_ENABLED:-false}"
           DELIVERY_ASSIGNMENT_MAX_ACTIVE_PER_MANAGER="${DELIVERY_ASSIGNMENT_MAX_ACTIVE_PER_MANAGER:-60}"
           DELIVERY_DB_MAX_POOL_SIZE="${DELIVERY_DB_MAX_POOL_SIZE:-60}"
           DELIVERY_MANAGER_CACHE_TTL_SECONDS="${DELIVERY_MANAGER_CACHE_TTL_SECONDS:-60}"
@@ -647,6 +649,7 @@ jobs:
           CORS_ALLOWED_ORIGIN=${CORS_ALLOWED_ORIGIN}
 
           LOG_LEVEL_ROOT=${LOG_LEVEL_ROOT}
+          DELIVERY_TEST_API_ENABLED=${DELIVERY_TEST_API_ENABLED}
           DELIVERY_ASSIGNMENT_MAX_ACTIVE_PER_MANAGER=${DELIVERY_ASSIGNMENT_MAX_ACTIVE_PER_MANAGER}
           DELIVERY_DB_MAX_POOL_SIZE=${DELIVERY_DB_MAX_POOL_SIZE}
           DELIVERY_MANAGER_CACHE_TTL_SECONDS=${DELIVERY_MANAGER_CACHE_TTL_SECONDS}

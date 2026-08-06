@@ -1,4 +1,4 @@
-package com.msa.delivery_service.test;
+package com.msa.delivery_service.dto;
 
 import lombok.Builder;
 import lombok.Getter;

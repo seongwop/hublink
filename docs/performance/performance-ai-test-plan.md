@@ -127,6 +127,8 @@ ai-service 로그의 ACK 완료 여부
 POST /api/v1/deliveries/test/deadline-requested
 ```
 
+이 API는 delivery-service 배포 환경에서 `DELIVERY_TEST_API_ENABLED=true`일 때만 활성화된다.
+
 이 API는 AI 처리를 직접 수행하는 API가 아니다.
 
 역할은 `DeadlineRequestedEvent`를 `deadline:requested:stream`에 주입하는 것이다.

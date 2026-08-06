@@ -1,8 +1,10 @@
-package com.msa.delivery_service.test;
+package com.msa.delivery_service.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.msa.core_common.stream.DeadlineStreamConstants;
 import com.msa.delivery_service.dto.DeliveryRequest;
+import com.msa.delivery_service.dto.DeliveryTestKafkaPublishResponse;
+import com.msa.delivery_service.dto.DeliveryTestStreamPublishResponse;
 import com.msa.delivery_service.message.DeadlineRequestedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,14 +32,10 @@ public class DeliveryTestService {
     public DeliveryTestKafkaPublishResponse publishDeliveryCreateEvent(
             DeliveryRequest request
     ) {
-        // 주문/재고 흐름 우회용 Kafka key 생성
         String eventKey = request.getOrderId().toString();
-
-        // consumer 입력과 동일한 DeliveryRequest JSON 생성
         String payload = toPayload(request);
 
         try {
-            // Kafka broker ack 대기
             kafkaTemplate
                     .send(DELIVERY_CREATE_TOPIC, eventKey, payload)
                     .get(KAFKA_SEND_TIMEOUT_SECONDS, TimeUnit.SECONDS);

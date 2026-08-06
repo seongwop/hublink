@@ -63,8 +63,8 @@ GitHub 저장소에서 `Settings` -> `Secrets and variables` -> `Actions` -> `Se
 | `SLACK_BOT_TOKEN` | Slack Bot token |
 | `AI_API_KEY` | AI API key |
 | `KAKAO_REST_API_KEY` | Kakao REST API key |
-| `CORS_ALLOWED_ORIGIN` | `http://34.50.55.18:19091` |
-| `SWAGGER_GATEWAY_URL` | `http://34.50.55.18:19091` |
+| `CORS_ALLOWED_ORIGIN` | `http://<PLATFORM_EXTERNAL_IP>:19091` |
+| `SWAGGER_GATEWAY_URL` | `http://<PLATFORM_EXTERNAL_IP>:19091` |
 
 ## 선택 GitHub Variables
 
@@ -76,17 +76,18 @@ GitHub 저장소에서 `Settings` -> `Secrets and variables` -> `Actions` -> `Va
 | `AI_ENABLED` | `false` |
 | `KAKAO_ENABLED` | `false` |
 | `LOG_LEVEL_ROOT` | `WARN` |
+| `DELIVERY_TEST_API_ENABLED` | `false` |
 | `DELIVERY_ASSIGNMENT_MAX_ACTIVE_PER_MANAGER` | `60` |
 | `DELIVERY_OUTBOX_FIXED_DELAY_MS` | `100` |
 
-`LOG_LEVEL_ROOT`를 등록하지 않으면 workflow에서 `WARN`으로 생성한다. `DELIVERY_ASSIGNMENT_MAX_ACTIVE_PER_MANAGER`는 GCP 성능 테스트에서 담당자 수를 바꾸지 않고 용량 소진을 방지하기 위한 값이며, 등록하지 않으면 `60`으로 생성한다. 애플리케이션 기본값 `30`은 유지한다. `DELIVERY_OUTBOX_FIXED_DELAY_MS`는 Outbox 성능 실험용 polling 간격이며 등록하지 않으면 `100ms`로 생성한다.
+`LOG_LEVEL_ROOT`를 등록하지 않으면 workflow에서 `WARN`으로 생성한다. 테스트 이벤트 발행 API는 `DELIVERY_TEST_API_ENABLED=true`인 배포에서만 활성화한다. `DELIVERY_ASSIGNMENT_MAX_ACTIVE_PER_MANAGER`는 GCP 성능 테스트에서 담당자 수를 바꾸지 않고 용량 소진을 방지하기 위한 값이며, 등록하지 않으면 `60`으로 생성한다. 애플리케이션 기본값 `30`은 유지한다. `DELIVERY_OUTBOX_FIXED_DELAY_MS`는 Outbox 성능 실험용 polling 간격이며 등록하지 않으면 `100ms`로 생성한다.
 
 ## GCP 인증 리소스
 
 Terraform은 GitHub Actions용 서비스 계정과 Workload Identity Federation 설정을 생성한다.
 
 ```powershell
-cd "D:\Spring Projects\hublink\infra\gcp"
+cd infra/gcp
 terraform plan
 terraform apply
 ```
