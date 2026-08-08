@@ -78,7 +78,7 @@ public class DeliveryAssignmentCountService {
             deltasByAssignmentType.put(DeliveryAssignmentType.HUB_DELIVERY, hubDeltas);
         }
 
-        // 諛곗넚 ?대떦??諛곗젙 吏묎퀎 利앷? 泥섎━ ?쒓컙 怨꾩륫
+        // 배송 담당자 배정 집계 증가 시간 계측
         performanceMetrics.recordAssignmentCountOperation(
                 "mixed",
                 "increase",

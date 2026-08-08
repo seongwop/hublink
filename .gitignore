@@ -3,6 +3,9 @@
 *.iml
 out/
 
+# 로컬 AI 도구 설정
+.gemini/
+
 # Gradle
 .gradle/
 build/
@@ -53,3 +56,6 @@ order-service/.env
 
 # 성능 테스트 로컬 원본 산출물
 docs/performance/**/local-artifacts/
+
+# 성능 테스트 반복 실행과 진단 문서 로컬 보관
+docs/performance/delivery/.local-archive/
