@@ -11,12 +11,22 @@ providers:
     options:
       path: /etc/grafana/provisioning/dashboards/json
 
-  - name: hublink-delivery-portfolio-comparisons
+  - name: hublink-delivery-100vu-comparisons
     orgId: 1
-    folder: 'Delivery Portfolio Comparisons'
+    folder: 'Delivery Performance - 100VU · 8min'
     type: file
     disableDeletion: false
     updateIntervalSeconds: 10
-    allowUiUpdates: true
+    allowUiUpdates: false
     options:
-      path: /etc/grafana/provisioning/dashboards/portfolio
+      path: /etc/grafana/provisioning/dashboards/comparison-100vu
+
+  - name: hublink-delivery-fixed-rps-comparisons
+    orgId: 1
+    folder: 'Delivery Performance - Fixed RPS · 3min Steady'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 10
+    allowUiUpdates: false
+    options:
+      path: /etc/grafana/provisioning/dashboards/comparison-fixed-rps

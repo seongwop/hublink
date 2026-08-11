@@ -1,0 +1,575 @@
+{
+    "annotations":  {
+                        "list":  [
+
+                                 ]
+                    },
+    "description":  "동일 캐시 조건의 100VU C→D 저장 시계열로 선점 SQL 변경 효과를 비교",
+    "editable":  false,
+    "graphTooltip":  1,
+    "links":  [
+
+              ],
+    "panels":  [
+                   {
+                       "id":  1,
+                       "title":  "비교 기준",
+                       "type":  "text",
+                       "gridPos":  {
+                                       "h":  6,
+                                       "w":  24,
+                                       "x":  0,
+                                       "y":  0
+                                   },
+                       "options":  {
+                                       "mode":  "markdown",
+                                       "content":  "### 원자적 선점 SQL 최적화 - 저장 시계열\r\n\r\n- C: 후보 집계 행을 `FOR UPDATE`로 잠근 뒤 담당자를 선택하고 배정 수 증가\r\n- D: `SKIP LOCKED` 기반 단일 원자적 SQL로 담당자 선점과 배정 수 증가\r\n- 공통 조건: Hub별 담당자 캐시 TTL 60초, 동일 워밍업, 100VU 8분\r\n- 입력: supplier 1개 고정, receiver 18개 분산\r\n- 결과: 성공 TPS `36.03 → 172.33` (+378.3%), 실패율은 모두 0%\r\n- 평균 응답 `2.26초 → 472.12ms`, p95 `3.33초 → 778.23ms`"
+                                   }
+                   },
+                   {
+                       "id":  2,
+                       "title":  "성공 RPS",
+                       "description":  "동일 100VU에서 실제 201 응답 RPS",
+                       "type":  "timeseries",
+                       "datasource":  {
+                                          "type":  "grafana-testdata-datasource",
+                                          "uid":  "hublink-comparison-csv"
+                                      },
+                       "gridPos":  {
+                                       "h":  9,
+                                       "w":  12,
+                                       "x":  0,
+                                       "y":  6
+                                   },
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "min":  0,
+                                                            "max":  250,
+                                                            "unit":  "reqps",
+                                                            "color":  {
+                                                                          "mode":  "palette-classic"
+                                                                      },
+                                                            "thresholds":  {
+                                                                               "mode":  "absolute",
+                                                                               "steps":  [
+                                                                                             {
+                                                                                                 "color":  "green",
+                                                                                                 "value":  null
+                                                                                             }
+                                                                                         ]
+                                                                           },
+                                                            "custom":  {
+                                                                           "axisBorderShow":  false,
+                                                                           "axisCenteredZero":  false,
+                                                                           "axisColorMode":  "text",
+                                                                           "axisPlacement":  "auto",
+                                                                           "drawStyle":  "line",
+                                                                           "fillOpacity":  8,
+                                                                           "gradientMode":  "none",
+                                                                           "lineInterpolation":  "linear",
+                                                                           "lineWidth":  3,
+                                                                           "pointSize":  4,
+                                                                           "showPoints":  "never",
+                                                                           "spanNulls":  false,
+                                                                           "stacking":  {
+                                                                                            "mode":  "none",
+                                                                                            "group":  "A"
+                                                                                        },
+                                                                           "thresholdsStyle":  {
+                                                                                                   "mode":  "off"
+                                                                                               }
+                                                                       }
+                                                        },
+                                           "overrides":  [
+                                                             {
+                                                                 "matcher":  {
+                                                                                 "id":  "byName",
+                                                                                 "options":  "C. DB 비관적 락"
+                                                                             },
+                                                                 "properties":  [
+                                                                                    {
+                                                                                        "id":  "color",
+                                                                                        "value":  {
+                                                                                                      "mode":  "fixed",
+                                                                                                      "fixedColor":  "red"
+                                                                                                  }
+                                                                                    }
+                                                                                ]
+                                                             },
+                                                             {
+                                                                 "matcher":  {
+                                                                                 "id":  "byName",
+                                                                                 "options":  "D. 원자적 선점·캐시"
+                                                                             },
+                                                                 "properties":  [
+                                                                                    {
+                                                                                        "id":  "color",
+                                                                                        "value":  {
+                                                                                                      "mode":  "fixed",
+                                                                                                      "fixedColor":  "green"
+                                                                                                  }
+                                                                                    }
+                                                                                ]
+                                                             }
+                                                         ]
+                                       },
+                       "options":  {
+                                       "legend":  {
+                                                      "showLegend":  true,
+                                                      "displayMode":  "table",
+                                                      "placement":  "bottom",
+                                                      "calcs":  [
+                                                                    "mean",
+                                                                    "max",
+                                                                    "lastNotNull"
+                                                                ]
+                                                  },
+                                       "tooltip":  {
+                                                       "mode":  "multi",
+                                                       "sort":  "desc",
+                                                       "hideZeros":  false
+                                                   }
+                                   },
+                       "targets":  [
+                                       {
+                                           "refId":  "A",
+                                           "datasource":  {
+                                                              "type":  "grafana-testdata-datasource",
+                                                              "uid":  "hublink-comparison-csv"
+                                                          },
+                                           "scenarioId":  "csv_content",
+                                           "format":  "time_series",
+                                           "csvContent":  "\"Time\",\"C. DB 비관적 락\",\"D. 원자적 선점·캐시\"\n\"2026-01-01 00:00:00\",\"0\",\"0\"\n\"2026-01-01 00:00:15\",\"0\",\"17.766667\"\n\"2026-01-01 00:00:30\",\"0\",\"17.766667\"\n\"2026-01-01 00:00:45\",\"28.633333\",\"174.233333\"\n\"2026-01-01 00:01:00\",\"28.633333\",\"174.233333\"\n\"2026-01-01 00:01:15\",\"36\",\"163.033333\"\n\"2026-01-01 00:01:30\",\"36\",\"163.033333\"\n\"2026-01-01 00:01:45\",\"36.933333\",\"161.1\"\n\"2026-01-01 00:02:00\",\"36.933333\",\"161.1\"\n\"2026-01-01 00:02:15\",\"37.433333\",\"172.633333\"\n\"2026-01-01 00:02:30\",\"37.433333\",\"172.633333\"\n\"2026-01-01 00:02:45\",\"37.433333\",\"177.233333\"\n\"2026-01-01 00:03:00\",\"37.433333\",\"177.233333\"\n\"2026-01-01 00:03:15\",\"38.066667\",\"178.566667\"\n\"2026-01-01 00:03:30\",\"38.066667\",\"178.566667\"\n\"2026-01-01 00:03:45\",\"36.666667\",\"177.1\"\n\"2026-01-01 00:04:00\",\"36.666667\",\"177.1\"\n\"2026-01-01 00:04:15\",\"35.833333\",\"180.633333\"\n\"2026-01-01 00:04:30\",\"35.833333\",\"180.633333\"\n\"2026-01-01 00:04:45\",\"35.033333\",\"182.9\"\n\"2026-01-01 00:05:00\",\"35.033333\",\"182.9\"\n\"2026-01-01 00:05:15\",\"37\",\"178.766667\"\n\"2026-01-01 00:05:30\",\"37\",\"178.766667\"\n\"2026-01-01 00:05:45\",\"34.033333\",\"180.9\"\n\"2026-01-01 00:06:00\",\"34.033333\",\"180.9\"\n\"2026-01-01 00:06:15\",\"36.333333\",\"178.766667\"\n\"2026-01-01 00:06:30\",\"36.333333\",\"178.766667\"\n\"2026-01-01 00:06:45\",\"37.366667\",\"178.4\"\n\"2026-01-01 00:07:00\",\"37.366667\",\"178.4\"\n\"2026-01-01 00:07:15\",\"36.666667\",\"168.866667\"\n\"2026-01-01 00:07:30\",\"36.666667\",\"168.866667\"\n\"2026-01-01 00:07:45\",\"33.266667\",\"169.533333\"\n\"2026-01-01 00:08:00\",\"33.266667\",\"169.533333\""
+                                       }
+                                   ],
+                       "transformations":  [
+                                               {
+                                                   "id":  "convertFieldType",
+                                                   "options":  {
+                                                                   "conversions":  [
+                                                                                       {
+                                                                                           "targetField":  "Time",
+                                                                                           "destinationType":  "time"
+                                                                                       }
+                                                                                   ]
+                                                               }
+                                               }
+                                           ]
+                   },
+                   {
+                       "id":  3,
+                       "title":  "실패 RPS",
+                       "description":  "두 실행 모두 API 실패 0건",
+                       "type":  "timeseries",
+                       "datasource":  {
+                                          "type":  "grafana-testdata-datasource",
+                                          "uid":  "hublink-comparison-csv"
+                                      },
+                       "gridPos":  {
+                                       "h":  9,
+                                       "w":  12,
+                                       "x":  12,
+                                       "y":  6
+                                   },
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "min":  0,
+                                                            "max":  5,
+                                                            "unit":  "reqps",
+                                                            "color":  {
+                                                                          "mode":  "palette-classic"
+                                                                      },
+                                                            "thresholds":  {
+                                                                               "mode":  "absolute",
+                                                                               "steps":  [
+                                                                                             {
+                                                                                                 "color":  "green",
+                                                                                                 "value":  null
+                                                                                             }
+                                                                                         ]
+                                                                           },
+                                                            "custom":  {
+                                                                           "axisBorderShow":  false,
+                                                                           "axisCenteredZero":  false,
+                                                                           "axisColorMode":  "text",
+                                                                           "axisPlacement":  "auto",
+                                                                           "drawStyle":  "line",
+                                                                           "fillOpacity":  8,
+                                                                           "gradientMode":  "none",
+                                                                           "lineInterpolation":  "linear",
+                                                                           "lineWidth":  3,
+                                                                           "pointSize":  4,
+                                                                           "showPoints":  "never",
+                                                                           "spanNulls":  false,
+                                                                           "stacking":  {
+                                                                                            "mode":  "none",
+                                                                                            "group":  "A"
+                                                                                        },
+                                                                           "thresholdsStyle":  {
+                                                                                                   "mode":  "off"
+                                                                                               }
+                                                                       }
+                                                        },
+                                           "overrides":  [
+                                                             {
+                                                                 "matcher":  {
+                                                                                 "id":  "byName",
+                                                                                 "options":  "C. DB 비관적 락"
+                                                                             },
+                                                                 "properties":  [
+                                                                                    {
+                                                                                        "id":  "color",
+                                                                                        "value":  {
+                                                                                                      "mode":  "fixed",
+                                                                                                      "fixedColor":  "red"
+                                                                                                  }
+                                                                                    }
+                                                                                ]
+                                                             },
+                                                             {
+                                                                 "matcher":  {
+                                                                                 "id":  "byName",
+                                                                                 "options":  "D. 원자적 선점·캐시"
+                                                                             },
+                                                                 "properties":  [
+                                                                                    {
+                                                                                        "id":  "color",
+                                                                                        "value":  {
+                                                                                                      "mode":  "fixed",
+                                                                                                      "fixedColor":  "green"
+                                                                                                  }
+                                                                                    }
+                                                                                ]
+                                                             }
+                                                         ]
+                                       },
+                       "options":  {
+                                       "legend":  {
+                                                      "showLegend":  true,
+                                                      "displayMode":  "table",
+                                                      "placement":  "bottom",
+                                                      "calcs":  [
+                                                                    "mean",
+                                                                    "max",
+                                                                    "lastNotNull"
+                                                                ]
+                                                  },
+                                       "tooltip":  {
+                                                       "mode":  "multi",
+                                                       "sort":  "desc",
+                                                       "hideZeros":  false
+                                                   }
+                                   },
+                       "targets":  [
+                                       {
+                                           "refId":  "A",
+                                           "datasource":  {
+                                                              "type":  "grafana-testdata-datasource",
+                                                              "uid":  "hublink-comparison-csv"
+                                                          },
+                                           "scenarioId":  "csv_content",
+                                           "format":  "time_series",
+                                           "csvContent":  "\"Time\",\"C. DB 비관적 락\",\"D. 원자적 선점·캐시\"\n\"2026-01-01 00:00:00\",\"0\",\"0\"\n\"2026-01-01 00:00:15\",\"0\",\"0\"\n\"2026-01-01 00:00:30\",\"0\",\"0\"\n\"2026-01-01 00:00:45\",\"0\",\"0\"\n\"2026-01-01 00:01:00\",\"0\",\"0\"\n\"2026-01-01 00:01:15\",\"0\",\"0\"\n\"2026-01-01 00:01:30\",\"0\",\"0\"\n\"2026-01-01 00:01:45\",\"0\",\"0\"\n\"2026-01-01 00:02:00\",\"0\",\"0\"\n\"2026-01-01 00:02:15\",\"0\",\"0\"\n\"2026-01-01 00:02:30\",\"0\",\"0\"\n\"2026-01-01 00:02:45\",\"0\",\"0\"\n\"2026-01-01 00:03:00\",\"0\",\"0\"\n\"2026-01-01 00:03:15\",\"0\",\"0\"\n\"2026-01-01 00:03:30\",\"0\",\"0\"\n\"2026-01-01 00:03:45\",\"0\",\"0\"\n\"2026-01-01 00:04:00\",\"0\",\"0\"\n\"2026-01-01 00:04:15\",\"0\",\"0\"\n\"2026-01-01 00:04:30\",\"0\",\"0\"\n\"2026-01-01 00:04:45\",\"0\",\"0\"\n\"2026-01-01 00:05:00\",\"0\",\"0\"\n\"2026-01-01 00:05:15\",\"0\",\"0\"\n\"2026-01-01 00:05:30\",\"0\",\"0\"\n\"2026-01-01 00:05:45\",\"0\",\"0\"\n\"2026-01-01 00:06:00\",\"0\",\"0\"\n\"2026-01-01 00:06:15\",\"0\",\"0\"\n\"2026-01-01 00:06:30\",\"0\",\"0\"\n\"2026-01-01 00:06:45\",\"0\",\"0\"\n\"2026-01-01 00:07:00\",\"0\",\"0\"\n\"2026-01-01 00:07:15\",\"0\",\"0\"\n\"2026-01-01 00:07:30\",\"0\",\"0\"\n\"2026-01-01 00:07:45\",\"0\",\"0\"\n\"2026-01-01 00:08:00\",\"0\",\"0\""
+                                       }
+                                   ],
+                       "transformations":  [
+                                               {
+                                                   "id":  "convertFieldType",
+                                                   "options":  {
+                                                                   "conversions":  [
+                                                                                       {
+                                                                                           "targetField":  "Time",
+                                                                                           "destinationType":  "time"
+                                                                                       }
+                                                                                   ]
+                                                               }
+                                               }
+                                           ]
+                   },
+                   {
+                       "id":  4,
+                       "title":  "Hikari Pending",
+                       "description":  "DB connection 대기 시계열",
+                       "type":  "timeseries",
+                       "datasource":  {
+                                          "type":  "grafana-testdata-datasource",
+                                          "uid":  "hublink-comparison-csv"
+                                      },
+                       "gridPos":  {
+                                       "h":  9,
+                                       "w":  12,
+                                       "x":  0,
+                                       "y":  15
+                                   },
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "min":  0,
+                                                            "max":  60,
+                                                            "unit":  "short",
+                                                            "color":  {
+                                                                          "mode":  "palette-classic"
+                                                                      },
+                                                            "thresholds":  {
+                                                                               "mode":  "absolute",
+                                                                               "steps":  [
+                                                                                             {
+                                                                                                 "color":  "green",
+                                                                                                 "value":  null
+                                                                                             }
+                                                                                         ]
+                                                                           },
+                                                            "custom":  {
+                                                                           "axisBorderShow":  false,
+                                                                           "axisCenteredZero":  false,
+                                                                           "axisColorMode":  "text",
+                                                                           "axisPlacement":  "auto",
+                                                                           "drawStyle":  "line",
+                                                                           "fillOpacity":  8,
+                                                                           "gradientMode":  "none",
+                                                                           "lineInterpolation":  "linear",
+                                                                           "lineWidth":  3,
+                                                                           "pointSize":  4,
+                                                                           "showPoints":  "never",
+                                                                           "spanNulls":  false,
+                                                                           "stacking":  {
+                                                                                            "mode":  "none",
+                                                                                            "group":  "A"
+                                                                                        },
+                                                                           "thresholdsStyle":  {
+                                                                                                   "mode":  "off"
+                                                                                               }
+                                                                       }
+                                                        },
+                                           "overrides":  [
+                                                             {
+                                                                 "matcher":  {
+                                                                                 "id":  "byName",
+                                                                                 "options":  "C. DB 비관적 락"
+                                                                             },
+                                                                 "properties":  [
+                                                                                    {
+                                                                                        "id":  "color",
+                                                                                        "value":  {
+                                                                                                      "mode":  "fixed",
+                                                                                                      "fixedColor":  "red"
+                                                                                                  }
+                                                                                    }
+                                                                                ]
+                                                             },
+                                                             {
+                                                                 "matcher":  {
+                                                                                 "id":  "byName",
+                                                                                 "options":  "D. 원자적 선점·캐시"
+                                                                             },
+                                                                 "properties":  [
+                                                                                    {
+                                                                                        "id":  "color",
+                                                                                        "value":  {
+                                                                                                      "mode":  "fixed",
+                                                                                                      "fixedColor":  "green"
+                                                                                                  }
+                                                                                    }
+                                                                                ]
+                                                             }
+                                                         ]
+                                       },
+                       "options":  {
+                                       "legend":  {
+                                                      "showLegend":  true,
+                                                      "displayMode":  "table",
+                                                      "placement":  "bottom",
+                                                      "calcs":  [
+                                                                    "mean",
+                                                                    "max",
+                                                                    "lastNotNull"
+                                                                ]
+                                                  },
+                                       "tooltip":  {
+                                                       "mode":  "multi",
+                                                       "sort":  "desc",
+                                                       "hideZeros":  false
+                                                   }
+                                   },
+                       "targets":  [
+                                       {
+                                           "refId":  "A",
+                                           "datasource":  {
+                                                              "type":  "grafana-testdata-datasource",
+                                                              "uid":  "hublink-comparison-csv"
+                                                          },
+                                           "scenarioId":  "csv_content",
+                                           "format":  "time_series",
+                                           "csvContent":  "\"Time\",\"C. DB 비관적 락\",\"D. 원자적 선점·캐시\"\n\"2026-01-01 00:00:00\",\"0\",\"0\"\n\"2026-01-01 00:00:15\",\"0\",\"0\"\n\"2026-01-01 00:00:30\",\"0\",\"0\"\n\"2026-01-01 00:00:45\",\"0\",\"0\"\n\"2026-01-01 00:01:00\",\"0\",\"0\"\n\"2026-01-01 00:01:15\",\"33\",\"42\"\n\"2026-01-01 00:01:30\",\"33\",\"42\"\n\"2026-01-01 00:01:45\",\"42\",\"0\"\n\"2026-01-01 00:02:00\",\"42\",\"0\"\n\"2026-01-01 00:02:15\",\"42\",\"42\"\n\"2026-01-01 00:02:30\",\"42\",\"42\"\n\"2026-01-01 00:02:45\",\"42\",\"42\"\n\"2026-01-01 00:03:00\",\"42\",\"42\"\n\"2026-01-01 00:03:15\",\"42\",\"41\"\n\"2026-01-01 00:03:30\",\"42\",\"41\"\n\"2026-01-01 00:03:45\",\"42\",\"39\"\n\"2026-01-01 00:04:00\",\"42\",\"39\"\n\"2026-01-01 00:04:15\",\"41\",\"40\"\n\"2026-01-01 00:04:30\",\"41\",\"40\"\n\"2026-01-01 00:04:45\",\"41\",\"38\"\n\"2026-01-01 00:05:00\",\"41\",\"38\"\n\"2026-01-01 00:05:15\",\"42\",\"41\"\n\"2026-01-01 00:05:30\",\"42\",\"41\"\n\"2026-01-01 00:05:45\",\"42\",\"35\"\n\"2026-01-01 00:06:00\",\"42\",\"35\"\n\"2026-01-01 00:06:15\",\"42\",\"38\"\n\"2026-01-01 00:06:30\",\"42\",\"38\"\n\"2026-01-01 00:06:45\",\"22\",\"10\"\n\"2026-01-01 00:07:00\",\"22\",\"10\"\n\"2026-01-01 00:07:15\",\"0\",\"0\"\n\"2026-01-01 00:07:30\",\"0\",\"0\"\n\"2026-01-01 00:07:45\",\"0\",\"0\"\n\"2026-01-01 00:08:00\",\"0\",\"0\""
+                                       }
+                                   ],
+                       "transformations":  [
+                                               {
+                                                   "id":  "convertFieldType",
+                                                   "options":  {
+                                                                   "conversions":  [
+                                                                                       {
+                                                                                           "targetField":  "Time",
+                                                                                           "destinationType":  "time"
+                                                                                       }
+                                                                                   ]
+                                                               }
+                                               }
+                                           ]
+                   },
+                   {
+                       "id":  5,
+                       "title":  "배송 API 평균 지연",
+                       "description":  "Grafana Server Avg Latency 5m",
+                       "type":  "timeseries",
+                       "datasource":  {
+                                          "type":  "grafana-testdata-datasource",
+                                          "uid":  "hublink-comparison-csv"
+                                      },
+                       "gridPos":  {
+                                       "h":  9,
+                                       "w":  12,
+                                       "x":  12,
+                                       "y":  15
+                                   },
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "min":  0,
+                                                            "max":  4000,
+                                                            "unit":  "ms",
+                                                            "color":  {
+                                                                          "mode":  "palette-classic"
+                                                                      },
+                                                            "thresholds":  {
+                                                                               "mode":  "absolute",
+                                                                               "steps":  [
+                                                                                             {
+                                                                                                 "color":  "green",
+                                                                                                 "value":  null
+                                                                                             }
+                                                                                         ]
+                                                                           },
+                                                            "custom":  {
+                                                                           "axisBorderShow":  false,
+                                                                           "axisCenteredZero":  false,
+                                                                           "axisColorMode":  "text",
+                                                                           "axisPlacement":  "auto",
+                                                                           "drawStyle":  "line",
+                                                                           "fillOpacity":  8,
+                                                                           "gradientMode":  "none",
+                                                                           "lineInterpolation":  "linear",
+                                                                           "lineWidth":  3,
+                                                                           "pointSize":  4,
+                                                                           "showPoints":  "never",
+                                                                           "spanNulls":  false,
+                                                                           "stacking":  {
+                                                                                            "mode":  "none",
+                                                                                            "group":  "A"
+                                                                                        },
+                                                                           "thresholdsStyle":  {
+                                                                                                   "mode":  "off"
+                                                                                               }
+                                                                       }
+                                                        },
+                                           "overrides":  [
+                                                             {
+                                                                 "matcher":  {
+                                                                                 "id":  "byName",
+                                                                                 "options":  "C. DB 비관적 락"
+                                                                             },
+                                                                 "properties":  [
+                                                                                    {
+                                                                                        "id":  "color",
+                                                                                        "value":  {
+                                                                                                      "mode":  "fixed",
+                                                                                                      "fixedColor":  "red"
+                                                                                                  }
+                                                                                    }
+                                                                                ]
+                                                             },
+                                                             {
+                                                                 "matcher":  {
+                                                                                 "id":  "byName",
+                                                                                 "options":  "D. 원자적 선점·캐시"
+                                                                             },
+                                                                 "properties":  [
+                                                                                    {
+                                                                                        "id":  "color",
+                                                                                        "value":  {
+                                                                                                      "mode":  "fixed",
+                                                                                                      "fixedColor":  "green"
+                                                                                                  }
+                                                                                    }
+                                                                                ]
+                                                             }
+                                                         ]
+                                       },
+                       "options":  {
+                                       "legend":  {
+                                                      "showLegend":  true,
+                                                      "displayMode":  "table",
+                                                      "placement":  "bottom",
+                                                      "calcs":  [
+                                                                    "mean",
+                                                                    "max",
+                                                                    "lastNotNull"
+                                                                ]
+                                                  },
+                                       "tooltip":  {
+                                                       "mode":  "multi",
+                                                       "sort":  "desc",
+                                                       "hideZeros":  false
+                                                   }
+                                   },
+                       "targets":  [
+                                       {
+                                           "refId":  "A",
+                                           "datasource":  {
+                                                              "type":  "grafana-testdata-datasource",
+                                                              "uid":  "hublink-comparison-csv"
+                                                          },
+                                           "scenarioId":  "csv_content",
+                                           "format":  "time_series",
+                                           "csvContent":  "\"Time\",\"C. DB 비관적 락\",\"D. 원자적 선점·캐시\"\n\"2026-01-01 00:00:00\",\"\",\"38.131445\"\n\"2026-01-01 00:00:15\",\"\",\"38.339109\"\n\"2026-01-01 00:00:30\",\"\",\"38.339109\"\n\"2026-01-01 00:00:45\",\"571.209\",\"167.0247\"\n\"2026-01-01 00:01:00\",\"571.209\",\"167.0247\"\n\"2026-01-01 00:01:15\",\"1761.377\",\"320.776755\"\n\"2026-01-01 00:01:30\",\"1761.377\",\"320.776755\"\n\"2026-01-01 00:01:45\",\"2651.83\",\"413.830923\"\n\"2026-01-01 00:02:00\",\"2651.83\",\"413.830923\"\n\"2026-01-01 00:02:15\",\"2675.04\",\"454.622052\"\n\"2026-01-01 00:02:30\",\"2675.04\",\"454.622052\"\n\"2026-01-01 00:02:45\",\"2668.34\",\"476.593795\"\n\"2026-01-01 00:03:00\",\"2668.34\",\"476.593795\"\n\"2026-01-01 00:03:15\",\"2634.215\",\"490.438669\"\n\"2026-01-01 00:03:30\",\"2634.215\",\"490.438669\"\n\"2026-01-01 00:03:45\",\"2713.26\",\"501.027503\"\n\"2026-01-01 00:04:00\",\"2713.26\",\"501.027503\"\n\"2026-01-01 00:04:15\",\"2779.66\",\"507.442453\"\n\"2026-01-01 00:04:30\",\"2779.66\",\"507.442453\"\n\"2026-01-01 00:04:45\",\"2861.882\",\"516.985167\"\n\"2026-01-01 00:05:00\",\"2861.882\",\"516.985167\"\n\"2026-01-01 00:05:15\",\"2704.004\",\"558.128574\"\n\"2026-01-01 00:05:30\",\"2704.004\",\"558.128574\"\n\"2026-01-01 00:05:45\",\"2927.032\",\"563.781358\"\n\"2026-01-01 00:06:00\",\"2927.032\",\"563.781358\"\n\"2026-01-01 00:06:15\",\"2750.769\",\"557.385416\"\n\"2026-01-01 00:06:30\",\"2750.769\",\"557.385416\"\n\"2026-01-01 00:06:45\",\"2530.888\",\"545.725237\"\n\"2026-01-01 00:07:00\",\"2530.888\",\"545.725237\"\n\"2026-01-01 00:07:15\",\"1895.572\",\"523.496826\"\n\"2026-01-01 00:07:30\",\"1895.572\",\"523.496826\"\n\"2026-01-01 00:07:45\",\"1319.125\",\"485.405753\"\n\"2026-01-01 00:08:00\",\"1319.125\",\"485.405753\""
+                                       }
+                                   ],
+                       "transformations":  [
+                                               {
+                                                   "id":  "convertFieldType",
+                                                   "options":  {
+                                                                   "conversions":  [
+                                                                                       {
+                                                                                           "targetField":  "Time",
+                                                                                           "destinationType":  "time"
+                                                                                       }
+                                                                                   ]
+                                                               }
+                                               }
+                                           ]
+                   }
+               ],
+    "refresh":  "",
+    "schemaVersion":  42,
+    "tags":  [
+                 "delivery",
+                 "performance-test",
+                 "comparison",
+                 "timeseries",
+                 "skip-locked",
+                 "cache"
+             ],
+    "templating":  {
+                       "list":  [
+
+                                ]
+                   },
+    "time":  {
+                 "from":  "2026-01-01T00:00:00.000Z",
+                 "to":  "2026-01-01T00:08:15.000Z"
+             },
+    "timepicker":  {
+                       "hidden":  true
+                   },
+    "timezone":  "utc",
+    "title":  "02. 원자적 선점 SQL 최적화 - 저장 시계열",
+    "uid":  "pf-atomic-cache"
+}
