@@ -1,0 +1,575 @@
+{
+    "annotations":  {
+                        "list":  [
+
+                                 ]
+                    },
+    "description":  "동일 100VU A→C 저장 시계열로 Redis 락 제거 뒤 이동한 병목을 진단",
+    "editable":  false,
+    "graphTooltip":  1,
+    "links":  [
+
+              ],
+    "panels":  [
+                   {
+                       "id":  1,
+                       "title":  "비교 기준",
+                       "type":  "text",
+                       "gridPos":  {
+                                       "h":  6,
+                                       "w":  24,
+                                       "x":  0,
+                                       "y":  0
+                                   },
+                       "options":  {
+                                       "mode":  "markdown",
+                                       "content":  "### Redis 락 제거 후 병목 이동 진단 - 저장 시계열\r\n\r\n- A: 회사·허브별 Redis 분산락 안에서 담당자 조회와 배송 저장 수행\r\n- C: Redis 배정 락을 제거하고 후보 집계 행을 DB 비관적 락으로 조회\r\n- 공통 조건: 동일 워밍업, 100VU 8분, supplier 1개 고정, receiver 18개 분산\r\n- C 기준 실행: 재검증 Run 02\r\n- A→C 결과: 성공 RPS `15.07 → 9.06`, 실패율 `27.69% → 98.62%`\r\n- 해석: Redis 락 제거만으로 완료된 개선이 아니라, 대량 후보 행 잠금과 User 담당자 조회로 병목이 이동한 진단 단계\r\n- C의 짧은 지연은 User 회로 개방 뒤 발생한 빠른 502 실패가 포함된 값이므로 성능 개선으로 해석하지 않음\r\n- 안정 부하의 과거 동일 조건 비교는 TPS `20.05 → 28.79`, lock timeout `30 → 0`이며 원본 시계열 미보존으로 이 그래프와 분리"
+                                   }
+                   },
+                   {
+                       "id":  2,
+                       "title":  "성공 RPS",
+                       "description":  "동일 100VU에서 실제 201 응답 RPS",
+                       "type":  "timeseries",
+                       "datasource":  {
+                                          "type":  "grafana-testdata-datasource",
+                                          "uid":  "hublink-comparison-csv"
+                                      },
+                       "gridPos":  {
+                                       "h":  9,
+                                       "w":  12,
+                                       "x":  0,
+                                       "y":  6
+                                   },
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "min":  0,
+                                                            "max":  35,
+                                                            "unit":  "reqps",
+                                                            "color":  {
+                                                                          "mode":  "palette-classic"
+                                                                      },
+                                                            "thresholds":  {
+                                                                               "mode":  "absolute",
+                                                                               "steps":  [
+                                                                                             {
+                                                                                                 "color":  "green",
+                                                                                                 "value":  null
+                                                                                             }
+                                                                                         ]
+                                                                           },
+                                                            "custom":  {
+                                                                           "axisBorderShow":  false,
+                                                                           "axisCenteredZero":  false,
+                                                                           "axisColorMode":  "text",
+                                                                           "axisPlacement":  "auto",
+                                                                           "drawStyle":  "line",
+                                                                           "fillOpacity":  8,
+                                                                           "gradientMode":  "none",
+                                                                           "lineInterpolation":  "linear",
+                                                                           "lineWidth":  3,
+                                                                           "pointSize":  4,
+                                                                           "showPoints":  "never",
+                                                                           "spanNulls":  false,
+                                                                           "stacking":  {
+                                                                                            "mode":  "none",
+                                                                                            "group":  "A"
+                                                                                        },
+                                                                           "thresholdsStyle":  {
+                                                                                                   "mode":  "off"
+                                                                                               }
+                                                                       }
+                                                        },
+                                           "overrides":  [
+                                                             {
+                                                                 "matcher":  {
+                                                                                 "id":  "byName",
+                                                                                 "options":  "A. Redis 분산락 전체 임계 구간"
+                                                                             },
+                                                                 "properties":  [
+                                                                                    {
+                                                                                        "id":  "color",
+                                                                                        "value":  {
+                                                                                                      "mode":  "fixed",
+                                                                                                      "fixedColor":  "red"
+                                                                                                  }
+                                                                                    }
+                                                                                ]
+                                                             },
+                                                             {
+                                                                 "matcher":  {
+                                                                                 "id":  "byName",
+                                                                                 "options":  "C. DB 비관적 락"
+                                                                             },
+                                                                 "properties":  [
+                                                                                    {
+                                                                                        "id":  "color",
+                                                                                        "value":  {
+                                                                                                      "mode":  "fixed",
+                                                                                                      "fixedColor":  "green"
+                                                                                                  }
+                                                                                    }
+                                                                                ]
+                                                             }
+                                                         ]
+                                       },
+                       "options":  {
+                                       "legend":  {
+                                                      "showLegend":  true,
+                                                      "displayMode":  "table",
+                                                      "placement":  "bottom",
+                                                      "calcs":  [
+                                                                    "mean",
+                                                                    "max",
+                                                                    "lastNotNull"
+                                                                ]
+                                                  },
+                                       "tooltip":  {
+                                                       "mode":  "multi",
+                                                       "sort":  "desc",
+                                                       "hideZeros":  false
+                                                   }
+                                   },
+                       "targets":  [
+                                       {
+                                           "refId":  "A",
+                                           "datasource":  {
+                                                              "type":  "grafana-testdata-datasource",
+                                                              "uid":  "hublink-comparison-csv"
+                                                          },
+                                           "scenarioId":  "csv_content",
+                                           "format":  "time_series",
+                                           "csvContent":  "\"Time\",\"A. Redis 분산락 전체 임계 구간\",\"C. DB 비관적 락\"\n\"2026-01-01 00:00:00\",\"0\",\"0\"\n\"2026-01-01 00:00:15\",\"0\",\"0\"\n\"2026-01-01 00:00:30\",\"3.849444\",\"18.533333\"\n\"2026-01-01 00:00:45\",\"4.433333\",\"18.533333\"\n\"2026-01-01 00:01:00\",\"12.96669\",\"11.366667\"\n\"2026-01-01 00:01:15\",\"13.8\",\"11.366667\"\n\"2026-01-01 00:01:30\",\"14.666667\",\"2.4\"\n\"2026-01-01 00:01:45\",\"14.666667\",\"2.4\"\n\"2026-01-01 00:02:00\",\"16.3\",\"2.5\"\n\"2026-01-01 00:02:15\",\"16.3\",\"2.5\"\n\"2026-01-01 00:02:30\",\"16.766667\",\"2.3\"\n\"2026-01-01 00:02:45\",\"16.766667\",\"2.3\"\n\"2026-01-01 00:03:00\",\"15.366667\",\"5.6\"\n\"2026-01-01 00:03:15\",\"15.366667\",\"5.6\"\n\"2026-01-01 00:03:30\",\"13.2\",\"2.766667\"\n\"2026-01-01 00:03:45\",\"13.2\",\"2.766667\"\n\"2026-01-01 00:04:00\",\"12.966667\",\"2.433333\"\n\"2026-01-01 00:04:15\",\"12.966667\",\"2.433333\"\n\"2026-01-01 00:04:30\",\"16.5\",\"4.2\"\n\"2026-01-01 00:04:45\",\"16.5\",\"4.2\"\n\"2026-01-01 00:05:00\",\"17.3\",\"3.033333\"\n\"2026-01-01 00:05:15\",\"17.3\",\"3.033333\"\n\"2026-01-01 00:05:30\",\"16.666667\",\"2.4\"\n\"2026-01-01 00:05:45\",\"16.666667\",\"2.4\"\n\"2026-01-01 00:06:00\",\"16.233333\",\"4.6\"\n\"2026-01-01 00:06:15\",\"16.233333\",\"4.6\"\n\"2026-01-01 00:06:30\",\"15.7\",\"3.366667\"\n\"2026-01-01 00:06:45\",\"15.7\",\"3.366667\"\n\"2026-01-01 00:07:00\",\"17.566667\",\"16.133333\"\n\"2026-01-01 00:07:15\",\"17.566667\",\"16.133333\"\n\"2026-01-01 00:07:30\",\"15.7\",\"29.466667\"\n\"2026-01-01 00:07:45\",\"15.7\",\"29.466667\"\n\"2026-01-01 00:08:00\",\"15.133333\",\"29.566667\""
+                                       }
+                                   ],
+                       "transformations":  [
+                                               {
+                                                   "id":  "convertFieldType",
+                                                   "options":  {
+                                                                   "conversions":  [
+                                                                                       {
+                                                                                           "targetField":  "Time",
+                                                                                           "destinationType":  "time"
+                                                                                       }
+                                                                                   ]
+                                                               }
+                                               }
+                                           ]
+                   },
+                   {
+                       "id":  3,
+                       "title":  "실패 RPS",
+                       "description":  "A는 Redis lock timeout 409, C는 User 회로 개방 뒤 502",
+                       "type":  "timeseries",
+                       "datasource":  {
+                                          "type":  "grafana-testdata-datasource",
+                                          "uid":  "hublink-comparison-csv"
+                                      },
+                       "gridPos":  {
+                                       "h":  9,
+                                       "w":  12,
+                                       "x":  12,
+                                       "y":  6
+                                   },
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "min":  0,
+                                                            "max":  1000,
+                                                            "unit":  "reqps",
+                                                            "color":  {
+                                                                          "mode":  "palette-classic"
+                                                                      },
+                                                            "thresholds":  {
+                                                                               "mode":  "absolute",
+                                                                               "steps":  [
+                                                                                             {
+                                                                                                 "color":  "green",
+                                                                                                 "value":  null
+                                                                                             }
+                                                                                         ]
+                                                                           },
+                                                            "custom":  {
+                                                                           "axisBorderShow":  false,
+                                                                           "axisCenteredZero":  false,
+                                                                           "axisColorMode":  "text",
+                                                                           "axisPlacement":  "auto",
+                                                                           "drawStyle":  "line",
+                                                                           "fillOpacity":  8,
+                                                                           "gradientMode":  "none",
+                                                                           "lineInterpolation":  "linear",
+                                                                           "lineWidth":  3,
+                                                                           "pointSize":  4,
+                                                                           "showPoints":  "never",
+                                                                           "spanNulls":  false,
+                                                                           "stacking":  {
+                                                                                            "mode":  "none",
+                                                                                            "group":  "A"
+                                                                                        },
+                                                                           "thresholdsStyle":  {
+                                                                                                   "mode":  "off"
+                                                                                               }
+                                                                       }
+                                                        },
+                                           "overrides":  [
+                                                             {
+                                                                 "matcher":  {
+                                                                                 "id":  "byName",
+                                                                                 "options":  "A. Redis 분산락 전체 임계 구간"
+                                                                             },
+                                                                 "properties":  [
+                                                                                    {
+                                                                                        "id":  "color",
+                                                                                        "value":  {
+                                                                                                      "mode":  "fixed",
+                                                                                                      "fixedColor":  "red"
+                                                                                                  }
+                                                                                    }
+                                                                                ]
+                                                             },
+                                                             {
+                                                                 "matcher":  {
+                                                                                 "id":  "byName",
+                                                                                 "options":  "C. DB 비관적 락"
+                                                                             },
+                                                                 "properties":  [
+                                                                                    {
+                                                                                        "id":  "color",
+                                                                                        "value":  {
+                                                                                                      "mode":  "fixed",
+                                                                                                      "fixedColor":  "green"
+                                                                                                  }
+                                                                                    }
+                                                                                ]
+                                                             }
+                                                         ]
+                                       },
+                       "options":  {
+                                       "legend":  {
+                                                      "showLegend":  true,
+                                                      "displayMode":  "table",
+                                                      "placement":  "bottom",
+                                                      "calcs":  [
+                                                                    "mean",
+                                                                    "max",
+                                                                    "lastNotNull"
+                                                                ]
+                                                  },
+                                       "tooltip":  {
+                                                       "mode":  "multi",
+                                                       "sort":  "desc",
+                                                       "hideZeros":  false
+                                                   }
+                                   },
+                       "targets":  [
+                                       {
+                                           "refId":  "A",
+                                           "datasource":  {
+                                                              "type":  "grafana-testdata-datasource",
+                                                              "uid":  "hublink-comparison-csv"
+                                                          },
+                                           "scenarioId":  "csv_content",
+                                           "format":  "time_series",
+                                           "csvContent":  "\"Time\",\"A. Redis 분산락 전체 임계 구간\",\"C. DB 비관적 락\"\n\"2026-01-01 00:00:00\",\"0\",\"0\"\n\"2026-01-01 00:00:15\",\"0\",\"0\"\n\"2026-01-01 00:00:30\",\"0\",\"0\"\n\"2026-01-01 00:00:45\",\"0\",\"0\"\n\"2026-01-01 00:01:00\",\"0.499921\",\"351.360393\"\n\"2026-01-01 00:01:15\",\"0.633333\",\"443.7\"\n\"2026-01-01 00:01:30\",\"5.457902\",\"782.172793\"\n\"2026-01-01 00:01:45\",\"6.933333\",\"791.7\"\n\"2026-01-01 00:02:00\",\"7.533333\",\"739.666667\"\n\"2026-01-01 00:02:15\",\"7.533333\",\"739.666667\"\n\"2026-01-01 00:02:30\",\"6.8\",\"973.3\"\n\"2026-01-01 00:02:45\",\"6.8\",\"973.3\"\n\"2026-01-01 00:03:00\",\"8.2\",\"697.433333\"\n\"2026-01-01 00:03:15\",\"8.2\",\"697.433333\"\n\"2026-01-01 00:03:30\",\"10.3\",\"991.1\"\n\"2026-01-01 00:03:45\",\"10.3\",\"991.1\"\n\"2026-01-01 00:04:00\",\"10.9\",\"865.7\"\n\"2026-01-01 00:04:15\",\"10.9\",\"865.7\"\n\"2026-01-01 00:04:30\",\"7.266667\",\"881.366667\"\n\"2026-01-01 00:04:45\",\"7.266667\",\"881.366667\"\n\"2026-01-01 00:05:00\",\"7.066667\",\"934.633333\"\n\"2026-01-01 00:05:15\",\"7.066667\",\"934.633333\"\n\"2026-01-01 00:05:30\",\"7.6\",\"901.766667\"\n\"2026-01-01 00:05:45\",\"7.6\",\"901.766667\"\n\"2026-01-01 00:06:00\",\"8.233333\",\"912.366667\"\n\"2026-01-01 00:06:15\",\"8.233333\",\"912.366667\"\n\"2026-01-01 00:06:30\",\"8.066667\",\"866.633333\"\n\"2026-01-01 00:06:45\",\"8.066667\",\"866.633333\"\n\"2026-01-01 00:07:00\",\"2.566667\",\"432.7\"\n\"2026-01-01 00:07:15\",\"2.566667\",\"432.7\"\n\"2026-01-01 00:07:30\",\"0.333333\",\"0.033333\"\n\"2026-01-01 00:07:45\",\"0.333333\",\"0.033333\"\n\"2026-01-01 00:08:00\",\"0\",\"0\""
+                                       }
+                                   ],
+                       "transformations":  [
+                                               {
+                                                   "id":  "convertFieldType",
+                                                   "options":  {
+                                                                   "conversions":  [
+                                                                                       {
+                                                                                           "targetField":  "Time",
+                                                                                           "destinationType":  "time"
+                                                                                       }
+                                                                                   ]
+                                                               }
+                                               }
+                                           ]
+                   },
+                   {
+                       "id":  4,
+                       "title":  "User 회로 차단기 OPEN",
+                       "description":  "1이면 user-service 회로 차단기가 열린 상태",
+                       "type":  "timeseries",
+                       "datasource":  {
+                                          "type":  "grafana-testdata-datasource",
+                                          "uid":  "hublink-comparison-csv"
+                                      },
+                       "gridPos":  {
+                                       "h":  9,
+                                       "w":  12,
+                                       "x":  0,
+                                       "y":  15
+                                   },
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "min":  0,
+                                                            "max":  1,
+                                                            "unit":  "short",
+                                                            "color":  {
+                                                                          "mode":  "palette-classic"
+                                                                      },
+                                                            "thresholds":  {
+                                                                               "mode":  "absolute",
+                                                                               "steps":  [
+                                                                                             {
+                                                                                                 "color":  "green",
+                                                                                                 "value":  null
+                                                                                             }
+                                                                                         ]
+                                                                           },
+                                                            "custom":  {
+                                                                           "axisBorderShow":  false,
+                                                                           "axisCenteredZero":  false,
+                                                                           "axisColorMode":  "text",
+                                                                           "axisPlacement":  "auto",
+                                                                           "drawStyle":  "line",
+                                                                           "fillOpacity":  8,
+                                                                           "gradientMode":  "none",
+                                                                           "lineInterpolation":  "linear",
+                                                                           "lineWidth":  3,
+                                                                           "pointSize":  4,
+                                                                           "showPoints":  "never",
+                                                                           "spanNulls":  false,
+                                                                           "stacking":  {
+                                                                                            "mode":  "none",
+                                                                                            "group":  "A"
+                                                                                        },
+                                                                           "thresholdsStyle":  {
+                                                                                                   "mode":  "off"
+                                                                                               }
+                                                                       }
+                                                        },
+                                           "overrides":  [
+                                                             {
+                                                                 "matcher":  {
+                                                                                 "id":  "byName",
+                                                                                 "options":  "A. Redis 분산락 전체 임계 구간"
+                                                                             },
+                                                                 "properties":  [
+                                                                                    {
+                                                                                        "id":  "color",
+                                                                                        "value":  {
+                                                                                                      "mode":  "fixed",
+                                                                                                      "fixedColor":  "red"
+                                                                                                  }
+                                                                                    }
+                                                                                ]
+                                                             },
+                                                             {
+                                                                 "matcher":  {
+                                                                                 "id":  "byName",
+                                                                                 "options":  "C. DB 비관적 락"
+                                                                             },
+                                                                 "properties":  [
+                                                                                    {
+                                                                                        "id":  "color",
+                                                                                        "value":  {
+                                                                                                      "mode":  "fixed",
+                                                                                                      "fixedColor":  "green"
+                                                                                                  }
+                                                                                    }
+                                                                                ]
+                                                             }
+                                                         ]
+                                       },
+                       "options":  {
+                                       "legend":  {
+                                                      "showLegend":  true,
+                                                      "displayMode":  "table",
+                                                      "placement":  "bottom",
+                                                      "calcs":  [
+                                                                    "mean",
+                                                                    "max",
+                                                                    "lastNotNull"
+                                                                ]
+                                                  },
+                                       "tooltip":  {
+                                                       "mode":  "multi",
+                                                       "sort":  "desc",
+                                                       "hideZeros":  false
+                                                   }
+                                   },
+                       "targets":  [
+                                       {
+                                           "refId":  "A",
+                                           "datasource":  {
+                                                              "type":  "grafana-testdata-datasource",
+                                                              "uid":  "hublink-comparison-csv"
+                                                          },
+                                           "scenarioId":  "csv_content",
+                                           "format":  "time_series",
+                                           "csvContent":  "\"Time\",\"A. Redis 분산락 전체 임계 구간\",\"C. DB 비관적 락\"\n\"2026-01-01 00:00:00\",\"0\",\"0\"\n\"2026-01-01 00:00:15\",\"0\",\"0\"\n\"2026-01-01 00:00:30\",\"0\",\"0\"\n\"2026-01-01 00:00:45\",\"0\",\"0\"\n\"2026-01-01 00:01:00\",\"0\",\"1\"\n\"2026-01-01 00:01:15\",\"0\",\"1\"\n\"2026-01-01 00:01:30\",\"0\",\"1\"\n\"2026-01-01 00:01:45\",\"0\",\"1\"\n\"2026-01-01 00:02:00\",\"0\",\"1\"\n\"2026-01-01 00:02:15\",\"0\",\"1\"\n\"2026-01-01 00:02:30\",\"0\",\"1\"\n\"2026-01-01 00:02:45\",\"0\",\"1\"\n\"2026-01-01 00:03:00\",\"0\",\"1\"\n\"2026-01-01 00:03:15\",\"0\",\"1\"\n\"2026-01-01 00:03:30\",\"0\",\"1\"\n\"2026-01-01 00:03:45\",\"0\",\"1\"\n\"2026-01-01 00:04:00\",\"0\",\"1\"\n\"2026-01-01 00:04:15\",\"0\",\"1\"\n\"2026-01-01 00:04:30\",\"0\",\"1\"\n\"2026-01-01 00:04:45\",\"0\",\"1\"\n\"2026-01-01 00:05:00\",\"0\",\"1\"\n\"2026-01-01 00:05:15\",\"0\",\"1\"\n\"2026-01-01 00:05:30\",\"0\",\"1\"\n\"2026-01-01 00:05:45\",\"0\",\"1\"\n\"2026-01-01 00:06:00\",\"0\",\"0\"\n\"2026-01-01 00:06:15\",\"0\",\"0\"\n\"2026-01-01 00:06:30\",\"0\",\"1\"\n\"2026-01-01 00:06:45\",\"0\",\"1\"\n\"2026-01-01 00:07:00\",\"0\",\"0\"\n\"2026-01-01 00:07:15\",\"0\",\"0\"\n\"2026-01-01 00:07:30\",\"0\",\"0\"\n\"2026-01-01 00:07:45\",\"0\",\"0\"\n\"2026-01-01 00:08:00\",\"0\",\"0\""
+                                       }
+                                   ],
+                       "transformations":  [
+                                               {
+                                                   "id":  "convertFieldType",
+                                                   "options":  {
+                                                                   "conversions":  [
+                                                                                       {
+                                                                                           "targetField":  "Time",
+                                                                                           "destinationType":  "time"
+                                                                                       }
+                                                                                   ]
+                                                               }
+                                               }
+                                           ]
+                   },
+                   {
+                       "id":  5,
+                       "title":  "배송 서비스 CPU",
+                       "description":  "delivery-service 프로세스 CPU 사용률",
+                       "type":  "timeseries",
+                       "datasource":  {
+                                          "type":  "grafana-testdata-datasource",
+                                          "uid":  "hublink-comparison-csv"
+                                      },
+                       "gridPos":  {
+                                       "h":  9,
+                                       "w":  12,
+                                       "x":  12,
+                                       "y":  15
+                                   },
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "min":  0,
+                                                            "max":  100,
+                                                            "unit":  "percent",
+                                                            "color":  {
+                                                                          "mode":  "palette-classic"
+                                                                      },
+                                                            "thresholds":  {
+                                                                               "mode":  "absolute",
+                                                                               "steps":  [
+                                                                                             {
+                                                                                                 "color":  "green",
+                                                                                                 "value":  null
+                                                                                             }
+                                                                                         ]
+                                                                           },
+                                                            "custom":  {
+                                                                           "axisBorderShow":  false,
+                                                                           "axisCenteredZero":  false,
+                                                                           "axisColorMode":  "text",
+                                                                           "axisPlacement":  "auto",
+                                                                           "drawStyle":  "line",
+                                                                           "fillOpacity":  8,
+                                                                           "gradientMode":  "none",
+                                                                           "lineInterpolation":  "linear",
+                                                                           "lineWidth":  3,
+                                                                           "pointSize":  4,
+                                                                           "showPoints":  "never",
+                                                                           "spanNulls":  false,
+                                                                           "stacking":  {
+                                                                                            "mode":  "none",
+                                                                                            "group":  "A"
+                                                                                        },
+                                                                           "thresholdsStyle":  {
+                                                                                                   "mode":  "off"
+                                                                                               }
+                                                                       }
+                                                        },
+                                           "overrides":  [
+                                                             {
+                                                                 "matcher":  {
+                                                                                 "id":  "byName",
+                                                                                 "options":  "A. Redis 분산락 전체 임계 구간"
+                                                                             },
+                                                                 "properties":  [
+                                                                                    {
+                                                                                        "id":  "color",
+                                                                                        "value":  {
+                                                                                                      "mode":  "fixed",
+                                                                                                      "fixedColor":  "red"
+                                                                                                  }
+                                                                                    }
+                                                                                ]
+                                                             },
+                                                             {
+                                                                 "matcher":  {
+                                                                                 "id":  "byName",
+                                                                                 "options":  "C. DB 비관적 락"
+                                                                             },
+                                                                 "properties":  [
+                                                                                    {
+                                                                                        "id":  "color",
+                                                                                        "value":  {
+                                                                                                      "mode":  "fixed",
+                                                                                                      "fixedColor":  "green"
+                                                                                                  }
+                                                                                    }
+                                                                                ]
+                                                             }
+                                                         ]
+                                       },
+                       "options":  {
+                                       "legend":  {
+                                                      "showLegend":  true,
+                                                      "displayMode":  "table",
+                                                      "placement":  "bottom",
+                                                      "calcs":  [
+                                                                    "mean",
+                                                                    "max",
+                                                                    "lastNotNull"
+                                                                ]
+                                                  },
+                                       "tooltip":  {
+                                                       "mode":  "multi",
+                                                       "sort":  "desc",
+                                                       "hideZeros":  false
+                                                   }
+                                   },
+                       "targets":  [
+                                       {
+                                           "refId":  "A",
+                                           "datasource":  {
+                                                              "type":  "grafana-testdata-datasource",
+                                                              "uid":  "hublink-comparison-csv"
+                                                          },
+                                           "scenarioId":  "csv_content",
+                                           "format":  "time_series",
+                                           "csvContent":  "\"Time\",\"A. Redis 분산락 전체 임계 구간\",\"C. DB 비관적 락\"\n\"2026-01-01 00:00:00\",\"1.492287\",\"0.752383\"\n\"2026-01-01 00:00:15\",\"1.492287\",\"0.752383\"\n\"2026-01-01 00:00:30\",\"38.17878\",\"38.925951\"\n\"2026-01-01 00:00:45\",\"38.17878\",\"38.925951\"\n\"2026-01-01 00:01:00\",\"83.36962\",\"70.383333\"\n\"2026-01-01 00:01:15\",\"83.36962\",\"70.383333\"\n\"2026-01-01 00:01:30\",\"67.646562\",\"73.824268\"\n\"2026-01-01 00:01:45\",\"67.646562\",\"73.824268\"\n\"2026-01-01 00:02:00\",\"57.325484\",\"89.282103\"\n\"2026-01-01 00:02:15\",\"57.325484\",\"89.282103\"\n\"2026-01-01 00:02:30\",\"51.218698\",\"80.030334\"\n\"2026-01-01 00:02:45\",\"51.218698\",\"80.030334\"\n\"2026-01-01 00:03:00\",\"53.458165\",\"77.295576\"\n\"2026-01-01 00:03:15\",\"53.458165\",\"77.295576\"\n\"2026-01-01 00:03:30\",\"64.424435\",\"73.300789\"\n\"2026-01-01 00:03:45\",\"64.424435\",\"73.300789\"\n\"2026-01-01 00:04:00\",\"63.03523\",\"83.458772\"\n\"2026-01-01 00:04:15\",\"63.03523\",\"83.458772\"\n\"2026-01-01 00:04:30\",\"54.310051\",\"75.414552\"\n\"2026-01-01 00:04:45\",\"54.310051\",\"75.414552\"\n\"2026-01-01 00:05:00\",\"48.349096\",\"83.044348\"\n\"2026-01-01 00:05:15\",\"48.349096\",\"83.044348\"\n\"2026-01-01 00:05:30\",\"48.301133\",\"82.727582\"\n\"2026-01-01 00:05:45\",\"48.301133\",\"82.727582\"\n\"2026-01-01 00:06:00\",\"50.348259\",\"73.388318\"\n\"2026-01-01 00:06:15\",\"50.348259\",\"73.388318\"\n\"2026-01-01 00:06:30\",\"47.856902\",\"83.263317\"\n\"2026-01-01 00:06:45\",\"47.856902\",\"83.263317\"\n\"2026-01-01 00:07:00\",\"41.987019\",\"60.73413\"\n\"2026-01-01 00:07:15\",\"41.987019\",\"60.73413\"\n\"2026-01-01 00:07:30\",\"38.679245\",\"53.99265\"\n\"2026-01-01 00:07:45\",\"38.679245\",\"53.99265\"\n\"2026-01-01 00:08:00\",\"36.69816\",\"52.533869\""
+                                       }
+                                   ],
+                       "transformations":  [
+                                               {
+                                                   "id":  "convertFieldType",
+                                                   "options":  {
+                                                                   "conversions":  [
+                                                                                       {
+                                                                                           "targetField":  "Time",
+                                                                                           "destinationType":  "time"
+                                                                                       }
+                                                                                   ]
+                                                               }
+                                               }
+                                           ]
+                   }
+               ],
+    "refresh":  "",
+    "schemaVersion":  42,
+    "tags":  [
+                 "delivery",
+                 "performance-test",
+                 "comparison",
+                 "timeseries",
+                 "redis-lock",
+                 "db-pessimistic-lock"
+             ],
+    "templating":  {
+                       "list":  [
+
+                                ]
+                   },
+    "time":  {
+                 "from":  "2026-01-01T00:00:00.000Z",
+                 "to":  "2026-01-01T00:08:15.000Z"
+             },
+    "timepicker":  {
+                       "hidden":  true
+                   },
+    "timezone":  "utc",
+    "title":  "01. Redis 락 제거 후 병목 이동 - 저장 시계열",
+    "uid":  "pf-redis-lock"
+}

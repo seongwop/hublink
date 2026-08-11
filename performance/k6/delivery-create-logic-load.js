@@ -41,8 +41,8 @@ function loadOptions() {
 
   if (rpsLoadModel) {
     const targetRps = positiveInteger('TARGET_RPS', 40);
-    const preAllocatedVUs = positiveInteger('PRE_ALLOCATED_VUS', 180);
-    const maxVUs = positiveInteger('MAX_VUS', 250);
+    const preAllocatedVUs = positiveInteger('PRE_ALLOCATED_VUS', 400);
+    const maxVUs = positiveInteger('MAX_VUS', 600);
     if (maxVUs < preAllocatedVUs) {
       throw new Error('MAX_VUS는 PRE_ALLOCATED_VUS 이상이어야 함');
     }

@@ -130,8 +130,8 @@ AI 서비스가 생성 후 발행하는 결과 이벤트다.
 
 | 도구           | URL 또는 위치                                        | 확인 항목                                     |
 | ------------ | ------------------------------------------------ | ----------------------------------------- |
-| Swagger      | `http://34.50.55.18:19091/swagger-ui/index.html` | 테스트 전용 API 호출                             |
-| Eureka       | `http://34.50.55.18:19090`                       | ai-service, delivery-service 등록 여부        |
+| Swagger      | `http://<PLATFORM_EXTERNAL_IP>:19091/swagger-ui/index.html` | 테스트 전용 API 호출                          |
+| Eureka       | IAP 터널의 `http://localhost:19090`                      | ai-service, delivery-service 등록 여부        |
 | Grafana      | platform VM IAP 터널의 `http://localhost:3000`    | ai-service CPU, heap, HTTP, JVM 지표        |
 | Zipkin       | platform VM IAP 터널의 `http://localhost:9411`    | AI 처리 trace                               |
 | PostgreSQL   | `hublink` database                               | AI 메시지 저장 결과                              |
@@ -173,6 +173,8 @@ db/seed/ai/events/03-ai-generated-event.json
 ```http
 POST /api/v1/deliveries/test/deadline-requested
 ```
+
+이 API는 delivery-service 배포 환경에서 `DELIVERY_TEST_API_ENABLED=true`일 때만 활성화된다.
 
 AI 이후 후속 흐름 테스트용 API:
 

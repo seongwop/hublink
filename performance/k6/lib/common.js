@@ -45,7 +45,7 @@ export function requiredEnv(name) {
 
 // 쉼표 구분 환경변수 목록
 export function envList(name, fallbackName) {
-  const raw = __ENV[name] || (fallbackName ? __ENV[fallbackName] : '');
+  const raw = __ENV[name] || (fallbackName ? __ENV[fallbackName] : '') || '';
   return raw
     .split(',')
     .map((value) => value.trim())

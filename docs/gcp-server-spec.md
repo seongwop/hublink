@@ -24,7 +24,7 @@
 
 | VM | Machine Type | vCPU | Memory | Boot Disk | Internal IP | External IP | 역할 |
 | --- | --- | ---: | ---: | ---: | --- | --- | --- |
-| `hublink-platform-vm` | `e2-highmem-2` | 2 | 16 GB | 30 GB | `10.10.0.10` | `34.50.55.18` | Eureka, Config Server, API Gateway, 모니터링 |
+| `hublink-platform-vm` | `e2-highmem-2` | 2 | 16 GB | 30 GB | `10.10.0.10` | 있음 | Eureka, Config Server, API Gateway, 모니터링 |
 | `hublink-domain-a-vm` | `e2-standard-2` | 2 | 8 GB | 30 GB | `10.10.0.20` | 없음 | user, company, hub, product |
 | `hublink-domain-b-vm` | `e2-standard-2` | 2 | 8 GB | 30 GB | `10.10.0.30` | 없음 | order, stock, slack, ai |
 | `hublink-delivery-vm` | `e2-standard-2` | 2 | 8 GB | 30 GB | `10.10.0.70` | 없음 | delivery |

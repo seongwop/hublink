@@ -36,7 +36,6 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 	implementation 'com.github.ben-manes.caffeine:caffeine'
 	implementation 'org.springframework.kafka:spring-kafka'
-	// testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
 	compileOnly 'org.projectlombok:lombok'
 	annotationProcessor 'org.projectlombok:lombok'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
@@ -57,7 +56,6 @@ dependencies {
 	implementation 'io.zipkin.reporter2:zipkin-reporter-brave'
 
 	// Prometheus
-	implementation 'org.springframework.boot:spring-boot-starter-actuator'
 	runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
 
 	// 아크 유닛 설정

@@ -1,0 +1,835 @@
+{
+    "annotations":  {
+                        "list":  [
+
+                                 ]
+                    },
+    "description":  "동일 고정 100 RPS의 e0149→bfb1 실제 저장 시계열 비교",
+    "editable":  false,
+    "graphTooltip":  1,
+    "links":  [
+
+              ],
+    "panels":  [
+                   {
+                       "id":  1,
+                       "title":  "비교 기준",
+                       "type":  "text",
+                       "gridPos":  {
+                                       "h":  7,
+                                       "w":  24,
+                                       "x":  0,
+                                       "y":  0
+                                   },
+                       "options":  {
+                                       "mode":  "markdown",
+                                       "content":  "### Outbox 파이프라인 고정 처리율 비교\r\n\r\n- 공통 조건: 동일 워밍업·초기화, 동일 VM·DB·캐시 구성\r\n- 부하: 30초 0→100 RPS, 이후 3분간 100 RPS 유지\r\n- 안정 구간: 경과 90~210초, 그래프는 330초까지 회복 구간 포함\r\n- Outbox 발행 TPS: `67.67 → 100.02` (+47.8%)\r\n- publishable backlog 최대: `5,895 → 9` (-99.8%)\r\n- 평균 응답시간: `48.28ms → 33.71ms` (-30.2%)\r\n- p95: `85.95ms → 46.25ms` (-46.2%)"
+                                   }
+                   },
+                   {
+                       "id":  2,
+                       "title":  "배송 성공 TPS",
+                       "description":  "동일 100 RPS 입력이 유지됐는지 확인",
+                       "type":  "timeseries",
+                       "datasource":  {
+                                          "type":  "grafana-testdata-datasource",
+                                          "uid":  "hublink-comparison-csv"
+                                      },
+                       "gridPos":  {
+                                       "h":  9,
+                                       "w":  12,
+                                       "x":  0,
+                                       "y":  7
+                                   },
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "min":  0,
+                                                            "max":  110,
+                                                            "unit":  "reqps",
+                                                            "color":  {
+                                                                          "mode":  "palette-classic"
+                                                                      },
+                                                            "thresholds":  {
+                                                                               "mode":  "absolute",
+                                                                               "steps":  [
+                                                                                             {
+                                                                                                 "color":  "green",
+                                                                                                 "value":  null
+                                                                                             }
+                                                                                         ]
+                                                                           },
+                                                            "custom":  {
+                                                                           "axisBorderShow":  false,
+                                                                           "axisCenteredZero":  false,
+                                                                           "axisColorMode":  "text",
+                                                                           "axisPlacement":  "auto",
+                                                                           "drawStyle":  "line",
+                                                                           "fillOpacity":  8,
+                                                                           "gradientMode":  "none",
+                                                                           "lineInterpolation":  "linear",
+                                                                           "lineWidth":  3,
+                                                                           "pointSize":  4,
+                                                                           "showPoints":  "never",
+                                                                           "spanNulls":  false,
+                                                                           "stacking":  {
+                                                                                            "mode":  "none",
+                                                                                            "group":  "A"
+                                                                                        },
+                                                                           "thresholdsStyle":  {
+                                                                                                   "mode":  "off"
+                                                                                               }
+                                                                       }
+                                                        },
+                                           "overrides":  [
+                                                             {
+                                                                 "matcher":  {
+                                                                                 "id":  "byName",
+                                                                                 "options":  "개선 전 e0149 (순차 발행·단건 UPDATE)"
+                                                                             },
+                                                                 "properties":  [
+                                                                                    {
+                                                                                        "id":  "color",
+                                                                                        "value":  {
+                                                                                                      "mode":  "fixed",
+                                                                                                      "fixedColor":  "red"
+                                                                                                  }
+                                                                                    }
+                                                                                ]
+                                                             },
+                                                             {
+                                                                 "matcher":  {
+                                                                                 "id":  "byName",
+                                                                                 "options":  "개선 후 bfb1 (병렬 발행·배치 UPDATE)"
+                                                                             },
+                                                                 "properties":  [
+                                                                                    {
+                                                                                        "id":  "color",
+                                                                                        "value":  {
+                                                                                                      "mode":  "fixed",
+                                                                                                      "fixedColor":  "green"
+                                                                                                  }
+                                                                                    }
+                                                                                ]
+                                                             }
+                                                         ]
+                                       },
+                       "options":  {
+                                       "legend":  {
+                                                      "showLegend":  true,
+                                                      "displayMode":  "table",
+                                                      "placement":  "bottom",
+                                                      "calcs":  [
+                                                                    "mean",
+                                                                    "max",
+                                                                    "lastNotNull"
+                                                                ]
+                                                  },
+                                       "tooltip":  {
+                                                       "mode":  "multi",
+                                                       "sort":  "desc",
+                                                       "hideZeros":  false
+                                                   }
+                                   },
+                       "targets":  [
+                                       {
+                                           "refId":  "A",
+                                           "datasource":  {
+                                                              "type":  "grafana-testdata-datasource",
+                                                              "uid":  "hublink-comparison-csv"
+                                                          },
+                                           "scenarioId":  "csv_content",
+                                           "format":  "time_series",
+                                           "csvContent":  "\"Time\",\"개선 전 e0149 (순차 발행·단건 UPDATE)\",\"개선 후 bfb1 (병렬 발행·배치 UPDATE)\"\n\"2026-01-01 00:00:00\",\"0\",\"0\"\n\"2026-01-01 00:00:15\",\"6.903733\",\"0\"\n\"2026-01-01 00:00:30\",\"9\",\"28.533333\"\n\"2026-01-01 00:00:45\",\"51.323787\",\"28.533333\"\n\"2026-01-01 00:01:00\",\"72.20712\",\"96.966667\"\n\"2026-01-01 00:01:15\",\"100.2\",\"96.966667\"\n\"2026-01-01 00:01:30\",\"100.2\",\"100.066667\"\n\"2026-01-01 00:01:45\",\"99.866667\",\"100.066667\"\n\"2026-01-01 00:02:00\",\"99.866667\",\"100\"\n\"2026-01-01 00:02:15\",\"99.9\",\"100\"\n\"2026-01-01 00:02:30\",\"99.9\",\"99.933333\"\n\"2026-01-01 00:02:45\",\"100\",\"99.933333\"\n\"2026-01-01 00:03:00\",\"100\",\"100.033333\"\n\"2026-01-01 00:03:15\",\"100.066667\",\"100.033333\"\n\"2026-01-01 00:03:30\",\"100.066667\",\"100\"\n\"2026-01-01 00:03:45\",\"57.366667\",\"100\"\n\"2026-01-01 00:04:00\",\"57.366667\",\"24.433333\"\n\"2026-01-01 00:04:15\",\"0\",\"24.433333\"\n\"2026-01-01 00:04:30\",\"0\",\"0\"\n\"2026-01-01 00:04:45\",\"0\",\"0\"\n\"2026-01-01 00:05:00\",\"0\",\"0\"\n\"2026-01-01 00:05:15\",\"0\",\"0\"\n\"2026-01-01 00:05:30\",\"0\",\"0\""
+                                       }
+                                   ],
+                       "transformations":  [
+                                               {
+                                                   "id":  "convertFieldType",
+                                                   "options":  {
+                                                                   "conversions":  [
+                                                                                       {
+                                                                                           "targetField":  "Time",
+                                                                                           "destinationType":  "time"
+                                                                                       }
+                                                                                   ]
+                                                               }
+                                               }
+                                           ]
+                   },
+                   {
+                       "id":  3,
+                       "title":  "배송 API 평균 지연",
+                       "description":  "Prometheus 1분 rate 기준 내부 평균 응답시간",
+                       "type":  "timeseries",
+                       "datasource":  {
+                                          "type":  "grafana-testdata-datasource",
+                                          "uid":  "hublink-comparison-csv"
+                                      },
+                       "gridPos":  {
+                                       "h":  9,
+                                       "w":  12,
+                                       "x":  12,
+                                       "y":  7
+                                   },
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "min":  0,
+                                                            "max":  100,
+                                                            "unit":  "ms",
+                                                            "color":  {
+                                                                          "mode":  "palette-classic"
+                                                                      },
+                                                            "thresholds":  {
+                                                                               "mode":  "absolute",
+                                                                               "steps":  [
+                                                                                             {
+                                                                                                 "color":  "green",
+                                                                                                 "value":  null
+                                                                                             }
+                                                                                         ]
+                                                                           },
+                                                            "custom":  {
+                                                                           "axisBorderShow":  false,
+                                                                           "axisCenteredZero":  false,
+                                                                           "axisColorMode":  "text",
+                                                                           "axisPlacement":  "auto",
+                                                                           "drawStyle":  "line",
+                                                                           "fillOpacity":  8,
+                                                                           "gradientMode":  "none",
+                                                                           "lineInterpolation":  "linear",
+                                                                           "lineWidth":  3,
+                                                                           "pointSize":  4,
+                                                                           "showPoints":  "never",
+                                                                           "spanNulls":  false,
+                                                                           "stacking":  {
+                                                                                            "mode":  "none",
+                                                                                            "group":  "A"
+                                                                                        },
+                                                                           "thresholdsStyle":  {
+                                                                                                   "mode":  "off"
+                                                                                               }
+                                                                       }
+                                                        },
+                                           "overrides":  [
+                                                             {
+                                                                 "matcher":  {
+                                                                                 "id":  "byName",
+                                                                                 "options":  "개선 전 e0149 (순차 발행·단건 UPDATE)"
+                                                                             },
+                                                                 "properties":  [
+                                                                                    {
+                                                                                        "id":  "color",
+                                                                                        "value":  {
+                                                                                                      "mode":  "fixed",
+                                                                                                      "fixedColor":  "red"
+                                                                                                  }
+                                                                                    }
+                                                                                ]
+                                                             },
+                                                             {
+                                                                 "matcher":  {
+                                                                                 "id":  "byName",
+                                                                                 "options":  "개선 후 bfb1 (병렬 발행·배치 UPDATE)"
+                                                                             },
+                                                                 "properties":  [
+                                                                                    {
+                                                                                        "id":  "color",
+                                                                                        "value":  {
+                                                                                                      "mode":  "fixed",
+                                                                                                      "fixedColor":  "green"
+                                                                                                  }
+                                                                                    }
+                                                                                ]
+                                                             }
+                                                         ]
+                                       },
+                       "options":  {
+                                       "legend":  {
+                                                      "showLegend":  true,
+                                                      "displayMode":  "table",
+                                                      "placement":  "bottom",
+                                                      "calcs":  [
+                                                                    "mean",
+                                                                    "max",
+                                                                    "lastNotNull"
+                                                                ]
+                                                  },
+                                       "tooltip":  {
+                                                       "mode":  "multi",
+                                                       "sort":  "desc",
+                                                       "hideZeros":  false
+                                                   }
+                                   },
+                       "targets":  [
+                                       {
+                                           "refId":  "A",
+                                           "datasource":  {
+                                                              "type":  "grafana-testdata-datasource",
+                                                              "uid":  "hublink-comparison-csv"
+                                                          },
+                                           "scenarioId":  "csv_content",
+                                           "format":  "time_series",
+                                           "csvContent":  "\"Time\",\"개선 전 e0149 (순차 발행·단건 UPDATE)\",\"개선 후 bfb1 (병렬 발행·배치 UPDATE)\"\n\"2026-01-01 00:00:00\",\"\",\"\"\n\"2026-01-01 00:00:15\",\"59.372\",\"\"\n\"2026-01-01 00:00:30\",\"55.781\",\"28.056\"\n\"2026-01-01 00:00:45\",\"58.315\",\"28.056\"\n\"2026-01-01 00:01:00\",\"58.262\",\"34.925\"\n\"2026-01-01 00:01:15\",\"58.35\",\"34.925\"\n\"2026-01-01 00:01:30\",\"58.35\",\"33.147\"\n\"2026-01-01 00:01:45\",\"51.393\",\"33.147\"\n\"2026-01-01 00:02:00\",\"51.393\",\"34.195\"\n\"2026-01-01 00:02:15\",\"41.917\",\"34.195\"\n\"2026-01-01 00:02:30\",\"41.917\",\"32.651\"\n\"2026-01-01 00:02:45\",\"36.356\",\"32.651\"\n\"2026-01-01 00:03:00\",\"36.356\",\"33.581\"\n\"2026-01-01 00:03:15\",\"33.988\",\"33.581\"\n\"2026-01-01 00:03:30\",\"33.988\",\"32.031\"\n\"2026-01-01 00:03:45\",\"48.327\",\"32.031\"\n\"2026-01-01 00:04:00\",\"48.327\",\"31.528\"\n\"2026-01-01 00:04:15\",\"\",\"31.528\"\n\"2026-01-01 00:04:30\",\"\",\"\"\n\"2026-01-01 00:04:45\",\"\",\"\"\n\"2026-01-01 00:05:00\",\"\",\"\"\n\"2026-01-01 00:05:15\",\"\",\"\"\n\"2026-01-01 00:05:30\",\"\",\"\""
+                                       }
+                                   ],
+                       "transformations":  [
+                                               {
+                                                   "id":  "convertFieldType",
+                                                   "options":  {
+                                                                   "conversions":  [
+                                                                                       {
+                                                                                           "targetField":  "Time",
+                                                                                           "destinationType":  "time"
+                                                                                       }
+                                                                                   ]
+                                                               }
+                                               }
+                                           ]
+                   },
+                   {
+                       "id":  4,
+                       "title":  "Outbox Published TPS",
+                       "description":  "delivery.create.succeed Kafka 발행 처리량",
+                       "type":  "timeseries",
+                       "datasource":  {
+                                          "type":  "grafana-testdata-datasource",
+                                          "uid":  "hublink-comparison-csv"
+                                      },
+                       "gridPos":  {
+                                       "h":  9,
+                                       "w":  12,
+                                       "x":  0,
+                                       "y":  16
+                                   },
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "min":  0,
+                                                            "max":  110,
+                                                            "unit":  "ops",
+                                                            "color":  {
+                                                                          "mode":  "palette-classic"
+                                                                      },
+                                                            "thresholds":  {
+                                                                               "mode":  "absolute",
+                                                                               "steps":  [
+                                                                                             {
+                                                                                                 "color":  "green",
+                                                                                                 "value":  null
+                                                                                             }
+                                                                                         ]
+                                                                           },
+                                                            "custom":  {
+                                                                           "axisBorderShow":  false,
+                                                                           "axisCenteredZero":  false,
+                                                                           "axisColorMode":  "text",
+                                                                           "axisPlacement":  "auto",
+                                                                           "drawStyle":  "line",
+                                                                           "fillOpacity":  8,
+                                                                           "gradientMode":  "none",
+                                                                           "lineInterpolation":  "linear",
+                                                                           "lineWidth":  3,
+                                                                           "pointSize":  4,
+                                                                           "showPoints":  "never",
+                                                                           "spanNulls":  false,
+                                                                           "stacking":  {
+                                                                                            "mode":  "none",
+                                                                                            "group":  "A"
+                                                                                        },
+                                                                           "thresholdsStyle":  {
+                                                                                                   "mode":  "off"
+                                                                                               }
+                                                                       }
+                                                        },
+                                           "overrides":  [
+                                                             {
+                                                                 "matcher":  {
+                                                                                 "id":  "byName",
+                                                                                 "options":  "개선 전 e0149 (순차 발행·단건 UPDATE)"
+                                                                             },
+                                                                 "properties":  [
+                                                                                    {
+                                                                                        "id":  "color",
+                                                                                        "value":  {
+                                                                                                      "mode":  "fixed",
+                                                                                                      "fixedColor":  "red"
+                                                                                                  }
+                                                                                    }
+                                                                                ]
+                                                             },
+                                                             {
+                                                                 "matcher":  {
+                                                                                 "id":  "byName",
+                                                                                 "options":  "개선 후 bfb1 (병렬 발행·배치 UPDATE)"
+                                                                             },
+                                                                 "properties":  [
+                                                                                    {
+                                                                                        "id":  "color",
+                                                                                        "value":  {
+                                                                                                      "mode":  "fixed",
+                                                                                                      "fixedColor":  "green"
+                                                                                                  }
+                                                                                    }
+                                                                                ]
+                                                             }
+                                                         ]
+                                       },
+                       "options":  {
+                                       "legend":  {
+                                                      "showLegend":  true,
+                                                      "displayMode":  "table",
+                                                      "placement":  "bottom",
+                                                      "calcs":  [
+                                                                    "mean",
+                                                                    "max",
+                                                                    "lastNotNull"
+                                                                ]
+                                                  },
+                                       "tooltip":  {
+                                                       "mode":  "multi",
+                                                       "sort":  "desc",
+                                                       "hideZeros":  false
+                                                   }
+                                   },
+                       "targets":  [
+                                       {
+                                           "refId":  "A",
+                                           "datasource":  {
+                                                              "type":  "grafana-testdata-datasource",
+                                                              "uid":  "hublink-comparison-csv"
+                                                          },
+                                           "scenarioId":  "csv_content",
+                                           "format":  "time_series",
+                                           "csvContent":  "\"Time\",\"개선 전 e0149 (순차 발행·단건 UPDATE)\",\"개선 후 bfb1 (병렬 발행·배치 UPDATE)\"\n\"2026-01-01 00:00:00\",\"0\",\"0\"\n\"2026-01-01 00:00:15\",\"1.5\",\"61.533333\"\n\"2026-01-01 00:00:30\",\"1.5\",\"61.533333\"\n\"2026-01-01 00:00:45\",\"53.733333\",\"77.666667\"\n\"2026-01-01 00:01:00\",\"53.733333\",\"77.666667\"\n\"2026-01-01 00:01:15\",\"66.666667\",\"100.2\"\n\"2026-01-01 00:01:30\",\"66.666667\",\"100.2\"\n\"2026-01-01 00:01:45\",\"63.333333\",\"99.833333\"\n\"2026-01-01 00:02:00\",\"63.333333\",\"99.833333\"\n\"2026-01-01 00:02:15\",\"66.733333\",\"100.233333\"\n\"2026-01-01 00:02:30\",\"66.733333\",\"100.233333\"\n\"2026-01-01 00:02:45\",\"69.933333\",\"99.966667\"\n\"2026-01-01 00:03:00\",\"69.933333\",\"99.966667\"\n\"2026-01-01 00:03:15\",\"71.2\",\"99.966667\"\n\"2026-01-01 00:03:30\",\"71.2\",\"99.966667\"\n\"2026-01-01 00:03:45\",\"70.1\",\"66.566667\"\n\"2026-01-01 00:04:00\",\"70.1\",\"66.566667\"\n\"2026-01-01 00:04:15\",\"75.366667\",\"0\"\n\"2026-01-01 00:04:30\",\"75.366667\",\"0\"\n\"2026-01-01 00:04:45\",\"79.8\",\"0\"\n\"2026-01-01 00:05:00\",\"79.8\",\"0\"\n\"2026-01-01 00:05:15\",\"31.566667\",\"0\"\n\"2026-01-01 00:05:30\",\"31.566667\",\"0\""
+                                       }
+                                   ],
+                       "transformations":  [
+                                               {
+                                                   "id":  "convertFieldType",
+                                                   "options":  {
+                                                                   "conversions":  [
+                                                                                       {
+                                                                                           "targetField":  "Time",
+                                                                                           "destinationType":  "time"
+                                                                                       }
+                                                                                   ]
+                                                               }
+                                               }
+                                           ]
+                   },
+                   {
+                       "id":  5,
+                       "title":  "Outbox Publishable Backlog",
+                       "description":  "PENDING + 재시도 가능한 FAILED 건수",
+                       "type":  "timeseries",
+                       "datasource":  {
+                                          "type":  "grafana-testdata-datasource",
+                                          "uid":  "hublink-comparison-csv"
+                                      },
+                       "gridPos":  {
+                                       "h":  9,
+                                       "w":  12,
+                                       "x":  12,
+                                       "y":  16
+                                   },
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "min":  0,
+                                                            "max":  6000,
+                                                            "unit":  "short",
+                                                            "color":  {
+                                                                          "mode":  "palette-classic"
+                                                                      },
+                                                            "thresholds":  {
+                                                                               "mode":  "absolute",
+                                                                               "steps":  [
+                                                                                             {
+                                                                                                 "color":  "green",
+                                                                                                 "value":  null
+                                                                                             }
+                                                                                         ]
+                                                                           },
+                                                            "custom":  {
+                                                                           "axisBorderShow":  false,
+                                                                           "axisCenteredZero":  false,
+                                                                           "axisColorMode":  "text",
+                                                                           "axisPlacement":  "auto",
+                                                                           "drawStyle":  "line",
+                                                                           "fillOpacity":  8,
+                                                                           "gradientMode":  "none",
+                                                                           "lineInterpolation":  "linear",
+                                                                           "lineWidth":  3,
+                                                                           "pointSize":  4,
+                                                                           "showPoints":  "never",
+                                                                           "spanNulls":  false,
+                                                                           "stacking":  {
+                                                                                            "mode":  "none",
+                                                                                            "group":  "A"
+                                                                                        },
+                                                                           "thresholdsStyle":  {
+                                                                                                   "mode":  "off"
+                                                                                               }
+                                                                       }
+                                                        },
+                                           "overrides":  [
+                                                             {
+                                                                 "matcher":  {
+                                                                                 "id":  "byName",
+                                                                                 "options":  "개선 전 e0149 (순차 발행·단건 UPDATE)"
+                                                                             },
+                                                                 "properties":  [
+                                                                                    {
+                                                                                        "id":  "color",
+                                                                                        "value":  {
+                                                                                                      "mode":  "fixed",
+                                                                                                      "fixedColor":  "red"
+                                                                                                  }
+                                                                                    }
+                                                                                ]
+                                                             },
+                                                             {
+                                                                 "matcher":  {
+                                                                                 "id":  "byName",
+                                                                                 "options":  "개선 후 bfb1 (병렬 발행·배치 UPDATE)"
+                                                                             },
+                                                                 "properties":  [
+                                                                                    {
+                                                                                        "id":  "color",
+                                                                                        "value":  {
+                                                                                                      "mode":  "fixed",
+                                                                                                      "fixedColor":  "green"
+                                                                                                  }
+                                                                                    }
+                                                                                ]
+                                                             }
+                                                         ]
+                                       },
+                       "options":  {
+                                       "legend":  {
+                                                      "showLegend":  true,
+                                                      "displayMode":  "table",
+                                                      "placement":  "bottom",
+                                                      "calcs":  [
+                                                                    "mean",
+                                                                    "max",
+                                                                    "lastNotNull"
+                                                                ]
+                                                  },
+                                       "tooltip":  {
+                                                       "mode":  "multi",
+                                                       "sort":  "desc",
+                                                       "hideZeros":  false
+                                                   }
+                                   },
+                       "targets":  [
+                                       {
+                                           "refId":  "A",
+                                           "datasource":  {
+                                                              "type":  "grafana-testdata-datasource",
+                                                              "uid":  "hublink-comparison-csv"
+                                                          },
+                                           "scenarioId":  "csv_content",
+                                           "format":  "time_series",
+                                           "csvContent":  "\"Time\",\"개선 전 e0149 (순차 발행·단건 UPDATE)\",\"개선 후 bfb1 (병렬 발행·배치 UPDATE)\"\n\"2026-01-01 00:00:00\",\"0\",\"0\"\n\"2026-01-01 00:00:15\",\"31\",\"0\"\n\"2026-01-01 00:00:30\",\"153\",\"4\"\n\"2026-01-01 00:00:45\",\"703\",\"5\"\n\"2026-01-01 00:01:00\",\"1027\",\"1\"\n\"2026-01-01 00:01:15\",\"1703\",\"6\"\n\"2026-01-01 00:01:30\",\"2105\",\"9\"\n\"2026-01-01 00:01:45\",\"2803\",\"7\"\n\"2026-01-01 00:02:00\",\"3104\",\"7\"\n\"2026-01-01 00:02:15\",\"3754\",\"7\"\n\"2026-01-01 00:02:30\",\"4062\",\"9\"\n\"2026-01-01 00:02:45\",\"4639\",\"7\"\n\"2026-01-01 00:03:00\",\"4910\",\"6\"\n\"2026-01-01 00:03:15\",\"5505\",\"9\"\n\"2026-01-01 00:03:30\",\"5895\",\"7\"\n\"2026-01-01 00:03:45\",\"4910\",\"0\"\n\"2026-01-01 00:04:00\",\"4165\",\"0\"\n\"2026-01-01 00:04:15\",\"2641\",\"0\"\n\"2026-01-01 00:04:30\",\"1841\",\"0\"\n\"2026-01-01 00:04:45\",\"241\",\"0\"\n\"2026-01-01 00:05:00\",\"0\",\"0\"\n\"2026-01-01 00:05:15\",\"0\",\"0\"\n\"2026-01-01 00:05:30\",\"0\",\"0\""
+                                       }
+                                   ],
+                       "transformations":  [
+                                               {
+                                                   "id":  "convertFieldType",
+                                                   "options":  {
+                                                                   "conversions":  [
+                                                                                       {
+                                                                                           "targetField":  "Time",
+                                                                                           "destinationType":  "time"
+                                                                                       }
+                                                                                   ]
+                                                               }
+                                               }
+                                           ]
+                   },
+                   {
+                       "id":  6,
+                       "title":  "Delivery process CPU",
+                       "description":  "배송 API와 Outbox publisher가 공유하는 프로세스 CPU",
+                       "type":  "timeseries",
+                       "datasource":  {
+                                          "type":  "grafana-testdata-datasource",
+                                          "uid":  "hublink-comparison-csv"
+                                      },
+                       "gridPos":  {
+                                       "h":  9,
+                                       "w":  12,
+                                       "x":  0,
+                                       "y":  25
+                                   },
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "min":  0,
+                                                            "max":  100,
+                                                            "unit":  "percent",
+                                                            "color":  {
+                                                                          "mode":  "palette-classic"
+                                                                      },
+                                                            "thresholds":  {
+                                                                               "mode":  "absolute",
+                                                                               "steps":  [
+                                                                                             {
+                                                                                                 "color":  "green",
+                                                                                                 "value":  null
+                                                                                             }
+                                                                                         ]
+                                                                           },
+                                                            "custom":  {
+                                                                           "axisBorderShow":  false,
+                                                                           "axisCenteredZero":  false,
+                                                                           "axisColorMode":  "text",
+                                                                           "axisPlacement":  "auto",
+                                                                           "drawStyle":  "line",
+                                                                           "fillOpacity":  8,
+                                                                           "gradientMode":  "none",
+                                                                           "lineInterpolation":  "linear",
+                                                                           "lineWidth":  3,
+                                                                           "pointSize":  4,
+                                                                           "showPoints":  "never",
+                                                                           "spanNulls":  false,
+                                                                           "stacking":  {
+                                                                                            "mode":  "none",
+                                                                                            "group":  "A"
+                                                                                        },
+                                                                           "thresholdsStyle":  {
+                                                                                                   "mode":  "off"
+                                                                                               }
+                                                                       }
+                                                        },
+                                           "overrides":  [
+                                                             {
+                                                                 "matcher":  {
+                                                                                 "id":  "byName",
+                                                                                 "options":  "개선 전 e0149 (순차 발행·단건 UPDATE)"
+                                                                             },
+                                                                 "properties":  [
+                                                                                    {
+                                                                                        "id":  "color",
+                                                                                        "value":  {
+                                                                                                      "mode":  "fixed",
+                                                                                                      "fixedColor":  "red"
+                                                                                                  }
+                                                                                    }
+                                                                                ]
+                                                             },
+                                                             {
+                                                                 "matcher":  {
+                                                                                 "id":  "byName",
+                                                                                 "options":  "개선 후 bfb1 (병렬 발행·배치 UPDATE)"
+                                                                             },
+                                                                 "properties":  [
+                                                                                    {
+                                                                                        "id":  "color",
+                                                                                        "value":  {
+                                                                                                      "mode":  "fixed",
+                                                                                                      "fixedColor":  "green"
+                                                                                                  }
+                                                                                    }
+                                                                                ]
+                                                             }
+                                                         ]
+                                       },
+                       "options":  {
+                                       "legend":  {
+                                                      "showLegend":  true,
+                                                      "displayMode":  "table",
+                                                      "placement":  "bottom",
+                                                      "calcs":  [
+                                                                    "mean",
+                                                                    "max",
+                                                                    "lastNotNull"
+                                                                ]
+                                                  },
+                                       "tooltip":  {
+                                                       "mode":  "multi",
+                                                       "sort":  "desc",
+                                                       "hideZeros":  false
+                                                   }
+                                   },
+                       "targets":  [
+                                       {
+                                           "refId":  "A",
+                                           "datasource":  {
+                                                              "type":  "grafana-testdata-datasource",
+                                                              "uid":  "hublink-comparison-csv"
+                                                          },
+                                           "scenarioId":  "csv_content",
+                                           "format":  "time_series",
+                                           "csvContent":  "\"Time\",\"개선 전 e0149 (순차 발행·단건 UPDATE)\",\"개선 후 bfb1 (병렬 발행·배치 UPDATE)\"\n\"2026-01-01 00:00:00\",\"3.509358\",\"1.499001\"\n\"2026-01-01 00:00:15\",\"26.126725\",\"1.499001\"\n\"2026-01-01 00:00:30\",\"26.126725\",\"11.311394\"\n\"2026-01-01 00:00:45\",\"96.103027\",\"11.311394\"\n\"2026-01-01 00:01:00\",\"96.103027\",\"38.847584\"\n\"2026-01-01 00:01:15\",\"96.623767\",\"38.847584\"\n\"2026-01-01 00:01:30\",\"96.623767\",\"40.020384\"\n\"2026-01-01 00:01:45\",\"95.623009\",\"40.020384\"\n\"2026-01-01 00:02:00\",\"95.623009\",\"38.192321\"\n\"2026-01-01 00:02:15\",\"90.173313\",\"38.192321\"\n\"2026-01-01 00:02:30\",\"90.173313\",\"38.601256\"\n\"2026-01-01 00:02:45\",\"75.996636\",\"38.601256\"\n\"2026-01-01 00:03:00\",\"75.996636\",\"40.112226\"\n\"2026-01-01 00:03:15\",\"57.200335\",\"40.112226\"\n\"2026-01-01 00:03:30\",\"57.200335\",\"39.64467\"\n\"2026-01-01 00:03:45\",\"37.024106\",\"39.64467\"\n\"2026-01-01 00:04:00\",\"37.024106\",\"14.228323\"\n\"2026-01-01 00:04:15\",\"16.968589\",\"14.228323\"\n\"2026-01-01 00:04:30\",\"16.968589\",\"6.490022\"\n\"2026-01-01 00:04:45\",\"12.924828\",\"6.490022\"\n\"2026-01-01 00:05:00\",\"12.924828\",\"5.89516\"\n\"2026-01-01 00:05:15\",\"10.992137\",\"5.89516\"\n\"2026-01-01 00:05:30\",\"10.992137\",\"6.484414\""
+                                       }
+                                   ],
+                       "transformations":  [
+                                               {
+                                                   "id":  "convertFieldType",
+                                                   "options":  {
+                                                                   "conversions":  [
+                                                                                       {
+                                                                                           "targetField":  "Time",
+                                                                                           "destinationType":  "time"
+                                                                                       }
+                                                                                   ]
+                                                               }
+                                               }
+                                           ]
+                   },
+                   {
+                       "id":  7,
+                       "title":  "Data VM CPU",
+                       "description":  "PostgreSQL·Kafka·Redis 공유 VM CPU",
+                       "type":  "timeseries",
+                       "datasource":  {
+                                          "type":  "grafana-testdata-datasource",
+                                          "uid":  "hublink-comparison-csv"
+                                      },
+                       "gridPos":  {
+                                       "h":  9,
+                                       "w":  12,
+                                       "x":  12,
+                                       "y":  25
+                                   },
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "min":  0,
+                                                            "max":  100,
+                                                            "unit":  "percent",
+                                                            "color":  {
+                                                                          "mode":  "palette-classic"
+                                                                      },
+                                                            "thresholds":  {
+                                                                               "mode":  "absolute",
+                                                                               "steps":  [
+                                                                                             {
+                                                                                                 "color":  "green",
+                                                                                                 "value":  null
+                                                                                             }
+                                                                                         ]
+                                                                           },
+                                                            "custom":  {
+                                                                           "axisBorderShow":  false,
+                                                                           "axisCenteredZero":  false,
+                                                                           "axisColorMode":  "text",
+                                                                           "axisPlacement":  "auto",
+                                                                           "drawStyle":  "line",
+                                                                           "fillOpacity":  8,
+                                                                           "gradientMode":  "none",
+                                                                           "lineInterpolation":  "linear",
+                                                                           "lineWidth":  3,
+                                                                           "pointSize":  4,
+                                                                           "showPoints":  "never",
+                                                                           "spanNulls":  false,
+                                                                           "stacking":  {
+                                                                                            "mode":  "none",
+                                                                                            "group":  "A"
+                                                                                        },
+                                                                           "thresholdsStyle":  {
+                                                                                                   "mode":  "off"
+                                                                                               }
+                                                                       }
+                                                        },
+                                           "overrides":  [
+                                                             {
+                                                                 "matcher":  {
+                                                                                 "id":  "byName",
+                                                                                 "options":  "개선 전 e0149 (순차 발행·단건 UPDATE)"
+                                                                             },
+                                                                 "properties":  [
+                                                                                    {
+                                                                                        "id":  "color",
+                                                                                        "value":  {
+                                                                                                      "mode":  "fixed",
+                                                                                                      "fixedColor":  "red"
+                                                                                                  }
+                                                                                    }
+                                                                                ]
+                                                             },
+                                                             {
+                                                                 "matcher":  {
+                                                                                 "id":  "byName",
+                                                                                 "options":  "개선 후 bfb1 (병렬 발행·배치 UPDATE)"
+                                                                             },
+                                                                 "properties":  [
+                                                                                    {
+                                                                                        "id":  "color",
+                                                                                        "value":  {
+                                                                                                      "mode":  "fixed",
+                                                                                                      "fixedColor":  "green"
+                                                                                                  }
+                                                                                    }
+                                                                                ]
+                                                             }
+                                                         ]
+                                       },
+                       "options":  {
+                                       "legend":  {
+                                                      "showLegend":  true,
+                                                      "displayMode":  "table",
+                                                      "placement":  "bottom",
+                                                      "calcs":  [
+                                                                    "mean",
+                                                                    "max",
+                                                                    "lastNotNull"
+                                                                ]
+                                                  },
+                                       "tooltip":  {
+                                                       "mode":  "multi",
+                                                       "sort":  "desc",
+                                                       "hideZeros":  false
+                                                   }
+                                   },
+                       "targets":  [
+                                       {
+                                           "refId":  "A",
+                                           "datasource":  {
+                                                              "type":  "grafana-testdata-datasource",
+                                                              "uid":  "hublink-comparison-csv"
+                                                          },
+                                           "scenarioId":  "csv_content",
+                                           "format":  "time_series",
+                                           "csvContent":  "\"Time\",\"개선 전 e0149 (순차 발행·단건 UPDATE)\",\"개선 후 bfb1 (병렬 발행·배치 UPDATE)\"\n\"2026-01-01 00:00:00\",\"15.308333\",\"16.2\"\n\"2026-01-01 00:00:15\",\"15.308333\",\"25.466667\"\n\"2026-01-01 00:00:30\",\"30.908333\",\"25.466667\"\n\"2026-01-01 00:00:45\",\"30.908333\",\"59.55\"\n\"2026-01-01 00:01:00\",\"54.858333\",\"59.55\"\n\"2026-01-01 00:01:15\",\"54.858333\",\"67.533333\"\n\"2026-01-01 00:01:30\",\"59.483333\",\"67.533333\"\n\"2026-01-01 00:01:45\",\"59.483333\",\"64.683333\"\n\"2026-01-01 00:02:00\",\"56.566667\",\"64.683333\"\n\"2026-01-01 00:02:15\",\"56.566667\",\"66.85\"\n\"2026-01-01 00:02:30\",\"58.541667\",\"66.85\"\n\"2026-01-01 00:02:45\",\"58.541667\",\"63.566667\"\n\"2026-01-01 00:03:00\",\"57.658333\",\"63.566667\"\n\"2026-01-01 00:03:15\",\"57.658333\",\"65.258333\"\n\"2026-01-01 00:03:30\",\"63.525\",\"65.258333\"\n\"2026-01-01 00:03:45\",\"63.525\",\"42.533333\"\n\"2026-01-01 00:04:00\",\"31.925\",\"42.533333\"\n\"2026-01-01 00:04:15\",\"31.925\",\"24.766667\"\n\"2026-01-01 00:04:30\",\"20.4\",\"24.766667\"\n\"2026-01-01 00:04:45\",\"20.4\",\"20.991667\"\n\"2026-01-01 00:05:00\",\"19.383333\",\"20.991667\"\n\"2026-01-01 00:05:15\",\"19.383333\",\"24.758333\"\n\"2026-01-01 00:05:30\",\"15.141667\",\"24.758333\""
+                                       }
+                                   ],
+                       "transformations":  [
+                                               {
+                                                   "id":  "convertFieldType",
+                                                   "options":  {
+                                                                   "conversions":  [
+                                                                                       {
+                                                                                           "targetField":  "Time",
+                                                                                           "destinationType":  "time"
+                                                                                       }
+                                                                                   ]
+                                                               }
+                                               }
+                                           ]
+                   }
+               ],
+    "refresh":  "",
+    "schemaVersion":  42,
+    "tags":  [
+                 "delivery",
+                 "performance-test",
+                 "comparison",
+                 "timeseries",
+                 "fixed-rps",
+                 "outbox"
+             ],
+    "templating":  {
+                       "list":  [
+
+                                ]
+                   },
+    "time":  {
+                 "from":  "2026-01-01T00:00:00.000Z",
+                 "to":  "2026-01-01T00:05:30.000Z"
+             },
+    "timepicker":  {
+                       "hidden":  true
+                   },
+    "timezone":  "utc",
+    "title":  "04. Outbox 파이프라인 TPS - 고정 100 RPS",
+    "uid":  "pf-rps-outbox"
+}

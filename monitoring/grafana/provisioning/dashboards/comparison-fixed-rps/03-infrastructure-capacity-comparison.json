@@ -1,0 +1,875 @@
+{
+    "annotations":  {
+                        "list":  [
+
+                                 ]
+                    },
+    "description":  "동일 실행 모델의 100~170 RPS 저장 시계열로 처리 한계 산정",
+    "editable":  false,
+    "graphTooltip":  1,
+    "links":  [
+
+              ],
+    "panels":  [
+                   {
+                       "id":  1,
+                       "title":  "비교 기준",
+                       "type":  "text",
+                       "gridPos":  {
+                                       "h":  7,
+                                       "w":  24,
+                                       "x":  0,
+                                       "y":  0
+                                   },
+                       "options":  {
+                                       "mode":  "markdown",
+                                       "content":  "### 측정 기반 인프라 용량 산정\r\n\r\n- 공통 조건: 최종 D 이미지, 5 RPS 30초 워밍업 후 초기화\r\n- 부하 모델: 각 목표까지 30초 상승, 이후 3분 고정 유지\r\n- 100~170 RPS 모두 실패·dropped iteration 0건\r\n- 권장 지속 부하: 150 RPS 이하\r\n- 160 RPS부터 지연과 DB CPU 급증, 170 RPS Data VM CPU 평균 95.40%\r\n- Hikari pending은 전 구간 0으로 앱 풀보다 PostgreSQL CPU가 선행 한계\r\n- 스케일업·VM 분리 전 고정 RPS 원본은 없으며, 전후 비교는 100VU 대시보드에서 제공"
+                                   }
+                   },
+                   {
+                       "id":  2,
+                       "title":  "목표별 성공 TPS",
+                       "description":  "고정 입력을 손실 없이 처리한 시계열",
+                       "type":  "timeseries",
+                       "datasource":  {
+                                          "type":  "grafana-testdata-datasource",
+                                          "uid":  "hublink-comparison-csv"
+                                      },
+                       "gridPos":  {
+                                       "h":  9,
+                                       "w":  12,
+                                       "x":  0,
+                                       "y":  7
+                                   },
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "min":  0,
+                                                            "max":  180,
+                                                            "unit":  "reqps",
+                                                            "color":  {
+                                                                          "mode":  "palette-classic"
+                                                                      },
+                                                            "thresholds":  {
+                                                                               "mode":  "absolute",
+                                                                               "steps":  [
+                                                                                             {
+                                                                                                 "color":  "green",
+                                                                                                 "value":  null
+                                                                                             }
+                                                                                         ]
+                                                                           },
+                                                            "custom":  {
+                                                                           "axisBorderShow":  false,
+                                                                           "axisCenteredZero":  false,
+                                                                           "axisColorMode":  "text",
+                                                                           "axisPlacement":  "auto",
+                                                                           "drawStyle":  "line",
+                                                                           "fillOpacity":  8,
+                                                                           "gradientMode":  "none",
+                                                                           "lineInterpolation":  "linear",
+                                                                           "lineWidth":  3,
+                                                                           "pointSize":  4,
+                                                                           "showPoints":  "never",
+                                                                           "spanNulls":  false,
+                                                                           "stacking":  {
+                                                                                            "mode":  "none",
+                                                                                            "group":  "A"
+                                                                                        },
+                                                                           "thresholdsStyle":  {
+                                                                                                   "mode":  "off"
+                                                                                               }
+                                                                       }
+                                                        },
+                                           "overrides":  [
+                                                             {
+                                                                 "matcher":  {
+                                                                                 "id":  "byName",
+                                                                                 "options":  "100 RPS"
+                                                                             },
+                                                                 "properties":  [
+                                                                                    {
+                                                                                        "id":  "color",
+                                                                                        "value":  {
+                                                                                                      "mode":  "fixed",
+                                                                                                      "fixedColor":  "blue"
+                                                                                                  }
+                                                                                    }
+                                                                                ]
+                                                             },
+                                                             {
+                                                                 "matcher":  {
+                                                                                 "id":  "byName",
+                                                                                 "options":  "120 RPS"
+                                                                             },
+                                                                 "properties":  [
+                                                                                    {
+                                                                                        "id":  "color",
+                                                                                        "value":  {
+                                                                                                      "mode":  "fixed",
+                                                                                                      "fixedColor":  "green"
+                                                                                                  }
+                                                                                    }
+                                                                                ]
+                                                             },
+                                                             {
+                                                                 "matcher":  {
+                                                                                 "id":  "byName",
+                                                                                 "options":  "140 RPS"
+                                                                             },
+                                                                 "properties":  [
+                                                                                    {
+                                                                                        "id":  "color",
+                                                                                        "value":  {
+                                                                                                      "mode":  "fixed",
+                                                                                                      "fixedColor":  "yellow"
+                                                                                                  }
+                                                                                    }
+                                                                                ]
+                                                             },
+                                                             {
+                                                                 "matcher":  {
+                                                                                 "id":  "byName",
+                                                                                 "options":  "150 RPS"
+                                                                             },
+                                                                 "properties":  [
+                                                                                    {
+                                                                                        "id":  "color",
+                                                                                        "value":  {
+                                                                                                      "mode":  "fixed",
+                                                                                                      "fixedColor":  "orange"
+                                                                                                  }
+                                                                                    }
+                                                                                ]
+                                                             },
+                                                             {
+                                                                 "matcher":  {
+                                                                                 "id":  "byName",
+                                                                                 "options":  "160 RPS"
+                                                                             },
+                                                                 "properties":  [
+                                                                                    {
+                                                                                        "id":  "color",
+                                                                                        "value":  {
+                                                                                                      "mode":  "fixed",
+                                                                                                      "fixedColor":  "red"
+                                                                                                  }
+                                                                                    }
+                                                                                ]
+                                                             },
+                                                             {
+                                                                 "matcher":  {
+                                                                                 "id":  "byName",
+                                                                                 "options":  "165 RPS"
+                                                                             },
+                                                                 "properties":  [
+                                                                                    {
+                                                                                        "id":  "color",
+                                                                                        "value":  {
+                                                                                                      "mode":  "fixed",
+                                                                                                      "fixedColor":  "purple"
+                                                                                                  }
+                                                                                    }
+                                                                                ]
+                                                             },
+                                                             {
+                                                                 "matcher":  {
+                                                                                 "id":  "byName",
+                                                                                 "options":  "170 RPS"
+                                                                             },
+                                                                 "properties":  [
+                                                                                    {
+                                                                                        "id":  "color",
+                                                                                        "value":  {
+                                                                                                      "mode":  "fixed",
+                                                                                                      "fixedColor":  "dark-red"
+                                                                                                  }
+                                                                                    }
+                                                                                ]
+                                                             }
+                                                         ]
+                                       },
+                       "options":  {
+                                       "legend":  {
+                                                      "showLegend":  true,
+                                                      "displayMode":  "table",
+                                                      "placement":  "bottom",
+                                                      "calcs":  [
+                                                                    "mean",
+                                                                    "max",
+                                                                    "lastNotNull"
+                                                                ]
+                                                  },
+                                       "tooltip":  {
+                                                       "mode":  "multi",
+                                                       "sort":  "desc",
+                                                       "hideZeros":  false
+                                                   }
+                                   },
+                       "targets":  [
+                                       {
+                                           "refId":  "A",
+                                           "datasource":  {
+                                                              "type":  "grafana-testdata-datasource",
+                                                              "uid":  "hublink-comparison-csv"
+                                                          },
+                                           "scenarioId":  "csv_content",
+                                           "format":  "time_series",
+                                           "csvContent":  "\"Time\",\"100 RPS\",\"120 RPS\",\"140 RPS\",\"150 RPS\",\"160 RPS\",\"165 RPS\",\"170 RPS\"\n\"2026-01-01 00:00:00\",\"0\",\"0\",\"0\",\"0\",\"0\",\"0\",\"0\"\n\"2026-01-01 00:00:15\",\"6.903733\",\"0\",\"0\",\"0\",\"0\",\"0\",\"0\"\n\"2026-01-01 00:00:30\",\"9\",\"0\",\"2.3\",\"1.566667\",\"7.966667\",\"4.866667\",\"0\"\n\"2026-01-01 00:00:45\",\"51.323787\",\"21.26285\",\"2.3\",\"1.566667\",\"7.966667\",\"4.866667\",\"35.5\"\n\"2026-01-01 00:01:00\",\"72.20712\",\"25.7\",\"93.266667\",\"95.133333\",\"122.633333\",\"117.533333\",\"35.5\"\n\"2026-01-01 00:01:15\",\"100.2\",\"92.245306\",\"93.266667\",\"95.133333\",\"122.633333\",\"117.533333\",\"159.033333\"\n\"2026-01-01 00:01:30\",\"100.2\",\"112.833333\",\"139.933333\",\"149.966667\",\"159.7\",\"164.833333\",\"159.033333\"\n\"2026-01-01 00:01:45\",\"99.866667\",\"120.033333\",\"139.933333\",\"149.966667\",\"159.7\",\"164.833333\",\"170.3\"\n\"2026-01-01 00:02:00\",\"99.866667\",\"120.033333\",\"140\",\"150.033333\",\"160.266667\",\"164.166667\",\"170.3\"\n\"2026-01-01 00:02:15\",\"99.9\",\"120\",\"140\",\"150.033333\",\"160.266667\",\"164.166667\",\"169.166667\"\n\"2026-01-01 00:02:30\",\"99.9\",\"120\",\"140\",\"149.6\",\"159.766667\",\"166\",\"169.166667\"\n\"2026-01-01 00:02:45\",\"100\",\"120\",\"140\",\"149.6\",\"159.766667\",\"166\",\"170.6\"\n\"2026-01-01 00:03:00\",\"100\",\"120\",\"139.966667\",\"150.4\",\"160.233333\",\"165.166667\",\"170.6\"\n\"2026-01-01 00:03:15\",\"100.066667\",\"119.933333\",\"139.966667\",\"150.4\",\"160.233333\",\"165.166667\",\"169.933333\"\n\"2026-01-01 00:03:30\",\"100.066667\",\"119.933333\",\"140\",\"150\",\"159.933333\",\"164.966667\",\"169.933333\""
+                                       }
+                                   ],
+                       "transformations":  [
+                                               {
+                                                   "id":  "convertFieldType",
+                                                   "options":  {
+                                                                   "conversions":  [
+                                                                                       {
+                                                                                           "targetField":  "Time",
+                                                                                           "destinationType":  "time"
+                                                                                       }
+                                                                                   ]
+                                                               }
+                                               }
+                                           ]
+                   },
+                   {
+                       "id":  3,
+                       "title":  "목표별 배송 API 평균 지연",
+                       "description":  "160 RPS부터 확대되는 지연 변곡점",
+                       "type":  "timeseries",
+                       "datasource":  {
+                                          "type":  "grafana-testdata-datasource",
+                                          "uid":  "hublink-comparison-csv"
+                                      },
+                       "gridPos":  {
+                                       "h":  9,
+                                       "w":  12,
+                                       "x":  12,
+                                       "y":  7
+                                   },
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "min":  0,
+                                                            "max":  400,
+                                                            "unit":  "ms",
+                                                            "color":  {
+                                                                          "mode":  "palette-classic"
+                                                                      },
+                                                            "thresholds":  {
+                                                                               "mode":  "absolute",
+                                                                               "steps":  [
+                                                                                             {
+                                                                                                 "color":  "green",
+                                                                                                 "value":  null
+                                                                                             }
+                                                                                         ]
+                                                                           },
+                                                            "custom":  {
+                                                                           "axisBorderShow":  false,
+                                                                           "axisCenteredZero":  false,
+                                                                           "axisColorMode":  "text",
+                                                                           "axisPlacement":  "auto",
+                                                                           "drawStyle":  "line",
+                                                                           "fillOpacity":  8,
+                                                                           "gradientMode":  "none",
+                                                                           "lineInterpolation":  "linear",
+                                                                           "lineWidth":  3,
+                                                                           "pointSize":  4,
+                                                                           "showPoints":  "never",
+                                                                           "spanNulls":  false,
+                                                                           "stacking":  {
+                                                                                            "mode":  "none",
+                                                                                            "group":  "A"
+                                                                                        },
+                                                                           "thresholdsStyle":  {
+                                                                                                   "mode":  "off"
+                                                                                               }
+                                                                       }
+                                                        },
+                                           "overrides":  [
+                                                             {
+                                                                 "matcher":  {
+                                                                                 "id":  "byName",
+                                                                                 "options":  "100 RPS"
+                                                                             },
+                                                                 "properties":  [
+                                                                                    {
+                                                                                        "id":  "color",
+                                                                                        "value":  {
+                                                                                                      "mode":  "fixed",
+                                                                                                      "fixedColor":  "blue"
+                                                                                                  }
+                                                                                    }
+                                                                                ]
+                                                             },
+                                                             {
+                                                                 "matcher":  {
+                                                                                 "id":  "byName",
+                                                                                 "options":  "120 RPS"
+                                                                             },
+                                                                 "properties":  [
+                                                                                    {
+                                                                                        "id":  "color",
+                                                                                        "value":  {
+                                                                                                      "mode":  "fixed",
+                                                                                                      "fixedColor":  "green"
+                                                                                                  }
+                                                                                    }
+                                                                                ]
+                                                             },
+                                                             {
+                                                                 "matcher":  {
+                                                                                 "id":  "byName",
+                                                                                 "options":  "140 RPS"
+                                                                             },
+                                                                 "properties":  [
+                                                                                    {
+                                                                                        "id":  "color",
+                                                                                        "value":  {
+                                                                                                      "mode":  "fixed",
+                                                                                                      "fixedColor":  "yellow"
+                                                                                                  }
+                                                                                    }
+                                                                                ]
+                                                             },
+                                                             {
+                                                                 "matcher":  {
+                                                                                 "id":  "byName",
+                                                                                 "options":  "150 RPS"
+                                                                             },
+                                                                 "properties":  [
+                                                                                    {
+                                                                                        "id":  "color",
+                                                                                        "value":  {
+                                                                                                      "mode":  "fixed",
+                                                                                                      "fixedColor":  "orange"
+                                                                                                  }
+                                                                                    }
+                                                                                ]
+                                                             },
+                                                             {
+                                                                 "matcher":  {
+                                                                                 "id":  "byName",
+                                                                                 "options":  "160 RPS"
+                                                                             },
+                                                                 "properties":  [
+                                                                                    {
+                                                                                        "id":  "color",
+                                                                                        "value":  {
+                                                                                                      "mode":  "fixed",
+                                                                                                      "fixedColor":  "red"
+                                                                                                  }
+                                                                                    }
+                                                                                ]
+                                                             },
+                                                             {
+                                                                 "matcher":  {
+                                                                                 "id":  "byName",
+                                                                                 "options":  "165 RPS"
+                                                                             },
+                                                                 "properties":  [
+                                                                                    {
+                                                                                        "id":  "color",
+                                                                                        "value":  {
+                                                                                                      "mode":  "fixed",
+                                                                                                      "fixedColor":  "purple"
+                                                                                                  }
+                                                                                    }
+                                                                                ]
+                                                             },
+                                                             {
+                                                                 "matcher":  {
+                                                                                 "id":  "byName",
+                                                                                 "options":  "170 RPS"
+                                                                             },
+                                                                 "properties":  [
+                                                                                    {
+                                                                                        "id":  "color",
+                                                                                        "value":  {
+                                                                                                      "mode":  "fixed",
+                                                                                                      "fixedColor":  "dark-red"
+                                                                                                  }
+                                                                                    }
+                                                                                ]
+                                                             }
+                                                         ]
+                                       },
+                       "options":  {
+                                       "legend":  {
+                                                      "showLegend":  true,
+                                                      "displayMode":  "table",
+                                                      "placement":  "bottom",
+                                                      "calcs":  [
+                                                                    "mean",
+                                                                    "max",
+                                                                    "lastNotNull"
+                                                                ]
+                                                  },
+                                       "tooltip":  {
+                                                       "mode":  "multi",
+                                                       "sort":  "desc",
+                                                       "hideZeros":  false
+                                                   }
+                                   },
+                       "targets":  [
+                                       {
+                                           "refId":  "A",
+                                           "datasource":  {
+                                                              "type":  "grafana-testdata-datasource",
+                                                              "uid":  "hublink-comparison-csv"
+                                                          },
+                                           "scenarioId":  "csv_content",
+                                           "format":  "time_series",
+                                           "csvContent":  "\"Time\",\"100 RPS\",\"120 RPS\",\"140 RPS\",\"150 RPS\",\"160 RPS\",\"165 RPS\",\"170 RPS\"\n\"2026-01-01 00:00:00\",\"\",\"\",\"\",\"\",\"\",\"\",\"\"\n\"2026-01-01 00:00:15\",\"59.372\",\"\",\"\",\"\",\"\",\"\",\"\"\n\"2026-01-01 00:00:30\",\"55.781\",\"\",\"27.771\",\"30.249\",\"26.978\",\"26.082\",\"\"\n\"2026-01-01 00:00:45\",\"58.315\",\"54.432\",\"27.771\",\"30.249\",\"26.978\",\"26.082\",\"27.949\"\n\"2026-01-01 00:01:00\",\"58.262\",\"45.035\",\"33.103\",\"36.339\",\"36.261\",\"47.383\",\"27.949\"\n\"2026-01-01 00:01:15\",\"58.35\",\"55.594\",\"33.103\",\"36.339\",\"36.261\",\"47.383\",\"137.025\"\n\"2026-01-01 00:01:30\",\"58.35\",\"46.997\",\"36.333\",\"42.478\",\"105.004\",\"164.73\",\"137.025\"\n\"2026-01-01 00:01:45\",\"51.393\",\"41.413\",\"36.333\",\"42.478\",\"105.004\",\"164.73\",\"82.593\"\n\"2026-01-01 00:02:00\",\"51.393\",\"41.413\",\"41.067\",\"51.792\",\"63.179\",\"134.31\",\"82.593\"\n\"2026-01-01 00:02:15\",\"41.917\",\"42.682\",\"41.067\",\"51.792\",\"63.179\",\"134.31\",\"169.901\"\n\"2026-01-01 00:02:30\",\"41.917\",\"42.682\",\"36.158\",\"74.796\",\"133.705\",\"62.949\",\"169.901\"\n\"2026-01-01 00:02:45\",\"36.356\",\"35.91\",\"36.158\",\"74.796\",\"133.705\",\"62.949\",\"158.38\"\n\"2026-01-01 00:03:00\",\"36.356\",\"35.91\",\"61.384\",\"56.297\",\"68.827\",\"80.574\",\"158.38\"\n\"2026-01-01 00:03:15\",\"33.988\",\"37.675\",\"61.384\",\"56.297\",\"68.827\",\"80.574\",\"119.157\"\n\"2026-01-01 00:03:30\",\"33.988\",\"37.675\",\"38.906\",\"69.367\",\"69.638\",\"69.587\",\"119.157\""
+                                       }
+                                   ],
+                       "transformations":  [
+                                               {
+                                                   "id":  "convertFieldType",
+                                                   "options":  {
+                                                                   "conversions":  [
+                                                                                       {
+                                                                                           "targetField":  "Time",
+                                                                                           "destinationType":  "time"
+                                                                                       }
+                                                                                   ]
+                                                               }
+                                               }
+                                           ]
+                   },
+                   {
+                       "id":  4,
+                       "title":  "목표별 Data VM CPU",
+                       "description":  "PostgreSQL·Kafka·Redis 공유 VM CPU 포화 추이",
+                       "type":  "timeseries",
+                       "datasource":  {
+                                          "type":  "grafana-testdata-datasource",
+                                          "uid":  "hublink-comparison-csv"
+                                      },
+                       "gridPos":  {
+                                       "h":  9,
+                                       "w":  12,
+                                       "x":  0,
+                                       "y":  16
+                                   },
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "min":  0,
+                                                            "max":  100,
+                                                            "unit":  "percent",
+                                                            "color":  {
+                                                                          "mode":  "palette-classic"
+                                                                      },
+                                                            "thresholds":  {
+                                                                               "mode":  "absolute",
+                                                                               "steps":  [
+                                                                                             {
+                                                                                                 "color":  "green",
+                                                                                                 "value":  null
+                                                                                             }
+                                                                                         ]
+                                                                           },
+                                                            "custom":  {
+                                                                           "axisBorderShow":  false,
+                                                                           "axisCenteredZero":  false,
+                                                                           "axisColorMode":  "text",
+                                                                           "axisPlacement":  "auto",
+                                                                           "drawStyle":  "line",
+                                                                           "fillOpacity":  8,
+                                                                           "gradientMode":  "none",
+                                                                           "lineInterpolation":  "linear",
+                                                                           "lineWidth":  3,
+                                                                           "pointSize":  4,
+                                                                           "showPoints":  "never",
+                                                                           "spanNulls":  false,
+                                                                           "stacking":  {
+                                                                                            "mode":  "none",
+                                                                                            "group":  "A"
+                                                                                        },
+                                                                           "thresholdsStyle":  {
+                                                                                                   "mode":  "off"
+                                                                                               }
+                                                                       }
+                                                        },
+                                           "overrides":  [
+                                                             {
+                                                                 "matcher":  {
+                                                                                 "id":  "byName",
+                                                                                 "options":  "100 RPS"
+                                                                             },
+                                                                 "properties":  [
+                                                                                    {
+                                                                                        "id":  "color",
+                                                                                        "value":  {
+                                                                                                      "mode":  "fixed",
+                                                                                                      "fixedColor":  "blue"
+                                                                                                  }
+                                                                                    }
+                                                                                ]
+                                                             },
+                                                             {
+                                                                 "matcher":  {
+                                                                                 "id":  "byName",
+                                                                                 "options":  "120 RPS"
+                                                                             },
+                                                                 "properties":  [
+                                                                                    {
+                                                                                        "id":  "color",
+                                                                                        "value":  {
+                                                                                                      "mode":  "fixed",
+                                                                                                      "fixedColor":  "green"
+                                                                                                  }
+                                                                                    }
+                                                                                ]
+                                                             },
+                                                             {
+                                                                 "matcher":  {
+                                                                                 "id":  "byName",
+                                                                                 "options":  "140 RPS"
+                                                                             },
+                                                                 "properties":  [
+                                                                                    {
+                                                                                        "id":  "color",
+                                                                                        "value":  {
+                                                                                                      "mode":  "fixed",
+                                                                                                      "fixedColor":  "yellow"
+                                                                                                  }
+                                                                                    }
+                                                                                ]
+                                                             },
+                                                             {
+                                                                 "matcher":  {
+                                                                                 "id":  "byName",
+                                                                                 "options":  "150 RPS"
+                                                                             },
+                                                                 "properties":  [
+                                                                                    {
+                                                                                        "id":  "color",
+                                                                                        "value":  {
+                                                                                                      "mode":  "fixed",
+                                                                                                      "fixedColor":  "orange"
+                                                                                                  }
+                                                                                    }
+                                                                                ]
+                                                             },
+                                                             {
+                                                                 "matcher":  {
+                                                                                 "id":  "byName",
+                                                                                 "options":  "160 RPS"
+                                                                             },
+                                                                 "properties":  [
+                                                                                    {
+                                                                                        "id":  "color",
+                                                                                        "value":  {
+                                                                                                      "mode":  "fixed",
+                                                                                                      "fixedColor":  "red"
+                                                                                                  }
+                                                                                    }
+                                                                                ]
+                                                             },
+                                                             {
+                                                                 "matcher":  {
+                                                                                 "id":  "byName",
+                                                                                 "options":  "165 RPS"
+                                                                             },
+                                                                 "properties":  [
+                                                                                    {
+                                                                                        "id":  "color",
+                                                                                        "value":  {
+                                                                                                      "mode":  "fixed",
+                                                                                                      "fixedColor":  "purple"
+                                                                                                  }
+                                                                                    }
+                                                                                ]
+                                                             },
+                                                             {
+                                                                 "matcher":  {
+                                                                                 "id":  "byName",
+                                                                                 "options":  "170 RPS"
+                                                                             },
+                                                                 "properties":  [
+                                                                                    {
+                                                                                        "id":  "color",
+                                                                                        "value":  {
+                                                                                                      "mode":  "fixed",
+                                                                                                      "fixedColor":  "dark-red"
+                                                                                                  }
+                                                                                    }
+                                                                                ]
+                                                             }
+                                                         ]
+                                       },
+                       "options":  {
+                                       "legend":  {
+                                                      "showLegend":  true,
+                                                      "displayMode":  "table",
+                                                      "placement":  "bottom",
+                                                      "calcs":  [
+                                                                    "mean",
+                                                                    "max",
+                                                                    "lastNotNull"
+                                                                ]
+                                                  },
+                                       "tooltip":  {
+                                                       "mode":  "multi",
+                                                       "sort":  "desc",
+                                                       "hideZeros":  false
+                                                   }
+                                   },
+                       "targets":  [
+                                       {
+                                           "refId":  "A",
+                                           "datasource":  {
+                                                              "type":  "grafana-testdata-datasource",
+                                                              "uid":  "hublink-comparison-csv"
+                                                          },
+                                           "scenarioId":  "csv_content",
+                                           "format":  "time_series",
+                                           "csvContent":  "\"Time\",\"100 RPS\",\"120 RPS\",\"140 RPS\",\"150 RPS\",\"160 RPS\",\"165 RPS\",\"170 RPS\"\n\"2026-01-01 00:00:00\",\"15.308333\",\"10.783333\",\"4.116667\",\"6.808333\",\"7.566667\",\"6.591667\",\"7.158333\"\n\"2026-01-01 00:00:15\",\"15.308333\",\"10.783333\",\"5.791667\",\"3.108333\",\"7.566667\",\"6.591667\",\"7.158333\"\n\"2026-01-01 00:00:30\",\"30.908333\",\"7.683333\",\"5.791667\",\"3.108333\",\"5.775\",\"3.016667\",\"8.941667\"\n\"2026-01-01 00:00:45\",\"30.908333\",\"7.683333\",\"36.275\",\"36.291667\",\"5.775\",\"3.016667\",\"8.941667\"\n\"2026-01-01 00:01:00\",\"54.858333\",\"54.366667\",\"36.275\",\"36.291667\",\"47.691667\",\"43.941667\",\"79.625\"\n\"2026-01-01 00:01:15\",\"54.858333\",\"54.366667\",\"74.783333\",\"80.808333\",\"47.691667\",\"43.941667\",\"79.625\"\n\"2026-01-01 00:01:30\",\"59.483333\",\"65.925\",\"74.783333\",\"80.808333\",\"92.541667\",\"90.45\",\"93.95\"\n\"2026-01-01 00:01:45\",\"59.483333\",\"65.925\",\"79.475\",\"84.9\",\"92.541667\",\"90.45\",\"93.95\"\n\"2026-01-01 00:02:00\",\"56.566667\",\"72.941667\",\"79.475\",\"84.9\",\"90.575\",\"94.133333\",\"96.858333\"\n\"2026-01-01 00:02:15\",\"56.566667\",\"72.941667\",\"76.133333\",\"85.558333\",\"90.575\",\"94.133333\",\"96.858333\"\n\"2026-01-01 00:02:30\",\"58.541667\",\"69.816667\",\"76.133333\",\"85.558333\",\"94.9\",\"93.15\",\"95.933333\"\n\"2026-01-01 00:02:45\",\"58.541667\",\"69.816667\",\"82.808333\",\"89.775\",\"94.9\",\"93.15\",\"95.933333\"\n\"2026-01-01 00:03:00\",\"57.658333\",\"71.866667\",\"82.808333\",\"89.775\",\"90.116667\",\"93.233333\",\"96.525\"\n\"2026-01-01 00:03:15\",\"57.658333\",\"71.866667\",\"78.425\",\"86.016667\",\"90.116667\",\"93.233333\",\"96.525\"\n\"2026-01-01 00:03:30\",\"63.525\",\"76.816667\",\"78.425\",\"86.016667\",\"90.383333\",\"90.925\",\"93.008333\""
+                                       }
+                                   ],
+                       "transformations":  [
+                                               {
+                                                   "id":  "convertFieldType",
+                                                   "options":  {
+                                                                   "conversions":  [
+                                                                                       {
+                                                                                           "targetField":  "Time",
+                                                                                           "destinationType":  "time"
+                                                                                       }
+                                                                                   ]
+                                                               }
+                                               }
+                                           ]
+                   },
+                   {
+                       "id":  5,
+                       "title":  "목표별 Hikari Pending",
+                       "description":  "전 부하 구간 0으로 DB connection pool 대기 없음",
+                       "type":  "timeseries",
+                       "datasource":  {
+                                          "type":  "grafana-testdata-datasource",
+                                          "uid":  "hublink-comparison-csv"
+                                      },
+                       "gridPos":  {
+                                       "h":  9,
+                                       "w":  12,
+                                       "x":  12,
+                                       "y":  16
+                                   },
+                       "fieldConfig":  {
+                                           "defaults":  {
+                                                            "min":  0,
+                                                            "max":  10,
+                                                            "unit":  "short",
+                                                            "color":  {
+                                                                          "mode":  "palette-classic"
+                                                                      },
+                                                            "thresholds":  {
+                                                                               "mode":  "absolute",
+                                                                               "steps":  [
+                                                                                             {
+                                                                                                 "color":  "green",
+                                                                                                 "value":  null
+                                                                                             }
+                                                                                         ]
+                                                                           },
+                                                            "custom":  {
+                                                                           "axisBorderShow":  false,
+                                                                           "axisCenteredZero":  false,
+                                                                           "axisColorMode":  "text",
+                                                                           "axisPlacement":  "auto",
+                                                                           "drawStyle":  "line",
+                                                                           "fillOpacity":  8,
+                                                                           "gradientMode":  "none",
+                                                                           "lineInterpolation":  "linear",
+                                                                           "lineWidth":  3,
+                                                                           "pointSize":  4,
+                                                                           "showPoints":  "never",
+                                                                           "spanNulls":  false,
+                                                                           "stacking":  {
+                                                                                            "mode":  "none",
+                                                                                            "group":  "A"
+                                                                                        },
+                                                                           "thresholdsStyle":  {
+                                                                                                   "mode":  "off"
+                                                                                               }
+                                                                       }
+                                                        },
+                                           "overrides":  [
+                                                             {
+                                                                 "matcher":  {
+                                                                                 "id":  "byName",
+                                                                                 "options":  "100 RPS"
+                                                                             },
+                                                                 "properties":  [
+                                                                                    {
+                                                                                        "id":  "color",
+                                                                                        "value":  {
+                                                                                                      "mode":  "fixed",
+                                                                                                      "fixedColor":  "blue"
+                                                                                                  }
+                                                                                    }
+                                                                                ]
+                                                             },
+                                                             {
+                                                                 "matcher":  {
+                                                                                 "id":  "byName",
+                                                                                 "options":  "120 RPS"
+                                                                             },
+                                                                 "properties":  [
+                                                                                    {
+                                                                                        "id":  "color",
+                                                                                        "value":  {
+                                                                                                      "mode":  "fixed",
+                                                                                                      "fixedColor":  "green"
+                                                                                                  }
+                                                                                    }
+                                                                                ]
+                                                             },
+                                                             {
+                                                                 "matcher":  {
+                                                                                 "id":  "byName",
+                                                                                 "options":  "140 RPS"
+                                                                             },
+                                                                 "properties":  [
+                                                                                    {
+                                                                                        "id":  "color",
+                                                                                        "value":  {
+                                                                                                      "mode":  "fixed",
+                                                                                                      "fixedColor":  "yellow"
+                                                                                                  }
+                                                                                    }
+                                                                                ]
+                                                             },
+                                                             {
+                                                                 "matcher":  {
+                                                                                 "id":  "byName",
+                                                                                 "options":  "150 RPS"
+                                                                             },
+                                                                 "properties":  [
+                                                                                    {
+                                                                                        "id":  "color",
+                                                                                        "value":  {
+                                                                                                      "mode":  "fixed",
+                                                                                                      "fixedColor":  "orange"
+                                                                                                  }
+                                                                                    }
+                                                                                ]
+                                                             },
+                                                             {
+                                                                 "matcher":  {
+                                                                                 "id":  "byName",
+                                                                                 "options":  "160 RPS"
+                                                                             },
+                                                                 "properties":  [
+                                                                                    {
+                                                                                        "id":  "color",
+                                                                                        "value":  {
+                                                                                                      "mode":  "fixed",
+                                                                                                      "fixedColor":  "red"
+                                                                                                  }
+                                                                                    }
+                                                                                ]
+                                                             },
+                                                             {
+                                                                 "matcher":  {
+                                                                                 "id":  "byName",
+                                                                                 "options":  "165 RPS"
+                                                                             },
+                                                                 "properties":  [
+                                                                                    {
+                                                                                        "id":  "color",
+                                                                                        "value":  {
+                                                                                                      "mode":  "fixed",
+                                                                                                      "fixedColor":  "purple"
+                                                                                                  }
+                                                                                    }
+                                                                                ]
+                                                             },
+                                                             {
+                                                                 "matcher":  {
+                                                                                 "id":  "byName",
+                                                                                 "options":  "170 RPS"
+                                                                             },
+                                                                 "properties":  [
+                                                                                    {
+                                                                                        "id":  "color",
+                                                                                        "value":  {
+                                                                                                      "mode":  "fixed",
+                                                                                                      "fixedColor":  "dark-red"
+                                                                                                  }
+                                                                                    }
+                                                                                ]
+                                                             }
+                                                         ]
+                                       },
+                       "options":  {
+                                       "legend":  {
+                                                      "showLegend":  true,
+                                                      "displayMode":  "table",
+                                                      "placement":  "bottom",
+                                                      "calcs":  [
+                                                                    "mean",
+                                                                    "max",
+                                                                    "lastNotNull"
+                                                                ]
+                                                  },
+                                       "tooltip":  {
+                                                       "mode":  "multi",
+                                                       "sort":  "desc",
+                                                       "hideZeros":  false
+                                                   }
+                                   },
+                       "targets":  [
+                                       {
+                                           "refId":  "A",
+                                           "datasource":  {
+                                                              "type":  "grafana-testdata-datasource",
+                                                              "uid":  "hublink-comparison-csv"
+                                                          },
+                                           "scenarioId":  "csv_content",
+                                           "format":  "time_series",
+                                           "csvContent":  "\"Time\",\"100 RPS\",\"120 RPS\",\"140 RPS\",\"150 RPS\",\"160 RPS\",\"165 RPS\",\"170 RPS\"\n\"2026-01-01 00:00:00\",\"0\",\"0\",\"0\",\"0\",\"0\",\"0\",\"0\"\n\"2026-01-01 00:00:15\",\"0\",\"0\",\"0\",\"0\",\"0\",\"0\",\"0\"\n\"2026-01-01 00:00:30\",\"0\",\"0\",\"0\",\"0\",\"0\",\"0\",\"0\"\n\"2026-01-01 00:00:45\",\"0\",\"0\",\"0\",\"0\",\"0\",\"0\",\"0\"\n\"2026-01-01 00:01:00\",\"0\",\"0\",\"0\",\"0\",\"0\",\"0\",\"0\"\n\"2026-01-01 00:01:15\",\"0\",\"0\",\"0\",\"0\",\"0\",\"0\",\"0\"\n\"2026-01-01 00:01:30\",\"0\",\"0\",\"0\",\"0\",\"0\",\"0\",\"0\"\n\"2026-01-01 00:01:45\",\"0\",\"0\",\"0\",\"0\",\"0\",\"0\",\"0\"\n\"2026-01-01 00:02:00\",\"0\",\"0\",\"0\",\"0\",\"0\",\"0\",\"0\"\n\"2026-01-01 00:02:15\",\"0\",\"0\",\"0\",\"0\",\"0\",\"0\",\"0\"\n\"2026-01-01 00:02:30\",\"0\",\"0\",\"0\",\"0\",\"0\",\"0\",\"0\"\n\"2026-01-01 00:02:45\",\"0\",\"0\",\"0\",\"0\",\"0\",\"0\",\"0\"\n\"2026-01-01 00:03:00\",\"0\",\"0\",\"0\",\"0\",\"0\",\"0\",\"0\"\n\"2026-01-01 00:03:15\",\"0\",\"0\",\"0\",\"0\",\"0\",\"0\",\"0\"\n\"2026-01-01 00:03:30\",\"0\",\"0\",\"0\",\"0\",\"0\",\"0\",\"0\""
+                                       }
+                                   ],
+                       "transformations":  [
+                                               {
+                                                   "id":  "convertFieldType",
+                                                   "options":  {
+                                                                   "conversions":  [
+                                                                                       {
+                                                                                           "targetField":  "Time",
+                                                                                           "destinationType":  "time"
+                                                                                       }
+                                                                                   ]
+                                                               }
+                                               }
+                                           ]
+                   }
+               ],
+    "refresh":  "",
+    "schemaVersion":  42,
+    "tags":  [
+                 "delivery",
+                 "performance-test",
+                 "comparison",
+                 "timeseries",
+                 "fixed-rps",
+                 "capacity"
+             ],
+    "templating":  {
+                       "list":  [
+
+                                ]
+                   },
+    "time":  {
+                 "from":  "2026-01-01T00:00:00.000Z",
+                 "to":  "2026-01-01T00:03:30.000Z"
+             },
+    "timepicker":  {
+                       "hidden":  true
+                   },
+    "timezone":  "utc",
+    "title":  "03. 인프라 처리 용량 - 고정 RPS",
+    "uid":  "pf-rps-infra-capacity"
+}

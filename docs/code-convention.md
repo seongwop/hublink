@@ -1,8 +1,20 @@
-# Code Convention
+# 코드 규칙
 
 ## Java 스타일
 
+- Java 17을 사용한다.
 - [Google Java Style Guide](https://google.github.io/styleguide/javaguide.html)를 따른다.
+- 의존성은 생성자 주입을 사용한다.
+- 주석은 코드가 이미 보여 주는 동작보다 설계 이유와 제약을 설명할 때만 작성한다.
+
+## 계층과 트랜잭션
+
+- Controller는 요청 검증과 응답 변환만 담당한다.
+- Service는 유스케이스와 트랜잭션 경계를 관리한다.
+- Repository는 영속성 조회와 변경에 집중한다.
+- 쓰기 작업은 Service 계층의 `@Transactional` 안에서 처리한다.
+- 조회 전용 작업은 필요한 경우 `@Transactional(readOnly = true)`를 사용한다.
+- 긴 트랜잭션 안에서 외부 API를 호출하지 않는다.
 
 ## REST API 규칙
 
@@ -63,16 +75,8 @@ MSA의 각 서비스가 동일한 JSON 구조의 성공/실패 응답을 반환�
 - 클라이언트에게 내부 예외 메시지를 그대로 반환하지 않는다.
 - 서비스별 응답 구조가 달라지지 않도록 공통 응답 형식을 유지한다.
 
-## 코드 리뷰 전제
-- dependency/plugin 버전 존재 여부는 학습된 지식으로 판단하지 않는다.
-- Spring Boot, Spring Cloud, Gradle Plugin 등 버전 관련 지적은 공식 문서 또는 Maven Central 기준으로 검증된 경우에만 작성한다.
-- 검증하지 못한 버전 관련 내용은 High/Blocker로 표시하지 않는다.
+## 서비스 경계
 
-### 현재 프로젝트 기준 버전
-- Java 17
-- Spring Boot 3.5.14
-- Spring Cloud 2025.0.2
-
-### Spring 버전 호환성 기준
-- Spring Cloud 2025.0.x는 Spring Boot 3.5.x 라인과 호환되는 release train이다.
-- 따라서 Spring Boot 3.5.x 사용 시 Spring Cloud 2024.0.x로 다운그레이드하라는 리뷰는 작성하지 않는다.
+- 다른 서비스의 DB를 직접 조회하지 않는다.
+- 서비스 간 동기 통신은 API, 비동기 통신은 Kafka 또는 Redis Stream을 사용한다.
+- 이벤트 consumer는 중복 수신을 고려한다.

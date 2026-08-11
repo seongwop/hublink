@@ -66,8 +66,8 @@ SLEEP_SECONDS=1 \
 ```bash
 LOAD_MODEL=rps \
 TARGET_RPS=40 \
-PRE_ALLOCATED_VUS=180 \
-MAX_VUS=250 \
+PRE_ALLOCATED_VUS=400 \
+MAX_VUS=600 \
 RPS_STAGES='[{"duration":"30s","target":40},{"duration":"3m","target":40}]' \
 ./run-k6.sh delivery-create-logic-load.js
 ```
@@ -171,6 +171,8 @@ docker exec -it kafka kafka-topics.sh \
 ```
 
 `POST /api/v1/deliveries/test/delivery-create`로 `delivery.create` Kafka 이벤트를 직접 주입한다. Gateway, order-service, stock-service를 우회하므로 배송 Kafka consumer lag와 Delivery Create TPS를 분리해서 확인할 수 있다.
+
+테스트 전용 API를 사용하는 스크립트는 delivery-service 배포 환경의 `DELIVERY_TEST_API_ENABLED=true`가 필요하다. 기본값은 `false`다.
 
 확인 지표:
 
@@ -281,34 +283,34 @@ Redis Stream TPS = 처리 완료 stream message 수 / test_duration_seconds
 
 ## Delivery Query Baseline
 
-��뷮 ���� ����� `EXPLAIN ANALYZE` �뵵������ �Ʒ� SQL�� ����Ѵ�.
+배송 조회 성능을 `EXPLAIN ANALYZE`로 확인할 때 아래 SQL을 사용한다.
 
 ```text
 db/seed/12-reset-delivery-query-baseline.sql
 db/seed/13-explain-delivery-query-baseline.sql
 ```
 
-`12-reset-delivery-query-baseline.sql`�� delivery, route history, outbox �뷮 �����͸� �ٽ� ä��� baseline SQL�̴�.
-`13-explain-delivery-query-baseline.sql`�� active assignment ����, outbox polling, manager�� delivery ��ȸ ������ �ٷ� ������ �� �ִ� explain �����̴�.
+`12-reset-delivery-query-baseline.sql`은 delivery, route history, outbox 대량 데이터를 다시 채우는 baseline SQL이다.
+`13-explain-delivery-query-baseline.sql`은 active assignment 집계, outbox polling, manager별 delivery 조회 쿼리를 바로 점검할 수 있는 explain 모음이다.
 
 ## Reset Policy
 
-�⺻ ������ `pre reset`�� �����Ѵ�.
-�׽�Ʈ ���� ������ baseline SQL�� �����ϰ�, �׽�Ʈ ���� �Ŀ��� �ڵ� reset�� ���� �ʴ´�.
+기본 정책은 `pre reset`을 사용한다.
+테스트 시작 직전에 baseline SQL을 실행하고, 테스트 종료 후에는 자동 reset을 하지 않는다.
 
 ```text
 default PRE_TEST_SQL_FILE = db/seed/11-reset-delivery-loadtest-baseline.sql
 default POST_TEST_SQL_FILE = empty
 ```
 
-�׽�Ʈ �� DB �񱳰� �ʿ��ϸ� �״�� �����ϸ� �ȴ�.
+테스트 간 DB 비교가 필요하면 이 기본 설정을 유지한다.
 
 ```bash
 STAGES='[{"duration":"1m","target":20},{"duration":"5m","target":20},{"duration":"2m","target":0}]' \
 ./run-k6.sh delivery-create-logic-load.js
 ```
 
-�׽�Ʈ �Ŀ��� baseline ������ �ٷ� �ϰ� ���� ���� `POST_TEST_SQL_FILE`�� ����Ѵ�.
+테스트 후에도 baseline 상태로 즉시 복원하려면 `POST_TEST_SQL_FILE`을 사용한다.
 
 ```bash
 POST_TEST_SQL_FILE=db/seed/11-reset-delivery-loadtest-baseline.sql \

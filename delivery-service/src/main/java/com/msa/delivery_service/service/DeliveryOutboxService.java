@@ -33,16 +33,12 @@ public class DeliveryOutboxService {
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final ObjectMapper objectMapper;
     private final TransactionTemplate transactionTemplate;
-    // Outbox 단계별 처리 시간 계측
+    // Outbox 처리 시간 계측
     private final DeliveryPerformanceMetrics performanceMetrics;
 
     @Transactional
     public void enqueue(String topic, String eventKey, Object payload) {
-        /*
-            객체 payload -> JSON 문자열로 변환
-        */
         String serializedPayload;
-        // payload 직렬화 처리 시간 계측
         long serializeStartNanos = performanceMetrics.start();
         try {
             serializedPayload = objectMapper.writeValueAsString(payload);
@@ -73,15 +69,11 @@ public class DeliveryOutboxService {
         );
     }
 
-    @Scheduled(fixedDelayString = "${delivery.kafka.outbox.fixed-delay-ms:1000}")
+    @Scheduled(fixedDelayString = "${delivery.kafka.outbox.fixed-delay-ms:100}")
     public void publishPending() {
-        /*
-            outbox worker
-            서비스 내부 스케줄러가 주기적으로 미발행 row 조회
-        */
         List<DeliveryOutbox> outboxes = findPublishTargets();
 
-        // Kafka 발행 요청 선제 제출
+        // Kafka 발행 선제 제출
         List<PendingPublish> pendingPublishes = outboxes.stream()
                 .map(this::send)
                 .toList();
@@ -93,14 +85,14 @@ public class DeliveryOutboxService {
             }
         }
 
-        // Kafka ACK 성공 Outbox 상태 일괄 반영
+        // ACK 성공 상태 일괄 반영
         markPublished(publishedOutboxes);
     }
 
-    // self-invocation 문제를 피하기 위해 별도 트랜잭션 생성
+    // 발행 대상 조회 트랜잭션 분리
     private List<DeliveryOutbox> findPublishTargets() {
+        // 발행 가능 Outbox 최대 100건 조회
         return transactionTemplate.execute(status ->
-                // PENDING, FAILED 상태 중 재시도 횟수 제한 미만인 것만 오래된 것부터 100개씩 처리
                 outboxRepository.findTop100ByStatusInAndRetryCountLessThanOrderByCreatedAtAsc(
                         List.of(DeliveryOutbox.Status.PENDING, DeliveryOutbox.Status.FAILED),
                         MAX_RETRY_COUNT
@@ -123,10 +115,10 @@ public class DeliveryOutboxService {
         DeliveryOutbox outbox = pendingPublish.outbox();
         try {
             pendingPublish.sendFuture()
-                    .get(SEND_TIMEOUT_SECONDS, TimeUnit.SECONDS); // 브로커로부터 ack 수신 대기
+                    .get(SEND_TIMEOUT_SECONDS, TimeUnit.SECONDS);
             return true;
         } catch (Exception e) {
-            // 상태 변경 및 추후 재처리
+            // 실패 상태 반영
             markFailed(outbox.getOutboxId(), e.getMessage());
             log.error("event=DELIVERY_OUTBOX_PUBLISH_FAILED outboxId={} topic={} eventKey={} retryCount={}",
                     outbox.getOutboxId(),
@@ -139,7 +131,6 @@ public class DeliveryOutboxService {
         }
     }
 
-    // 상태 변경 로직 분리
     private void markPublished(List<DeliveryOutbox> outboxes) {
         if (outboxes.isEmpty()) {
             return;

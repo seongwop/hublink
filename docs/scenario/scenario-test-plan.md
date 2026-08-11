@@ -21,8 +21,8 @@
 
 | 도구 | URL 또는 위치 | 확인 항목 |
 | --- | --- | --- |
-| Swagger | `http://34.50.55.18:19091/swagger-ui/index.html` | 주문 요청과 배송 API 확인 |
-| Eureka | `http://34.50.55.18:19090` | delivery, ai, slack 서비스 등록 |
+| Swagger | `http://<PLATFORM_EXTERNAL_IP>:19091/swagger-ui/index.html` | 주문 요청과 배송 API 확인 |
+| Eureka | IAP 터널의 `http://localhost:19090` | delivery, ai, slack 서비스 등록 |
 | Kafka UI | 필요할 때 platform VM에서 실행 후 IAP 터널의 `http://localhost:8082` | delivery topic, consumer lag, DLT |
 | Grafana | platform VM IAP 터널의 `http://localhost:3000` | delivery-service CPU, heap, HTTP, JVM 지표 |
 | Zipkin | platform VM IAP 터널의 `http://localhost:9411` | 배송 생성 trace, Feign 호출 trace |

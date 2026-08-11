@@ -31,7 +31,7 @@ infra/gcp
 
 | VM | 내부 IP | 외부 IP | 역할 |
 | --- | --- | --- | --- |
-| hublink-platform-vm | `10.10.0.10` | `34.50.55.18` | Eureka, Config Server, API Gateway, 모니터링 |
+| hublink-platform-vm | `10.10.0.10` | Terraform 고정 IP | Eureka, Config Server, API Gateway, 모니터링 |
 | hublink-domain-a-vm | `10.10.0.20` | 없음 | user, company, hub, product |
 | hublink-domain-b-vm | `10.10.0.30` | 없음 | order, stock, slack, ai |
 | hublink-delivery-vm | `10.10.0.70` | 없음 | delivery |
@@ -47,12 +47,6 @@ infra/gcp
 cd infra/gcp
 terraform output vm_internal_ips
 terraform output vm_external_ips
-```
-
-현재 고정 외부 IP:
-
-```text
-platform:    34.50.55.18
 ```
 
 ## 네트워크
@@ -84,26 +78,25 @@ Load Test:     Cloud Run Job -> Direct VPC
 
 | 항목 | URL |
 | --- | --- |
-| Swagger/API Gateway | `http://34.50.55.18:19091/swagger-ui/index.html` |
+| Swagger/API Gateway | `http://<PLATFORM_EXTERNAL_IP>:19091/swagger-ui/index.html` |
 
 Swagger에서 직접 요청을 보내려면 배포 환경의 `SWAGGER_GATEWAY_URL`, `CORS_ALLOWED_ORIGIN`이 `platform` 외부 IP를 바라봐야 한다.
 
 ```text
-SWAGGER_GATEWAY_URL=http://34.50.55.18:19091
-CORS_ALLOWED_ORIGIN=http://34.50.55.18:19091
+SWAGGER_GATEWAY_URL=http://<PLATFORM_EXTERNAL_IP>:19091
+CORS_ALLOWED_ORIGIN=http://<PLATFORM_EXTERNAL_IP>:19091
 ```
 
 Eureka와 모니터링 도구는 공개하지 않는다. Grafana, Prometheus, Kafka UI는 loopback 주소에만 바인딩하고 IAP SSH 포트 포워딩으로 접근한다. Kafka UI는 기본 Compose 기동 대상에서 제외하고, 관리 작업이 필요할 때만 `admin` 프로필로 실행한다.
 
 ```powershell
-gcloud compute ssh hublink@hublink-platform-vm `
+gcloud compute start-iap-tunnel hublink-platform-vm 3000 `
+  --local-host-port=localhost:3000 `
   --project=hublink-503802 `
-  --zone=asia-northeast3-a `
-  --tunnel-through-iap `
-  -- -L 3000:localhost:3000 -L 9090:localhost:9090 -L 9411:localhost:9411
+  --zone=asia-northeast3-a
 ```
 
-터널을 연 뒤 Grafana는 `http://localhost:3000`으로 접속한다.
+터널을 연 뒤 Grafana는 `http://localhost:3000`으로 접속한다. Prometheus `9090`, Zipkin `9411`, Eureka `19090`, Kafka UI `8082`도 같은 방식으로 대상 포트와 로컬 포트를 맞춰 별도 터널을 연다.
 
 ## Docker Compose 분리
 
