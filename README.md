@@ -70,5 +70,3 @@ Cloud Run Job
 - [배송 도메인 시나리오 테스트 계획](docs/scenario/scenario-test-plan.md)
 - [배송 성능 테스트 기록](docs/performance/delivery/README.md)
 - [배송 성능 테스트 방법](docs/performance/performance-test-plan.md)
-- [AI 도메인 시나리오 테스트 계획](docs/scenario/scenario-ai-test-plan.md)
-- [AI 도메인 성능 테스트 및 트러블슈팅 계획](docs/performance/performance-ai-test-plan.md)
